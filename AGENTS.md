@@ -17,3 +17,5 @@ The user's minted iCi/Solana token belongs to their personal Strange But True pr
 Runtime integration is not established by a passing mock test. Inspect docs/WORKSPACE.md and the ignored local connection record before creating new Drive resources; avoid duplicates. No live payments are configured. Honour the selected interim Google account and the later Workspace ownership transition without broadening sharing.
 
 Run relevant `node --test` tests and browser checks after meaningful changes. The UI is buildless. Preserve same-origin checks, strict CSP, no-store private responses, scoped exports and explicit source/status wording. Report what is locally working, what is connected, and what still needs implementation separately.
+
+The GitHub Pages publication is a separate fictional browser preview built by `scripts/build-pages.mjs`. Use only allowlisted assets and source fixtures; never include .local data. The preview adapter must not be added to the production Worker or normal public app entry. Keep the public-preview banner and session-only behavior accurate.

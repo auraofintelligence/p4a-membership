@@ -2,6 +2,14 @@
 
 A working custom membership and civic CRM foundation for **P4A the Purple Party for Australia**, built on 7 November 2026. It connects people, groups, projects, reviewable priorities and voluntary contribution. The application is separate from the existing civic websites and the committees project.
 
+## Public interactive preview
+
+[Open the public P4A membership preview](https://auraofintelligence.github.io/p4a-membership/).
+
+GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Public view, Member demo and Organiser demo to explore the workbench and contribution flows. Changes exist only in the open page and reset when it reloads. Do not enter real personal or financial details. This preview does not accept real memberships or payments and has no Google, identity-verification or blockchain connection.
+
+`npm run build:pages` creates an allowlisted `dist/` using public assets and shared domain rules. The Pages workflow tests the application and publishes that output on pushes to `main`. It excludes local records, credentials and live storage/authentication adapters. The Cloudflare Worker remains the separate intended production runtime.
+
 ## Run the working review
 
 Requires Node.js 20.10 or later. No package installation or frontend build is required.
@@ -69,4 +77,4 @@ Payments are intentionally inactive: the operator, paid benefits, pricing, terms
 
 P4A and the connected civic concepts are by Luke Nathan Hayes / Strange But True / Aura of Intelligence. Preserve the existing [Strange But True Public Source Licence](LICENCE.md) and third-party rights. This is public-source work, not a grant of unrestricted commercial or institutional reuse. No new third-party runtime packages, tracking, remote fonts or remotely hosted media were added. The locally served civic icon sheet was generated with ImageGen; its prompts and source are recorded in [ICON-SHEET.md](docs/ICON-SHEET.md).
 
-The deployed asset root includes `public/robots.txt` and a copy of the licence at `public/LICENCE.md`. Crawl directions follow the connected Strange But True site: public search discovery is allowed, API/private paths are excluded, and the listed training crawlers are asked not to crawl. Robots directives do not enforce access control or grant reuse rights.
+The deployed asset root includes `public/robots.txt` and a copy of the licence at `public/LICENCE.md`. Crawl directions follow the connected Strange But True site: public search discovery is allowed, API/private paths are excluded, and the listed training crawlers are asked not to crawl. Robots directives do not enforce access control or grant reuse rights. On GitHub project Pages, the copied file is at `/p4a-membership/robots.txt`; crawler policy is controlled by the shared host's root `/robots.txt`. The project file will be authoritative when this app occupies its own host root.

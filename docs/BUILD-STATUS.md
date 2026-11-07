@@ -1,16 +1,16 @@
 # Build status and connection checklist
 
-Verified 7 November 2026, Australia/Brisbane. This records the local implementation and its remaining live connections.
+Verified 7 November 2026, Australia/Brisbane. This records the local implementation, separate public preview and remaining production connections.
 
 ## Scope
 
 This is a standalone custom CRM and membership workspace for P4A. Its implementation contract is [BUILD-CONTRACT.md](../BUILD-CONTRACT.md). The review application uses fictional records and explicit demonstration identities. The existing public sites and committees project stay separately maintained and hosted.
 
-Cloudflare is the intended hosting destination. Google Workspace is the stated storage preference. Neither a production deployment nor a live Workspace connection is established by local development. No live applications, payments, external outreach or public publication are implied by a successful preview.
+Cloudflare is the intended production hosting destination. Google Workspace is the stated storage preference. The separate GitHub Pages preview uses fictional browser-memory records only. Neither a production membership deployment nor a live Workspace connection is established by the preview.
 
 ## Verification results
 
-**51 automated tests passed** (`node --test`), covering domain, privacy, HTTP, constitutional drafting and integration behaviour. Browser checks exercised the member and organiser journeys using fictional records. Tests use isolated mock Google and identity endpoints; they do not establish live service configuration.
+**55 automated tests passed** (`node --test`), covering domain, privacy, HTTP, constitutional drafting, integration behaviour and public-preview boundaries. Browser checks exercised the member and organiser journeys using fictional records. Tests use isolated mock Google and identity endpoints; they do not establish live service configuration.
 
 - [x] Local application starts and serves the recognisable member and organiser experiences.
 - [x] Private API responses prevent caching; private mutations require same-origin JSON requests.
@@ -58,6 +58,12 @@ The private workspace supports monetary receipt submission, independent review, 
 All 51 tests pass, including 20 Gamify tests covering legacy data, authority, duplicate references and replay, refund reconciliation, correction/reverification, privacy, tied rankings, scope filters and separate people with identical names. Browser checks exercised a fictional $120 receipt, named consent, independent verification, a recorded $20 refund and a $100 net ranking; 1.5 verified voluntary hours remained private until named consent. Switching money to aggregate-only removed the name while retaining the authorised $100 total. Public views did not show the private receipt reference. Year/project filters and the methodology control were exercised. The 390px leaderboard and receipt dialog have no horizontal overflow after repairing shared form-control sizing.
 
 The pre-existing local state was preserved in `.local/review/gamify-before-state.json` before review. The browser added fictional financial review records and reviewed an existing fictional voluntary sample. No demo records were uploaded to Google or any live service.
+
+### GitHub Pages public preview
+
+The public preview is published at https://auraofintelligence.github.io/p4a-membership/ by the repository's Pages workflow. It builds only an explicit list of public assets and pure domain modules. Private local records, credentials, Workspace adapters and production identity code are excluded. The preview starts with fresh fictional examples, including separate AUD and C-Hour rankings. Role selection and changes stay in page memory and reset on reload; no membership, payment, identity or blockchain service is connected. A strict content security policy blocks network API requests.
+
+The four preview tests cover fictional seed projections, independent session state, role/command permissions, and the generated-file boundary while checking that production source remains unchanged. Browser checks confirmed public/member/organiser selection, saving a fictional name and resetting it on reload, constitution clause navigation and the separate $100 / 1.5-hour sample boards. No console warnings or errors were reported in those checks. The normal local server retains its separate persistent review state.
 
 ## Decisions and configuration before live operation
 
