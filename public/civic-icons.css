@@ -1,0 +1,90 @@
+/* Generated artwork stays intact. CSS centres each illustration; see docs/ICON-SHEET.md. */
+.civic-icon {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  background-image: url('/artwork/p4a-civic-icons-v1.png');
+  background-size: 627% 627%;
+  background-repeat: no-repeat;
+}
+.civic-icon-home { background-position: 7.5901% 9.1082%; }
+.civic-icon-projects { background-position: 36.4801% 9.3928%; }
+.civic-icon-priority { background-position: 63.9943% 8.8235%; }
+.civic-icon-people { background-position: 91.2713% 9.203%; }
+.civic-icon-groups { background-position: 7.4478% 36.7647%; }
+.civic-icon-hours { background-position: 35.2941% 36.575%; }
+.civic-icon-transparency { background-position: 64.611% 36.6698%; }
+.civic-icon-resources { background-position: 91.2713% 36.4326%; }
+.civic-icon-constitution { background-position: 8.3017% 64.1841%; }
+.civic-icon-profile { background-position: 36.1006% 63.6622%; }
+.civic-icon-nodes { background-position: 63.7571% 63.7571%; }
+.civic-icon-abundance { background-position: 91.2713% 63.6148%; }
+.civic-icon-missing-middle { background-position: 8.444% 91.2713%; }
+.civic-icon-verse-box { background-position: 36.5275% 91.0342%; }
+.civic-icon-legal { background-position: 63.5674% 91.1765%; }
+.civic-icon-bills { background-position: 91.4611% 91.3188%; }
+.civic-icon-gamify { background-image: url('/artwork/gamify-democracy.svg'); background-size: contain; background-position: center; }
+
+.nav-link { padding: 8px 9px; gap: 10px; font-size: 12px; }
+.nav-link .nav-short-label { display: none; }
+.nav-link .civic-icon { width: 37px; height: 37px; }
+.nav-label { margin-top: 23px; }
+.sidebar-foot { padding-top: 22px; }
+.stat-top .civic-icon { width: 28px; height: 28px; }
+.resource-card>.civic-icon { width: 49px; height: 49px; margin-bottom: 9px; }
+.avatar>.civic-icon { width: 34px; height: 34px; }
+.home-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; margin-top: 20px; }
+.home-door { display: flex; align-items: flex-start; gap: 15px; padding: 23px; border: 1px solid var(--line); border-radius: 13px; background: white; color: var(--ink); text-decoration: none; }
+.home-door>.civic-icon { width: 60px; height: 60px; }
+.home-door .eyebrow { font-size: 9px; margin-bottom: 7px; }
+.home-door h2 { font-size: 19px; }
+.home-door p { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.door-action { display: block; color: var(--purple); font-size: 12px; font-weight: 600; margin-top: 14px; }
+.home-door:hover { border-color: #b399cd; background: #fdfbff; }
+.constitution-door { border-top: 3px solid #a27acb; }
+.node-door { border-top: 3px solid #71ad9b; }
+.gamify-door { border-top: 3px solid #cfa44e; grid-column: 1 / -1; background: #fffdf7; }
+.node-heading { display: flex; align-items: center; gap: 20px; }
+.node-heading>.civic-icon { width: 90px; height: 90px; }
+.node-heading h2 { font-size: 28px; margin-bottom: 7px; }
+.local-node-detail { max-width: 900px; border-top: 3px solid #71ad9b; padding: 30px; }
+.node-purpose { font-size: 17px; margin: 25px 0 18px; max-width: 710px; }
+.node-capabilities { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 21px; }
+.node-capabilities span { padding: 6px 11px; border-radius: 20px; font-size: 11px; color: #467568; background: #edf5f0; }
+
+@media(max-width:1100px) {
+  .nav-link { padding-left: 5px; padding-right: 5px; gap: 6px; }
+  .nav-link .civic-icon { width: 33px; height: 33px; }
+  .home-door { padding: 20px; gap: 10px; }
+  .home-door>.civic-icon { width: 49px; height: 49px; }
+}
+@media(max-width:800px) {
+  .sidebar { width: 102px; padding: 19px 8px; }
+  .workspace { margin-left: 102px; width: calc(100% - 102px); }
+  .sidebar nav { margin-top: 20px; }
+  .nav-link { flex-direction: column; gap: 3px; padding: 7px 3px; margin-bottom: 4px; min-height: 61px; text-align: center; }
+  .nav-link .civic-icon { display: block; width: 37px; height: 37px; }
+  .nav-link .nav-full-label { display: none; }
+  .nav-link .nav-short-label { display: block; color: inherit; font-size: 10px; line-height: 1.2; font-weight: 500; }
+  .home-doors { grid-template-columns: 1fr; gap: 12px; }
+  .toast { left: calc(50% + 40px); }
+}
+@media(max-width:520px) {
+  .sidebar { width: 90px; padding: 17px 5px; }
+  .workspace { margin-left: 90px; width: calc(100% - 90px); }
+  .nav-link .nav-short-label { font-size: 9px; }
+  .nav-link .civic-icon { width: 35px; height: 35px; }
+  .nav-link { min-height: 58px; }
+  .home-door { padding: 18px 14px; gap: 8px; }
+  .home-door>.civic-icon { width: 43px; height: 43px; }
+  .home-door h2 { font-size: 17px; }
+  .node-heading { gap: 10px; align-items: flex-start; }
+  .node-heading>.civic-icon { width: 59px; height: 59px; }
+  .node-heading h2 { font-size: 23px; }
+  .local-node-detail { padding: 20px; }
+  .node-purpose { font-size: 14px; }
+  .topbar { gap: 8px; padding: 0 14px; }
+  .top-actions select { max-width: 110px; }
+  .breadcrumb { font-size: 10px; }
+}

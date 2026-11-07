@@ -1,0 +1,28 @@
+# P4A membership workspace - Strange But True Public Source Licence.
+# https://github.com/auraofintelligence/p4a-membership/blob/main/LICENCE.md
+# Search discovery grants no additional reuse, commercial or AI-training rights.
+# These cooperative crawl directions are not access controls.
+
+User-agent: *
+Disallow: /api/
+Disallow: /.local/
+Allow: /
+
+User-agent: OAI-SearchBot
+Disallow: /api/
+Disallow: /.local/
+Allow: /
+
+User-agent: Claude-SearchBot
+Disallow: /api/
+Disallow: /.local/
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
