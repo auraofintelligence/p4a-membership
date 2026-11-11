@@ -32,7 +32,7 @@ const electionLevels = {
 const regions = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'];
 
 export function campaignReplicationPrompt({level, region, electorate} = {}) {
-  return `Build a campaign command centre and a sourced public data dashboard for the Australian election area below.
+  return `Build a P4A campaign command centre, a sourced public electorate dashboard and a way to follow relevant committee inquiries for the Australian election area below.
 
 Election level: ${electionLevels[level] || '[local government, state or territory, or federal]'}
 State or territory: ${region || '[state or territory]'}
@@ -40,12 +40,18 @@ Council, ward, division or electorate: ${electorate?.trim() || '[official name]'
 Election and office: [confirmed election or by-election and office, if known]
 Candidate or team: [optional working name]
 
-Use the Redlands Mayoral Command Centre as an operations reference if I provide access: ${campaignCentres[0].url}. If access is unavailable, build from this brief. For the public dashboard, study the Redlands Coast Intelligence independent draft at ${redlandsDataset} and its structured source file at ${redlandsDataset}data/dashboard.json. Adapt the structure, verify all local facts afresh, and credit material you reuse under its applicable licence.
+Use the Redlands Mayoral Command Centre as an operations reference if I provide access: ${campaignCentres[0].url}. If access is unavailable, build from this brief.
+
+For the public-facing site, use the former Redlands mayoral campaign page at ${redlandsCivicLab.url} as an example of presenting local issues, projects and ways to participate. It now runs as the Redlands Civic Lab simulation. Adapt the structure to the new area and treat Redlands campaign details as historical context.
+
+For the public dashboard, study the Redlands Coast Intelligence independent draft at ${redlandsDataset} and its structured source file at ${redlandsDataset}data/dashboard.json. Adapt the structure, verify all local facts afresh, and credit material you reuse under its applicable licence.
 
 1. Verify the area's official name, boundary version, election authority and election dates from official sources. Use the correct geography and terminology for the selected jurisdiction. If the election is unconfirmed, show that status.
 2. Build a public dataset of aggregate population and housing, local economy and household costs, transport and services, projects and budgets where relevant. Start with the electoral authority, ABS and relevant government or council sources. Record each figure's definition, geography, unit, reference period, publisher, URL, date checked and limitations. Label estimates, budgets, actuals and missing data. Explain any statistical boundaries that differ from the electorate. Provide readable source cards, downloadable structured data and a dated change log.
 3. Set up a private workspace for source research, optional work items, communications drafts, consented contacts, finance records and review. Start with empty private records and fictional test data. Keep private records, identifying data and credentials out of the public dashboard, source repository and public exports. Keep a human approval step for publication, messages and spending.
-4. Record open questions and link to current official election, disclosure and authorisation guidance. Include setup instructions, tests for private/public access and dataset provenance, and a brief walkthrough. Leave deployment and external actions for explicit approval.`;
+4. Use the P4A public site at https://p4a.xyz/ as the movement reference and follow its localisation guide at https://github.com/auraofintelligence/p4a-xyz-cinema/blob/main/LOCALISE_WITH_AN_AGENT.md. Link to P4A and the Campaign Command Centre directory at https://auraofintelligence.github.io/p4a-membership/#campaigns. Prepare a proposed directory entry with the area, election level, state or territory, public URL and verified campaign status for P4A maintainers to review. Reflect P4A’s current status as a movement in formation and show the verified status of any local candidacy or endorsement.
+5. Use P4A Committees & Inquiries at https://auraofintelligence.github.io/p4a-xyz-committees-inquiries/ as a starting point for finding inquiries relevant to the electorate. Check the responsible authorities for current opportunities and coverage gaps. Link the public dashboard to the project and directly to official inquiry pages. For each relevant inquiry, record the responsible body, jurisdiction, terms of reference, status, closing date, participation and publication conditions, official submission link, date checked and relevant evidence from the electorate dataset. Keep draft submissions in the private workspace for human review. Verify details before publishing and use official submission channels.
+6. Record open questions and link to current official election, disclosure and authorisation guidance. Include setup instructions, tests for private/public access and dataset provenance, and a brief walkthrough. Leave deployment and external actions for explicit approval.`;
 }
 
 export function homeDoors(icon) {
