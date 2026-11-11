@@ -203,7 +203,7 @@ export function gamifyProjection(state, filters = {}, mode = 'live', now = new D
   if (!Number.isSafeInteger(moneyCents)) fail('Financial totals exceed the supported reporting range.', 503);
   const totalHours = Math.round(hours.reduce((sum, receipt) => sum + receipt.hours, 0) * 1e6) / 1e6;
   return {
-    mode, sampleData: mode === 'demo', updatedAt: now.toISOString(), period, year, filters: { groupId, projectId },
+    mode, sampleData: mode === 'demo' || mode === 'pilot', updatedAt: now.toISOString(), period, year, filters: { groupId, projectId },
     options: { groups: publicGroups.map(({ id, name }) => ({ id, name })), projects: publicProjects.map(({ id, title, groupId, status }) => ({ id, title, groupId: publishedGroupIds.has(groupId) ? groupId : '', status })) },
     totals: { moneyCents, hours: totalHours, moneyReceipts: money.length, hourReceipts: hours.length },
     money: rankedRows(money, state, true), hours: rankedRows(hours, state, false),

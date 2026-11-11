@@ -12,6 +12,17 @@ The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership
 
 `npm run build:pages` creates an allowlisted `dist/` using public assets and shared domain rules. The Pages workflow tests the application and publishes that output on pushes to `main`. It excludes local records, credentials and live storage/authentication adapters. The Cloudflare Worker remains the separate intended production runtime.
 
+## Private Cloudflare pilot
+
+The pilot Worker in [wrangler.pilot.jsonc](wrangler.pilot.jsonc) uses its own D1 database and seeded fictional records. Changes persist across sign-ins. It uses the same application and review commands as the workspace, with Cloudflare Access sign-in and a practice banner. An organiser can review the seeded pending application. To submit as a member and then test independent review, invite a separate tester.
+
+1. Create a dedicated D1 database named `p4a-membership-pilot`, apply [the pilot migration](migrations/pilot/0001_pilot_snapshot.sql), and use its ID in an ignored local copy of the configuration. Resolve the entry point, assets and migration paths from the copy's location. The tracked template disables public routes.
+2. Create a Cloudflare Access application for this Worker or its exact `workers.dev` hostname. Use an Allow policy with the invited email addresses and an authenticated sign-in method such as One-time PIN. Use a policy specific to the pilot.
+3. Set `ACCESS_ISSUER` to the Zero Trust team URL and `ACCESS_AUD` to the application audience tag. Set `PILOT_ORGANISER_EMAILS` as a JSON array in a Worker secret. Organiser aliases resolve to a single fictional organiser. A separately invited member can use `PILOT_MEMBER_EMAILS`, a JSON array containing one distinct email. Keep these values out of tracked files.
+4. Enable the pilot's `workers.dev` route once Access is set up. Test signed-out access, then verify a signed-in practice application, review and saved change. Use sample records throughout. The pilot database has a 1 MiB snapshot limit and is for rehearsal.
+
+See [Cloudflare Worker Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/) and [application audience tags](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/#get-your-aud-tag).
+
 ## Run the working review
 
 Requires Node.js 20.10 or later. No package installation or frontend build is required.

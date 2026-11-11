@@ -29,13 +29,10 @@ async function getKeys(issuer) {
   return result.keys;
 }
 
-export async function authenticate(request, env, state) {
-  if (!env.ACCESS_ISSUER || !env.ACCESS_AUD) return null;
+export async function verifyAccessToken(token, env) {
+  if (!token || token.length > 16384 || !env.ACCESS_ISSUER || !env.ACCESS_AUD) return null;
   try {
     const issuer = issuerOrigin(env.ACCESS_ISSUER);
-    const cookie = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith('CF_Authorization='))?.slice(17);
-    const token = request.headers.get('Cf-Access-Jwt-Assertion') || cookie;
-    if (!token || token.length > 16384) return null;
     const pieces = token.split('.');
     if (pieces.length !== 3) return null;
     const header = JSON.parse(decoder.decode(decodePart(pieces[0])));
@@ -52,6 +49,17 @@ export async function authenticate(request, env, state) {
     if (!jwk) return null;
     const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
     if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decodePart(pieces[2]), new TextEncoder().encode(`${pieces[0]}.${pieces[1]}`))) return null;
+    return claims;
+  } catch {
+    return null;
+  }
+}
+
+export async function authenticate(request, env, state) {
+  try {
+    const cookie = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith('CF_Authorization='))?.slice(17);
+    const claims = await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion') || cookie, env);
+    if (!claims) return null;
     const matches = (state.people || []).filter(p => p.authSubject === claims.sub && ['member', 'organiser'].includes(p.role));
     if (matches.length !== 1) return null;
     const person = matches[0];

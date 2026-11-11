@@ -252,7 +252,7 @@ export function executeCommand(state, actor, command, now = new Date()) {
 export function publicProjection(state, mode = 'live') {
   const contributions = state.contributions.filter(item => item.status === 'verified' && (item.publicConsent || item.namedConsent));
   return {
-    mode, sampleData: mode === 'demo', status: 'Movement in formation; not a registered political party. No adopted constitution.',
+    mode, sampleData: mode === 'demo' || mode === 'pilot', status: 'Movement in formation; not a registered political party. No adopted constitution.',
     decisions: state.decisions.filter(item => item.public).map(({ id, title, summary, date, status }) => ({ id, title, summary, date, status })),
     projects: state.projects.filter(item => item.public === true).map(({ id, title, summary, status, theme }) => ({ id, title, summary, status, theme })),
     totals: { verifiedHours: contributions.reduce((sum, item) => sum + item.hours, 0), verifiedContributions: contributions.length },
