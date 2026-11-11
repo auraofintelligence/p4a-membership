@@ -55,7 +55,6 @@ test('Pilot authentication uses verified Access identities and maps only to fict
     const modifiedToken = `${header}.${encode(claims)}.${signature}`;
     const bareEmail = { 'Cf-Access-Authenticated-User-Email': claims.email };
     assert.equal(await getPilotRole(request(undefined, bareEmail), env), null);
-    assert.equal(await getPilotRole(request(undefined, { Cookie: `CF_Authorization=${ownerToken}` }), env), null);
     assert.equal(await getPilotRole(request(unknownToken, bareEmail), env), null);
     assert.equal(await getPilotRole(request(modifiedToken), env), null);
     for (const change of [
@@ -64,6 +63,15 @@ test('Pilot authentication uses verified Access identities and maps only to fict
     ]) {
       assert.equal(await getPilotRole(request(await sign(change)), env), null);
     }
+  });
+
+  await t.test('a signed application cookie can carry a browser session when the assertion header is absent', async () => {
+    const cookie = token => ({ Cookie: `theme=violet; CF_Authorization=${token}` });
+    assert.equal(await getPilotRole(request(undefined, cookie(ownerToken)), env), 'organiser');
+    assert.equal(await getPilotRole(request(undefined, cookie(memberToken)), env), 'member');
+    assert.equal(await getPilotRole(request(undefined, cookie(await sign({ exp: 1 }))), env), null);
+    assert.equal(await getPilotRole(request(undefined, cookie(await sign({ aud: ['other-app'] }))), env), null);
+    assert.equal(await getPilotRole(request('invalid-assertion', cookie(ownerToken)), env), null);
   });
 
   await t.test('missing, malformed or overlapping role configuration fails closed', async () => {

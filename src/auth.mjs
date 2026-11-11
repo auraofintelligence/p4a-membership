@@ -55,10 +55,18 @@ export async function verifyAccessToken(token, env) {
   }
 }
 
+export function accessTokenFromRequest(request) {
+  const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
+  if (assertion) return assertion;
+  const prefix = 'CF_Authorization=';
+  return request.headers.get('Cookie')?.split(';')
+    .map(cookie => cookie.trim())
+    .find(cookie => cookie.startsWith(prefix))?.slice(prefix.length);
+}
+
 export async function authenticate(request, env, state) {
   try {
-    const cookie = (request.headers.get('Cookie') || '').split(';').map(x => x.trim()).find(x => x.startsWith('CF_Authorization='))?.slice(17);
-    const claims = await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion') || cookie, env);
+    const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
     if (!claims) return null;
     const matches = (state.people || []).filter(p => p.authSubject === claims.sub && ['member', 'organiser'].includes(p.role));
     if (matches.length !== 1) return null;

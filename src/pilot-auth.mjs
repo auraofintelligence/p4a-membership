@@ -1,4 +1,4 @@
-import { verifyAccessToken } from './auth.mjs';
+import { accessTokenFromRequest, verifyAccessToken } from './auth.mjs';
 
 const pilotFixtures = new Map([
   ['organiser', { id: 'person-2', email: 'sam@example.invalid' }],
@@ -28,7 +28,7 @@ export async function getPilotRole(request, env) {
   const members = parseAllowlist(env.PILOT_MEMBER_EMAILS ?? '[]');
   if (!organisers?.size || !members || members.size > 1 || [...members].some(email => organisers.has(email))) return null;
 
-  const claims = await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion'), env);
+  const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
   if (claims?.type !== 'app') return null;
   const email = normalisedEmail(claims.email);
   if (organisers.has(email)) return 'organiser';
