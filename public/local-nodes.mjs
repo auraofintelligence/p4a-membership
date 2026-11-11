@@ -81,7 +81,7 @@ export function homeDoors(icon) {
 
 export function campaignsView({heading, icon}) {
   return `${heading('Campaign operations', 'Campaign Command Centre', 'Browse campaign workspaces by place and adapt the Redlands model to your electorate.')}
-    <section class="quick-links" aria-label="Campaign workspaces">
+    <section class="quick-links" aria-label="Campaign workspaces and references">
       ${campaignCentres.map(centre => `<a class="resource-card" href="${centre.url}" target="_blank" rel="noopener noreferrer">
         ${icon('campaigns')}
         <small>${centre.place}</small>
@@ -89,6 +89,13 @@ export function campaignsView({heading, icon}) {
         <p>${centre.description}</p>
         <span class="door-action">Open private repository ↗</span>
       </a>`).join('')}
+      <a class="resource-card" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">
+        ${icon(redlandsCivicLab.icon)}
+        <small>Redlands · Public-facing reference</small>
+        <h3>${redlandsCivicLab.name}</h3>
+        <p>${redlandsCivicLab.description}</p>
+        <span class="door-action">Open the former mayoral site ↗</span>
+      </a>
     </section>
     <section class="panel wide-panel subheading" aria-labelledby="campaign-model-heading">
       <h2 id="campaign-model-heading">How the Redlands model works</h2>

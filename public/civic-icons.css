@@ -17,7 +17,7 @@
 .civic-icon-transparency { background-position: 64.611% 36.6698%; }
 .civic-icon-resources { background-position: 91.2713% 36.4326%; }
 .civic-icon-constitution { background-position: 8.3017% 64.1841%; }
-.civic-icon-profile { background-position: 36.1006% 63.6622%; }
+.civic-icon-profile { background-image: url('/artwork/p4a-membership.png'); background-size: contain; background-position: center; }
 .civic-icon-nodes { background-position: 63.7571% 63.7571%; }
 .civic-icon-abundance { background-position: 91.2713% 63.6148%; }
 .civic-icon-missing-middle { background-position: 8.444% 91.2713%; }
