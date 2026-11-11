@@ -81,7 +81,10 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 22);
+  assert.equal(names.length, 25);
+  for (const name of ['constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css']) {
+    assert.ok(names.includes(name), `Preview must include ${name}`);
+  }
   assert.equal(names.some(name => /\.local|\.env|workspace-store|worker\.mjs|auth\.mjs|http\.mjs|state\.json|connection\.json/.test(name)), false);
   assert.deepEqual(names.filter(name => name.startsWith('demo-domain/')).sort(), ['constitution-seed.mjs', 'domain.mjs', 'errors.mjs', 'gamify.mjs', 'seed.mjs'].map(name => `demo-domain/${name}`).sort());
   const html = await readFile(path.join(built.directory, 'index.html'), 'utf8');

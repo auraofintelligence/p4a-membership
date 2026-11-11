@@ -7,6 +7,7 @@ const output = path.join(root, 'dist');
 const publicFiles = [
   'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs',
   'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs',
+  'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
   'favicon.svg', 'robots.txt', 'LICENCE.md',
   'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg',
 ];

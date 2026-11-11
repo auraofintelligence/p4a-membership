@@ -8,6 +8,8 @@ A working custom membership and civic CRM foundation for **P4A the Purple Party 
 
 GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Public view, Member demo and Organiser demo to explore the workbench and contribution flows. Changes exist only in the open page and reset when it reloads. Do not enter real personal or financial details. This preview does not accept real memberships or payments and has no Google, identity-verification or blockchain connection.
 
+The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership/#constitution/trial) demonstrates how Aura could prepare records of overlapping voluntary work from agreed evidence. Compare the drafts, choose what to share, then try evidence review, a fictional ballot, sunset and audit download.
+
 `npm run build:pages` creates an allowlisted `dist/` using public assets and shared domain rules. The Pages workflow tests the application and publishes that output on pushes to `main`. It excludes local records, credentials and live storage/authentication adapters. The Cloudflare Worker remains the separate intended production runtime.
 
 ## Run the working review

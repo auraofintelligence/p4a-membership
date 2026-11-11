@@ -1,0 +1,271 @@
+.constitution-trial-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0 0 20px;
+  padding: 16px 18px;
+}
+
+.constitution-trial-entry h2 {
+  font-size: 17px;
+}
+
+.constitution-trial-entry p.muted {
+  margin-top: 4px;
+}
+
+.trial-workbench {
+  max-width: 960px;
+  min-width: 0;
+}
+
+.trial-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--purple);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.trial-back:hover {
+  text-decoration: underline;
+}
+
+.trial-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 13px 16px;
+  color: var(--deep);
+  background: var(--lavender);
+  border-radius: 8px;
+}
+
+.trial-status span,
+.trial-session-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.trial-session-note {
+  margin: 10px 0 22px;
+}
+
+.trial-panel h2 {
+  margin-bottom: 8px;
+}
+
+.trial-panel p + p {
+  margin-top: 8px;
+}
+
+.trial-panel .button-row,
+.trial-panel > .button {
+  margin-top: 12px;
+}
+
+.trial-section-heading,
+.trial-variant-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.trial-section-heading {
+  margin-bottom: 8px;
+}
+
+.trial-section-heading h2 {
+  margin-bottom: 0;
+}
+
+.trial-fixture {
+  margin: 16px 0;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.trial-fixture p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.trial-private {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.trial-private summary {
+  color: var(--deep);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trial-private dl {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.trial-private dt {
+  font-weight: 600;
+}
+
+.trial-private dd {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.trial-share {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--lavender);
+}
+
+.trial-share .button {
+  margin-top: 10px;
+}
+
+.trial-versions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 12px;
+}
+
+.trial-variant {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.trial-variant-meta {
+  width: 100%;
+}
+
+.trial-variant > .button {
+  margin-top: auto;
+}
+
+.trial-trace,
+.trial-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.trial-trace {
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.trial-variant .trial-trace-label {
+  margin-top: auto;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trial-trace dt,
+.trial-tally dt {
+  color: var(--muted);
+}
+
+.trial-trace dd,
+.trial-tally dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.trial-next {
+  margin-top: 14px;
+}
+
+.trial-next > p + .button {
+  margin-top: 10px;
+}
+
+.trial-finding {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.trial-panel > .trial-finding,
+.trial-tally {
+  margin-top: 12px;
+}
+
+.trial-ballot-close {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.trial-ballot-close .button {
+  margin-top: 8px;
+}
+
+.trial-history {
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trial-history li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.trial-history li > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--purple);
+}
+
+.trial-references summary {
+  color: var(--purple);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trial-references ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.trial-references li + li {
+  margin-top: 8px;
+}
+
+.trial-references p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
