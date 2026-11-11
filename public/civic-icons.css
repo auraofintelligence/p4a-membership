@@ -25,22 +25,19 @@
 .civic-icon-legal { background-position: 63.5674% 91.1765%; }
 .civic-icon-bills { background-position: 91.4611% 91.3188%; }
 .civic-icon-gamify { background-image: url('/artwork/gamify-democracy.svg'); background-size: contain; background-position: center; }
-.civic-icon-campaigns { display: inline-grid; place-items: center; background: none; }
-.civic-icon-campaigns::before {
-  content: '';
-  width: 80%;
-  height: 68%;
-  border: 2px solid #b794df;
-  border-radius: 5px;
-  background:
-    radial-gradient(circle at 29% 25%, #ffcf70 0 8%, transparent 9%),
-    radial-gradient(circle at 53% 50%, #93dbcb 0 8%, transparent 9%),
-    radial-gradient(circle at 70% 75%, #f0a9de 0 8%, transparent 9%),
-    linear-gradient(#dbcaee, #dbcaee) center 25% / 68% 6% no-repeat,
-    linear-gradient(#dbcaee, #dbcaee) center 50% / 68% 6% no-repeat,
-    linear-gradient(#dbcaee, #dbcaee) center 75% / 68% 6% no-repeat,
-    #49316e;
+.civic-icon-campaigns { background-image: url('/artwork/campaign-command-centre.png'); background-size: contain; background-position: center; }
+.civic-icon-genesis { background-image: url('/artwork/aura-genesis-geode.png'); background-size: contain; background-position: center; }
+
+:is(.civic-icon-relevance, .civic-icon-committees, .civic-icon-twins,
+    .civic-icon-redlands, .civic-icon-scan) {
+  background-image: url('/artwork/connected-ideas-icons.png');
+  background-size: 300% 200%;
 }
+.civic-icon-relevance { background-position: 0% 0%; }
+.civic-icon-committees { background-position: 50% 0%; }
+.civic-icon-twins { background-position: 100% 0%; }
+.civic-icon-redlands { background-position: 0% 100%; }
+.civic-icon-scan { background-position: 50% 100%; }
 
 .nav-link { padding: 8px 9px; gap: 10px; font-size: 12px; }
 .nav-link .nav-short-label { display: none; }

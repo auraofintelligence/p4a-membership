@@ -84,3 +84,31 @@ Remove all scattered pixels, white ragged halos, noise, speckles and floating st
 ```
 
 Tool options: `transparent_background: true`; reference image was the first generated PNG at `public/artwork/p4a-civic-icons-v1.png`. The reference was inspected before editing. The final output replaced that copied asset while preserving both originals under the generated-images directory.
+
+## Campaign and Connected Ideas artwork
+
+Generated with built-in ImageGen using `transparent_background: true`. The delivered PNGs are smaller exports of the generated originals.
+
+### Campaign Command Centre
+
+Asset: `public/artwork/campaign-command-centre.png`. No reference images.
+
+```text
+Use case: stylized-concept. Generate one square transparent UI icon for the P4A Campaign Command Centre. Depict a single compact purple operations console with a large mint-teal electorate map on its screen, one bold golden location pin, and a few clear amber controls on the base. Match the existing P4A icons’ cheerful rounded 3D clay illustration style with rich purple, teal and gold, soft highlights, and a strong readable silhouette at 35 px. Centre the fully visible object with modest even padding. True transparent background, no lettering, watermark, people, flags, or extra objects.
+```
+
+### Connected Ideas icon sheet
+
+Asset: `public/artwork/connected-ideas-icons.png`. No reference images. The final card uses the separate Geode icon below.
+
+```text
+Use case: stylized-concept. Create one transparent square sprite sheet with exactly six distinct icons for the P4A Connected Ideas website. Use a precise three-column, two-row grid with icon centres at x = one-sixth, one-half, five-sixths and y = one-quarter, three-quarters. Each icon fits inside a square no wider than a quarter of the full canvas. Leave generous transparent gaps. Top row, left to right: Your Relevance, a purple profile silhouette with a gold focus star and a mint accent; Committees and Inquiries, a curved purple committee bench with teal seats and a cream agenda page; Straddie Twins, two small distinct green sand islands side by side in turquoise water. Bottom row, left to right: Redlands Civic Lab, a purple and gold civic hall on a miniature coral and teal coastal map; Scan to Twin, a purple phone projecting a mint scan beam onto a gold wireframe cube; Aura Genesis and Truth Engine, an open purple geode with a turquoise crystal centre and a gold check-shaped glint. Match a cheerful rounded 3D clay UI illustration set with rich colours, soft highlights, and bold silhouettes readable at 40 pixels. Exactly six separate objects or small groups, evenly sized, on genuine alpha transparency. No tile backgrounds, grid lines, letters, numbers, captions, words or watermarks.
+```
+
+### Aura Genesis Geode
+
+Asset: `public/artwork/aura-genesis-geode.png`. References were the Aura Genesis Protocol site's `hero-index-v3.webp` and `hero-genesis-v3.webp`.
+
+```text
+Create ONE standalone colorful small website icon for “Aura Genesis & Truth Engine”, the Aura Geode HBOT project. Use the attached two images from the actual Aura Genesis Protocol website for design inspiration. Image 1 is the recognizable open upright one-person crystalline Geode chamber; image 2 depicts the active personal reflection experience with screen, sensors and headset. Use the specific silhouette from image 1: an egg-shaped ivory translucent mineral shell with lilac and jade crystal seams, warm brass rim, an open upright pressure hatch, and a visible seated interior. Beside and partly overlapping the opening, show one clear mint-and-violet semi-transparent seated human digital twin with a visible head and soft luminous traces through head and upper body. The hatch and silhouette should read immediately as a chamber and a digital body-and-mind twin even at 36 pixels. Use simple dimensional clay-and-glass icon forms, bright but controlled ivory, deep purple, jade and gold, with strong contrast against both pale white and dark purple backgrounds. Compose as ONE compact, coherent square icon, with big shapes, centered, no scenery, no wall or floor, no detached sparkles, no lettering, no signs, no border or tile. True transparent background with fully clear edges and generous margins. This is a visual concept symbol, not medical instructions or a product rendering.
+```

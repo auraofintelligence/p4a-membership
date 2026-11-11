@@ -7,6 +7,7 @@ export const strangeButTrue = Object.freeze({
 });
 
 export const redlandsCivicLab = Object.freeze({
+  icon: 'redlands',
   name: 'Redlands Civic Lab',
   label: 'Civic simulation · Redlands',
   description: 'Luke Hayes’ former mayoral campaign site, now a civic simulation exploring Redlands questions, projects and possibilities. The campaign has ended.',
@@ -21,6 +22,31 @@ const campaignCentres = [
     url: 'https://github.com/auraofintelligence/redlands-mayoral-command-centre',
   },
 ];
+
+const redlandsDataset = 'https://auraofintelligence.github.io/Redlands_draft_ES2026-2031/';
+const electionLevels = {
+  local: 'Local government',
+  state: 'State or territory',
+  federal: 'Federal',
+};
+const regions = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA'];
+
+export function campaignReplicationPrompt({level, region, electorate} = {}) {
+  return `Build a campaign command centre and a sourced public data dashboard for the Australian election area below.
+
+Election level: ${electionLevels[level] || '[local government, state or territory, or federal]'}
+State or territory: ${region || '[state or territory]'}
+Council, ward, division or electorate: ${electorate?.trim() || '[official name]'}
+Election and office: [confirmed election or by-election and office, if known]
+Candidate or team: [optional working name]
+
+Use the Redlands Mayoral Command Centre as an operations reference if I provide access: ${campaignCentres[0].url}. If access is unavailable, build from this brief. For the public dashboard, study the Redlands Coast Intelligence independent draft at ${redlandsDataset} and its structured source file at ${redlandsDataset}data/dashboard.json. Adapt the structure, verify all local facts afresh, and credit material you reuse under its applicable licence.
+
+1. Verify the area's official name, boundary version, election authority and election dates from official sources. Use the correct geography and terminology for the selected jurisdiction. If the election is unconfirmed, show that status.
+2. Build a public dataset of aggregate population and housing, local economy and household costs, transport and services, projects and budgets where relevant. Start with the electoral authority, ABS and relevant government or council sources. Record each figure's definition, geography, unit, reference period, publisher, URL, date checked and limitations. Label estimates, budgets, actuals and missing data. Explain any statistical boundaries that differ from the electorate. Provide readable source cards, downloadable structured data and a dated change log.
+3. Set up a private workspace for source research, optional work items, communications drafts, consented contacts, finance records and review. Start with empty private records and fictional test data. Keep private records, identifying data and credentials out of the public dashboard, source repository and public exports. Keep a human approval step for publication, messages and spending.
+4. Record open questions and link to current official election, disclosure and authorisation guidance. Include setup instructions, tests for private/public access and dataset provenance, and a brief walkthrough. Leave deployment and external actions for explicit approval.`;
+}
 
 export function homeDoors(icon) {
   return `<section class="home-doors" aria-label="Build, contribute and connect locally">
@@ -41,14 +67,14 @@ export function homeDoors(icon) {
       <div><span class="eyebrow">A local node · Minjerribah</span><h2>Strange But True</h2><p>Practical tech and AI help, creative work and community ideas on Straddie.</p><span class="door-action">Visit the local node ↗</span></div>
     </a>
     <a class="home-door node-door" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">
-      ${icon('resources')}
+      ${icon(redlandsCivicLab.icon)}
       <div><span class="eyebrow">${redlandsCivicLab.label}</span><h2>${redlandsCivicLab.name}</h2><p>Explore local questions, projects and possibilities for greater Redlands.</p><span class="door-action">Explore the simulation ↗</span></div>
     </a>
   </section>`;
 }
 
 export function campaignsView({heading, icon}) {
-  return `${heading('Campaign operations', 'Campaign Command Centre', 'Browse campaign workspaces by place.')}
+  return `${heading('Campaign operations', 'Campaign Command Centre', 'Browse campaign workspaces by place and adapt the Redlands model to your electorate.')}
     <section class="quick-links" aria-label="Campaign workspaces">
       ${campaignCentres.map(centre => `<a class="resource-card" href="${centre.url}" target="_blank" rel="noopener noreferrer">
         ${icon('campaigns')}
@@ -57,6 +83,23 @@ export function campaignsView({heading, icon}) {
         <p>${centre.description}</p>
         <span class="door-action">Open private repository ↗</span>
       </a>`).join('')}
+    </section>
+    <section class="panel wide-panel subheading" aria-labelledby="campaign-model-heading">
+      <h2 id="campaign-model-heading">How the Redlands model works</h2>
+      <p class="muted">The Command Centre was the private operations workspace for the former Redlands mayoral campaign. It brings research, communications drafts and finance records together for review.</p>
+      <p class="muted">A public dashboard gives residents access to local evidence. The Redlands example is an independent draft with dated figures on population, the economy, household costs, island communities, projects and council budgets. Each measure links to its source.</p>
+      <div class="button-row subheading"><a class="button secondary" href="${redlandsDataset}" target="_blank" rel="noopener noreferrer">Explore the Redlands dataset ↗</a><a class="button quiet" href="${redlandsDataset}data/dashboard.json" target="_blank" rel="noopener noreferrer">Open the structured data ↗</a></div>
+    </section>
+    <section class="panel wide-panel subheading campaign-prompt-panel" id="campaign-prompt-panel" aria-labelledby="campaign-prompt-heading">
+      <h2 id="campaign-prompt-heading">Set up a command centre for your electorate</h2>
+      <p class="muted">Choose an election level and area, then copy the prompt into your coding assistant. You can fill in the remaining details there.</p>
+      <div class="form-grid subheading">
+        <label class="field">Election level<select data-campaign-field="level"><option value="">Choose a level</option>${Object.entries(electionLevels).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></label>
+        <label class="field">State or territory<select data-campaign-field="region"><option value="">Choose a state or territory</option>${regions.map(region => `<option>${region}</option>`).join('')}</select></label>
+        <label class="field full">Council, ward, division or electorate<input data-campaign-field="electorate" type="text" maxlength="140"></label>
+      </div>
+      <label class="field subheading">Replication prompt<textarea id="campaign-prompt" rows="12" readonly>${campaignReplicationPrompt()}</textarea></label>
+      <div class="button-row subheading"><button class="button" type="button" data-action="copy-campaign-prompt">Copy prompt</button></div>
     </section>`;
 }
 
@@ -69,6 +112,6 @@ export function localNodesView({heading,icon}) {
       <p class="muted">Based in Amity, with local help and meetings by arrangement. Follow the node’s own website for services, contact details and current availability.</p>
       <div class="button-row subheading"><a class="button" href="${strangeButTrue.url}" target="_blank" rel="noopener noreferrer">Visit Strange But True ↗</a><a class="button secondary" href="${strangeButTrue.p4aSource}" target="_blank" rel="noopener noreferrer">See the P4A connection ↗</a></div>
     </article>
-    <section class="panel wide-panel subheading"><span class="eyebrow">Related civic simulation</span><h2>${redlandsCivicLab.name}</h2><p class="muted">${redlandsCivicLab.description}</p><p class="muted">It draws on the local work behind Strange But True and invites exploration of what could be adapted for greater Redlands. Luke is not contesting the 2026 Redland City mayoral by-election.</p><a class="button secondary" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">Explore the Redlands civic simulation ↗</a></section>
+    <section class="panel wide-panel subheading"><div class="node-heading">${icon(redlandsCivicLab.icon)}<div><span class="eyebrow">Related civic simulation</span><h2>${redlandsCivicLab.name}</h2></div></div><p class="muted">${redlandsCivicLab.description}</p><p class="muted">It draws on the local work behind Strange But True and invites exploration of what could be adapted for greater Redlands. Luke is not contesting the 2026 Redland City mayoral by-election.</p><a class="button secondary" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">Explore the Redlands civic simulation ↗</a></section>
     <section class="panel wide-panel subheading"><h2>Grow from useful local relationships.</h2><p class="muted">P4A’s public ground-game page points to Strange But True as a local example of the pattern. A node can bring together practical help, learning, creative work and community projects, with its own people, purpose and responsibilities.</p><a class="button quiet" href="#groups">Explore working groups →</a></section>`;
 }

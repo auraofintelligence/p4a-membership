@@ -1,6 +1,6 @@
 import {rememberScrollPositions, restoreScrollPositions, focusSelectedClause} from './scroll-memory.mjs';
 import {civicIcon, compactLabels} from './civic-icons.mjs';
-import {homeDoors, campaignsView, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
+import {homeDoors, campaignsView, campaignReplicationPrompt, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {trialView, handleTrialAction, trialAuditRecord} from './constitution-trial.mjs';
 import {gamifyView, loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
@@ -14,14 +14,15 @@ const resources = [
   {icon:'abundance',name:'Joyful Responsible Abundance',label:'Purpose & perspective',description:'A connected view of agency, shared capacity and the choices ahead.',url:'https://auraofintelligence.github.io/joyful-responsible-abundance/index.html'},
   {icon:'missing-middle',name:'Installing the Missing Middle',label:'Local infrastructure',description:'Explore community compute, useful workloads, ownership and renewal.',url:'https://auraofintelligence.github.io/installing-the-missing-middle/'},
   {icon:'verse-box',name:'The Verse Box',label:'An assisted way in',description:'A proposed place to learn, try something useful and take your work home.',url:'https://auraofintelligence.github.io/aura-verse-box/'},
-  {name:'Your Relevance',label:'Start with your life',description:'Optional private reflection, with a choice about what you share.',url:'https://p4a.xyz/pages/your-relevance.html'},
+  {icon:'relevance',name:'Your Relevance',label:'Start with your life',description:'Optional private reflection, with a choice about what you share.',url:'https://p4a.xyz/pages/your-relevance.html'},
   {icon:'bills',name:'Household Bill Check',label:'Free public tool',description:'Investigate contracts and fees, and keep your case files in your control.',url:'https://auraofintelligence.github.io/household-bill-check/'},
   {icon:'legal',name:'Australian Legal Engine',label:'Free local research',description:'Explore the source project for provision retrieval and cited research.',url:'https://github.com/auraofintelligence/australian-legal-engine'},
-  {name:'Committees & inquiries',label:'Public participation',description:'Follow the separately maintained public project and official invitations.',url:'https://auraofintelligence.github.io/p4a-xyz-committees-inquiries/'},
-  {name:'Straddie Twins',label:'Place & possibility',description:'Explore two distinct approaches to local observations and simulations.',url:'https://auraofintelligence.github.io/straddie-twins/'},
+  {icon:'committees',name:'Committees & inquiries',label:'Public participation',description:'Follow the separately maintained public project and official invitations.',url:'https://auraofintelligence.github.io/p4a-xyz-committees-inquiries/'},
+  {icon:'twins',name:'Straddie Twins',label:'Place & possibility',description:'Explore two distinct approaches to local observations and simulations.',url:'https://auraofintelligence.github.io/straddie-twins/'},
+  {icon:'scan',name:'Scan to Twin',label:'Local 3D modelling',description:'Turn a phone scan into a measured 3D model or drawing on your own machine.',url:'https://auraofintelligence.github.io/straddie-digital-twin-explainer/scan-to-twin.html'},
   redlandsCivicLab,
   {icon:'hours',name:'C-Hours',label:'Freely given contribution',description:'One verified hour, counted once. Time retains its own meaning.',url:'https://auraofintelligence.github.io/C-Hour-introduction/'},
-  {name:'Aura Genesis & Truth Engine',label:'Optional deeper connections',description:'Personal reflection and evidence review, with separate permissions.',url:'https://auraofintelligence.github.io/aura-genesis-geode-atlas/'}
+  {icon:'genesis',name:'Aura Genesis & Truth Engine',label:'HBOT & personal digital twins',description:'The proposed protocol starts with a retrofit of a standard mask-fed HBOT chamber to support detailed digital twins of body and mind. The crystalline Geode pictured is a future concept.',url:'https://auraofintelligence.github.io/aura-genesis-geode-atlas/'}
 ];
 let state = {people:[],groups:[],projects:[],memberships:[],contributions:[],decisions:[],activity:[],actor:null,billing:{enabled:false},integrations:{}};
 let noticeTimer, dialogReturnFocus;
@@ -108,6 +109,18 @@ function download(name,text,type='application/json'){const url=URL.createObjectU
 async function setRole(role){await api('/api/demo/session',{method:'POST',body:JSON.stringify({role})});await load();render();notify(role==='public'?'Now showing the public view.':`Now exploring as a fictional ${role}.`);}
 
 document.addEventListener('click',async event=>{if(event.target.closest('.skip-link')){event.preventDefault();$('#main').focus();return;}const button=event.target.closest('[data-action]');if(!button)return;const {action,id,subid}=button.dataset;try{
+  if (action === 'copy-campaign-prompt') {
+    const prompt = $('#campaign-prompt');
+    try {
+      await navigator.clipboard.writeText(prompt.value);
+      notify('Campaign prompt copied.');
+    } catch {
+      prompt.focus();
+      prompt.select();
+      notify('Prompt selected. Use your device’s copy shortcut.');
+    }
+    return;
+  }
   if (action.startsWith('trial-')) {
     if (state.mode !== 'demo' || location.hash !== '#constitution/trial') return;
     if (action === 'trial-export') {
@@ -177,6 +190,12 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
 });
 document.addEventListener('change',async event=>{try{if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
 function filterProjects(){const query=($('#project-search')?.value||'').toLowerCase(),theme=$('#theme-filter')?.value,status=$('#status-filter')?.value;const matches=state.projects.filter(p=>(!theme||p.theme===theme)&&(!status||p.status===status)&&`${p.title} ${p.summary} ${group(p.groupId)?.name}`.toLowerCase().includes(query));$('#project-results').innerHTML=matches.map(projectCard).join('')||'<div class="empty">No projects match. Try another word or pathway.</div>';}
+document.addEventListener('input', event => {
+  if (!event.target.matches('[data-campaign-field]')) return;
+  const panel = $('#campaign-prompt-panel');
+  const fields = Object.fromEntries(Array.from(panel.querySelectorAll('[data-campaign-field]'), field => [field.dataset.campaignField, field.value]));
+  $('#campaign-prompt').value = campaignReplicationPrompt(fields);
+});
 document.addEventListener('input',event=>{if(event.target.id==='project-search')filterProjects();if(event.target.id==='people-search'){$('#people-results').innerHTML=peopleRows(state.people.filter(p=>`${p.name} ${p.place} ${p.skills} ${p.interests}`.toLowerCase().includes(event.target.value.toLowerCase())));}});
 window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});});
 $('#dialog').addEventListener('click',event=>{if(event.target===$('#dialog')){const r=$('#dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();}});

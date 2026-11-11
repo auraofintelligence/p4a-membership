@@ -5,6 +5,7 @@ export const iconNames = Object.freeze([
   'constitution', 'profile', 'nodes', 'abundance',
   'missing-middle', 'verse-box', 'legal', 'bills',
   'gamify', 'campaigns',
+  'relevance', 'committees', 'twins', 'redlands', 'scan', 'genesis',
 ]);
 
 export function civicIcon(name) {

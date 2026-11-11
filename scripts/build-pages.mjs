@@ -9,7 +9,8 @@ const publicFiles = [
   'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
   'favicon.svg', 'robots.txt', 'LICENCE.md',
-  'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg',
+  'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg', 'artwork/campaign-command-centre.png',
+  'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png',
 ];
 const domainFiles = ['domain.mjs', 'gamify.mjs', 'errors.mjs', 'seed.mjs', 'constitution-seed.mjs'];
 
