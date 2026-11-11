@@ -25,6 +25,22 @@
 .civic-icon-legal { background-position: 63.5674% 91.1765%; }
 .civic-icon-bills { background-position: 91.4611% 91.3188%; }
 .civic-icon-gamify { background-image: url('/artwork/gamify-democracy.svg'); background-size: contain; background-position: center; }
+.civic-icon-campaigns { display: inline-grid; place-items: center; background: none; }
+.civic-icon-campaigns::before {
+  content: '';
+  width: 80%;
+  height: 68%;
+  border: 2px solid #b794df;
+  border-radius: 5px;
+  background:
+    radial-gradient(circle at 29% 25%, #ffcf70 0 8%, transparent 9%),
+    radial-gradient(circle at 53% 50%, #93dbcb 0 8%, transparent 9%),
+    radial-gradient(circle at 70% 75%, #f0a9de 0 8%, transparent 9%),
+    linear-gradient(#dbcaee, #dbcaee) center 25% / 68% 6% no-repeat,
+    linear-gradient(#dbcaee, #dbcaee) center 50% / 68% 6% no-repeat,
+    linear-gradient(#dbcaee, #dbcaee) center 75% / 68% 6% no-repeat,
+    #49316e;
+}
 
 .nav-link { padding: 8px 9px; gap: 10px; font-size: 12px; }
 .nav-link .nav-short-label { display: none; }
@@ -43,6 +59,7 @@
 .door-action { display: block; color: var(--purple); font-size: 12px; font-weight: 600; margin-top: 14px; }
 .home-door:hover { border-color: #b399cd; background: #fdfbff; }
 .constitution-door { border-top: 3px solid #a27acb; }
+.campaign-door { border-top: 3px solid #8b6db4; }
 .node-door { border-top: 3px solid #71ad9b; }
 .gamify-door { border-top: 3px solid #cfa44e; grid-column: 1 / -1; background: #fffdf7; }
 .node-heading { display: flex; align-items: center; gap: 20px; }

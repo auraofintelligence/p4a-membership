@@ -13,6 +13,15 @@ export const redlandsCivicLab = Object.freeze({
   url: 'https://auraofintelligence.github.io/redlands-mayoral-campaign/index.html',
 });
 
+const campaignCentres = [
+  {
+    name: 'Redlands Mayoral Command Centre',
+    place: 'Redlands · Local government',
+    description: 'Operations workspace from the former Redlands mayoral campaign. GitHub repository access is required.',
+    url: 'https://github.com/auraofintelligence/redlands-mayoral-command-centre',
+  },
+];
+
 export function homeDoors(icon) {
   return `<section class="home-doors" aria-label="Build, contribute and connect locally">
     <a class="home-door gamify-door" href="#gamify">
@@ -23,11 +32,32 @@ export function homeDoors(icon) {
       ${icon('constitution')}
       <div><span class="eyebrow">Write the rules together</span><h2>Constitution workbench</h2><p>Read the draft, propose a clause and follow the discussion and changes.</p><span class="door-action">Open the constitution builder →</span></div>
     </a>
+    <a class="home-door campaign-door" href="#campaigns">
+      ${icon('campaigns')}
+      <div><h2>Campaign Command Centre</h2><p>Find campaign workspaces by place and see how to access them.</p><span class="door-action">Browse command centres →</span></div>
+    </a>
     <a class="home-door node-door" href="${strangeButTrue.url}" target="_blank" rel="noopener noreferrer">
       ${icon('nodes')}
       <div><span class="eyebrow">A local node · Minjerribah</span><h2>Strange But True</h2><p>Practical tech and AI help, creative work and community ideas on Straddie.</p><span class="door-action">Visit the local node ↗</span></div>
     </a>
+    <a class="home-door node-door" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">
+      ${icon('resources')}
+      <div><span class="eyebrow">${redlandsCivicLab.label}</span><h2>${redlandsCivicLab.name}</h2><p>Explore local questions, projects and possibilities for greater Redlands.</p><span class="door-action">Explore the simulation ↗</span></div>
+    </a>
   </section>`;
+}
+
+export function campaignsView({heading, icon}) {
+  return `${heading('Campaign operations', 'Campaign Command Centre', 'Browse campaign workspaces by place.')}
+    <section class="quick-links" aria-label="Campaign workspaces">
+      ${campaignCentres.map(centre => `<a class="resource-card" href="${centre.url}" target="_blank" rel="noopener noreferrer">
+        ${icon('campaigns')}
+        <small>${centre.place}</small>
+        <h3>${centre.name}</h3>
+        <p>${centre.description}</p>
+        <span class="door-action">Open private repository ↗</span>
+      </a>`).join('')}
+    </section>`;
 }
 
 export function localNodesView({heading,icon}) {

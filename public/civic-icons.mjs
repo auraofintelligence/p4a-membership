@@ -1,10 +1,10 @@
-// Original destinations use the generated 4 x 4 sheet; Gamify has its own SVG.
+// Original destinations use the generated 4 x 4 sheet.
 export const iconNames = Object.freeze([
   'home', 'projects', 'priority', 'people',
   'groups', 'hours', 'transparency', 'resources',
   'constitution', 'profile', 'nodes', 'abundance',
   'missing-middle', 'verse-box', 'legal', 'bills',
-  'gamify',
+  'gamify', 'campaigns',
 ]);
 
 export function civicIcon(name) {
@@ -16,5 +16,5 @@ export const compactLabels = Object.freeze({
   home: 'Home', projects: 'Projects', priority: 'Priorities', people: 'People',
   groups: 'Groups', nodes: 'Local nodes', hours: 'Contribution', gamify: 'Gamify',
   transparency: 'Transparency', resources: 'Ideas & tools',
-  constitution: 'Constitution', profile: 'Membership',
+  constitution: 'Constitution', profile: 'Membership', campaigns: 'Campaigns',
 });
