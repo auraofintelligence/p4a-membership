@@ -116,8 +116,16 @@ Create ONE standalone colorful small website icon for “Aura Genesis & Truth En
 
 ### P4A membership
 
-Asset: `public/artwork/p4a-membership.png`. Used in the sidebar and as the site favicon. No reference images.
+Asset: `public/artwork/p4a-membership.png`. Used in the sidebar. No reference images.
 
 ```text
 Generate a single square website icon for the Purple Party for Australia (P4A) membership area, readable as a favicon at 16 pixels and as a sidebar icon at 37 pixels. Depict one front-facing violet membership card with softly rounded corners, a large clean cream portrait pictogram on the left, and a compact bold warm-gold circular membership seal overlapping the lower right corner. Use a single short pale line above the seal to suggest a member name. The card's solid rich purple should contrast with the pale portrait and bright gold seal. Keep the arrangement close to square, centred, level and large, occupying about 88 percent of the canvas width. Match the existing friendly P4A dimensional clay icon style with lightly bevelled edges and a gentle highlight, with deliberately simple bold flat forms suitable for tiny rendering. Transparent background and clean alpha edges. No letters, numbers, photos, lanyard, chip, payment marks, stack of cards, extra objects, decorative dots, tile, or scenery.
+```
+
+### P4A membership favicon
+
+Asset: `public/artwork/p4a-membership-mark.png`. The member-card artwork above served as the reference.
+
+```text
+Refine the attached purple membership card into one square P4A favicon and sidebar icon. It must communicate both the Purple Party for Australia and membership. Make the outer silhouette one nearly full-frame deep violet square membership card with softly rounded corners, upright and front-on. Across the upper half of the card put the exact white uppercase wordmark “P4A”, in a bold clean sans serif, very large and high contrast, taking most of the width. Under the wordmark, use a simple cream member portrait pictogram on the left and one small warm gold circular seal on the right. Keep the seal within the square, with a plain circular face. Treat the wordmark and two pictograms as parts of one card. Match the reference’s violet, cream and gold and friendly clay finish, with very restrained bevels and solid shapes. Compose on a true square canvas with slight equal transparent margin outside the violet silhouette. Make the design recognisable at 16 × 16 pixels. P4A is the only text. No other letters, no border around the canvas, no shadows outside the card, no props, no extra motifs.
 ```

@@ -11,6 +11,7 @@ const publicFiles = [
   'favicon.svg', 'robots.txt', 'LICENCE.md',
   'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg', 'artwork/campaign-command-centre.png',
   'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png', 'artwork/p4a-membership.png',
+  'artwork/p4a-membership-mark.png',
 ];
 const domainFiles = ['domain.mjs', 'gamify.mjs', 'errors.mjs', 'seed.mjs', 'constitution-seed.mjs'];
 

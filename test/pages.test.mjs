@@ -81,11 +81,11 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 29);
+  assert.equal(names.length, 30);
   for (const name of [
     'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
     'artwork/campaign-command-centre.png', 'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png',
-    'artwork/p4a-membership.png',
+    'artwork/p4a-membership.png', 'artwork/p4a-membership-mark.png',
   ]) {
     assert.ok(names.includes(name), `Preview must include ${name}`);
   }
@@ -96,7 +96,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
   const css = await readFile(path.join(built.directory, 'civic-icons.css'), 'utf8');
   const adapter = await readFile(path.join(built.directory, 'demo-api.mjs'), 'utf8');
   assert.match(html, /connect-src &#39;none&#39;/);
-  assert.match(html, /<link rel="icon" href="\.\/artwork\/p4a-membership\.png"/);
+  assert.match(html, /<link rel="icon" href="\.\/artwork\/p4a-membership-mark\.png" type="image\/png" sizes="128x128"/);
   assert.equal(/(?:src|href)="\/(?!\/)/.test(html), false);
   assert.equal(/url\(['"]?\/(?!\/)/.test(css), false);
   assert.match(app, /PUBLIC INTERACTIVE PREVIEW/);
