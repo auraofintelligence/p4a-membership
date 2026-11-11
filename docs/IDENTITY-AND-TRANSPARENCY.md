@@ -2,6 +2,8 @@
 
 User-directed engineering requirements, 7 November 2026 (Australia/Brisbane).
 
+Update, 11 November 2026: the user selected an initial comparison of (A) a named public money ledger with membership-register disclosure separate and (B) the named ledger plus a public membership register. The exact disclosure must be clearly presented and affirmatively chosen before participation/publication, with the same identity and admission standard for both. This qualifies the earlier optional-profile wording below; it does not authorise publication of identity documents or financial credentials, nor retroactive publication of existing records. See [the updated contribution direction](GAMIFY-DEMOCRACY.md#direction-clarified-11-november-2026). These are design requirements; the pilot and live blockchain reporting remain unimplemented.
+
 P4A requires stringent ethical KYC, substantive civic induction and independently reviewable admission. Members may choose to disclose their name, membership and verification status publicly, supported by a zero-knowledge proof of identity verification. This is the first intended integration point for blockchain in the membership application.
 
 These requirements govern future implementation. They are not an adopted constitution, a completed verification system, a legal compliance certification or permission to publish anyone's data. P4A remains a movement in formation. Public civic resources remain accessible.

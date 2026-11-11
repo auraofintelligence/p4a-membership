@@ -2,6 +2,14 @@
 
 User-directed scope, 7 November 2026 (Australia/Brisbane). This is a core membership capability to build. The user's P4A banner explicitly presents **Gamify Democracy** as part of the project's identity.
 
+## Direction clarified 11 November 2026
+
+The user requires blockchain-supported public reporting of money movements as part of the live system. Receipts, allocations, transfers, processor/network fees, refunds and corrections need distinct events and truthful pending/settled/reversed statuses. Public entries must be reconciled with the actual payment/bank records; a blockchain entry alone does not establish off-chain settlement. A network, event protocol, funding budget and operational authority have not been selected.
+
+The initial disclosure pilot will compare two clearly described choices: (A) a named money ledger, with membership-register disclosure separate, and (B) a named money ledger plus a public membership register. Participants must understand and affirm their exact disclosure choice before publication. The same stringent identity and admission requirements apply to both. Compare understanding, completion and participant feedback; do not infer honesty from disclosure preference. Never randomly disclose a person's identity or reuse earlier aggregate-only consent for names. Raw identity evidence and financial credentials remain protected. The existing optional-consent demo is not an implementation of these pilot choices; the older design text below records that implementation and must be read with this update.
+
+The membership fee is intended to recover hosting, storage, software and included AI costs plus an explicitly agreed margin/reserve and processing costs. Organising, labour and campaign spending are outside that fee. Publish the cost basis and reconcile it against actual bills. No amount, percentage, provider or included AI allowance is agreed.
+
 The user expressly wants leaderboards for **monetary contribution** and **voluntary contribution**. The Strange But True [Community Ledger](https://auraofintelligence.github.io/strange-but-true/community-ledger.html#support-records) supplies an example of contribution recognition alongside separate voluntary C-Hours. The user clarified that iCi/SOL is their personal Strange But True project and that they have already minted a token on Solana. The page's proposed paid-contribution and leaderboard integration is distinct from that existing token. Its iCi/SOL/XRP references are source context, not a P4A asset or network direction.
 
 P4A must choose its own precise Australian payment, asset and regulatory arrangements. Carry forward the contribution-recognition concept without importing a personal token dependency. No cryptocurrency, network or provider has been selected for P4A; this does not exclude any network from a fair assessment against P4A's requirements.
