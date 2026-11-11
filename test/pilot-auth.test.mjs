@@ -33,8 +33,9 @@ test('Pilot authentication uses verified Access identities and maps only to fict
   const memberToken = await sign({ email: 'tester@example.test', sub: 'tester-access-subject' });
   const state = createDemoState();
   const fetchBefore = globalThis.fetch;
-  globalThis.fetch = async url => {
+  globalThis.fetch = async (url, options) => {
     assert.equal(url, `${env.ACCESS_ISSUER}/cdn-cgi/access/certs`);
+    assert.equal(options.redirect, 'manual');
     return Response.json({ keys: [publicKey] });
   };
   t.after(() => { globalThis.fetch = fetchBefore; });

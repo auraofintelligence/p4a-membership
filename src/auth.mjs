@@ -18,7 +18,8 @@ function issuerOrigin(value) {
 async function getKeys(issuer) {
   const existing = keyCache.get(issuer);
   if (existing?.expires > Date.now()) return existing.keys;
-  const response = await fetch(`${issuer}/cdn-cgi/access/certs`, { redirect: 'error', signal: AbortSignal.timeout(8000) });
+  // Workers supports manual redirects. The status check rejects any redirect.
+  const response = await fetch(`${issuer}/cdn-cgi/access/certs`, { redirect: 'manual', signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error('Identity verification unavailable');
   const body = await response.text();
   if (body.length > 65536) throw new Error('Invalid identity key set');
