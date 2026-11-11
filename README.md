@@ -39,6 +39,7 @@ npm test
 - **Gamify Democracy**: separate AUD and C-Hour leaderboards, all-time/current-year and project/group filters, explicit per-receipt named recognition, manual financial receipt review, corrections, recorded refunds/chargebacks and verification withdrawal. Financial records do not collect or transfer money.
 - Open resource links and allowlisted public transparency. Household Bill Check and the Legal Engine retain free access.
 - A prominent home-page constitution entry and a **Local nodes** section linking to **Strange But True** on Minjerribah / North Stradbroke Island, as identified by P4A’s public ground-game page.
+- **Redlands Civic Lab** is linked from Connected ideas and Local nodes as a civic simulation. Luke's mayoral campaign has ended; the link does not present an active candidacy.
 - Sixteen generated colourful icons, with a distinct illustration for every navigation destination and visible text labels in the compact sidebar. See [the icon sheet and prompt provenance](docs/ICON-SHEET.md).
 
 P4A remains a movement in formation with no adopted constitution or party registration. These software flows do not create a registered party or enact its future governing rules.

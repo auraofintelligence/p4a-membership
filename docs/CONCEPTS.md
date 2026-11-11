@@ -48,6 +48,8 @@ Storage, interpretation, model training, external action and publication are sep
 
 ## Connections across the wider work
 
+[Redlands Civic Lab](https://auraofintelligence.github.io/redlands-mayoral-campaign/index.html), added at Luke's request on 11 November 2026, is the former mayoral campaign site reframed as a civic simulation. Luke is not contesting the 2026 Redland City mayoral by-election. The site explores Redlands questions, projects and possibilities, drawing on the local work behind Strange But True. It is linked from Connected ideas and the related content on Local nodes; this does not create a CRM group, political membership or an active campaign. Source: the Redlands Civic Lab README and Luke's clarification.
+
 Your Relevance can help a person choose what matters and identify relevant places. Household Bill Check and the Australian Legal Engine retain their free public and local routes. Their optional CRM handoff is a participant-reviewed summary or research packet, not automatic access to private cases. Committees and inquiries remain a separately maintained public project. Locally developed twins can connect through source, place, observation date, uncertainty and permission records.
 
 Keep three accounts connected but distinct: what it cost, what people gave freely and what changed. One C-Hour recognises one verified hour of voluntary human contribution, counted once, without monetary conversion or financial entitlement. Project participation, contribution receipts, evidence, decisions and outcomes form a practical foundation for the broader sensorium while each community retains its own authority.

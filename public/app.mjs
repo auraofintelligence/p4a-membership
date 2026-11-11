@@ -1,6 +1,6 @@
 import {rememberScrollPositions, restoreScrollPositions, focusSelectedClause} from './scroll-memory.mjs';
 import {civicIcon, compactLabels} from './civic-icons.mjs';
-import {homeDoors, localNodesView} from './local-nodes.mjs';
+import {homeDoors, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {gamifyView, loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
 const $ = (s, root = document) => root.querySelector(s);
@@ -18,6 +18,7 @@ const resources = [
   {icon:'legal',name:'Australian Legal Engine',label:'Free local research',description:'Explore the source project for provision retrieval and cited research.',url:'https://github.com/auraofintelligence/australian-legal-engine'},
   {name:'Committees & inquiries',label:'Public participation',description:'Follow the separately maintained public project and official invitations.',url:'https://auraofintelligence.github.io/p4a-xyz-committees-inquiries/'},
   {name:'Straddie Twins',label:'Place & possibility',description:'Explore two distinct approaches to local observations and simulations.',url:'https://auraofintelligence.github.io/straddie-twins/'},
+  redlandsCivicLab,
   {icon:'hours',name:'C-Hours',label:'Freely given contribution',description:'One verified hour, counted once. Time retains its own meaning.',url:'https://auraofintelligence.github.io/C-Hour-introduction/'},
   {name:'Aura Genesis & Truth Engine',label:'Optional deeper connections',description:'Personal reflection and evidence review, with separate permissions.',url:'https://auraofintelligence.github.io/aura-genesis-geode-atlas/'}
 ];

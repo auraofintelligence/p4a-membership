@@ -6,6 +6,13 @@ export const strangeButTrue = Object.freeze({
   p4aSource: 'https://p4a.xyz/#act-ground',
 });
 
+export const redlandsCivicLab = Object.freeze({
+  name: 'Redlands Civic Lab',
+  label: 'Civic simulation · Redlands',
+  description: 'Luke Hayes’ former mayoral campaign site, now a civic simulation exploring Redlands questions, projects and possibilities. The campaign has ended.',
+  url: 'https://auraofintelligence.github.io/redlands-mayoral-campaign/index.html',
+});
+
 export function homeDoors(icon) {
   return `<section class="home-doors" aria-label="Build, contribute and connect locally">
     <a class="home-door gamify-door" href="#gamify">
@@ -32,5 +39,6 @@ export function localNodesView({heading,icon}) {
       <p class="muted">Based in Amity, with local help and meetings by arrangement. Follow the node’s own website for services, contact details and current availability.</p>
       <div class="button-row subheading"><a class="button" href="${strangeButTrue.url}" target="_blank" rel="noopener noreferrer">Visit Strange But True ↗</a><a class="button secondary" href="${strangeButTrue.p4aSource}" target="_blank" rel="noopener noreferrer">See the P4A connection ↗</a></div>
     </article>
+    <section class="panel wide-panel subheading"><span class="eyebrow">Related civic simulation</span><h2>${redlandsCivicLab.name}</h2><p class="muted">${redlandsCivicLab.description}</p><p class="muted">It draws on the local work behind Strange But True and invites exploration of what could be adapted for greater Redlands. Luke is not contesting the 2026 Redland City mayoral by-election.</p><a class="button secondary" href="${redlandsCivicLab.url}" target="_blank" rel="noopener noreferrer">Explore the Redlands civic simulation ↗</a></section>
     <section class="panel wide-panel subheading"><h2>Grow from useful local relationships.</h2><p class="muted">P4A’s public ground-game page points to Strange But True as a local example of the pattern. A node can bring together practical help, learning, creative work and community projects, with its own people, purpose and responsibilities.</p><a class="button quiet" href="#groups">Explore working groups →</a></section>`;
 }
