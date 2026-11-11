@@ -9,7 +9,7 @@ const pilotHeaders = {
 
 export default {
   async fetch(request, env) {
-    if (env.PILOT_MODE !== 'fictional') {
+    if (env.PILOT_MODE !== 'private') {
       return json({ error: 'The private pilot is not configured.' }, 503, pilotHeaders);
     }
     const role = await getPilotRole(request, env);
@@ -20,7 +20,7 @@ export default {
       if (path.startsWith('/api/demo/')) return json({ error: 'Not found.' }, 404, pilotHeaders);
       try {
         const response = await api(request, {
-          store: pilotStore(env),
+          store: pilotStore(env, { id: 'pilot-organiser', name: env.PILOT_ORGANISER_NAME }),
           getActor: async (_request, state) => pilotActorForRole(role, state),
           mode: 'pilot',
           workspace: false,

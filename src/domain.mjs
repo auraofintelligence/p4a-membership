@@ -89,6 +89,14 @@ export function executeCommand(state, actor, command, now = new Date()) {
       next.people.push({ id: uuid(), name: text(data.name, 'Name', 100, true), email, place: text(data.place ?? '', 'Place'), skills: text(data.skills ?? '', 'Skills'), interests: text(data.interests ?? '', 'Interests'), directoryConsent: false, contactConsent: false, role: 'member' });
       summary = 'Added a contact without marketing consent or membership.'; break;
     }
+    case 'group.create': {
+      requireOrganiser(actor);
+      const name = text(data.name, 'Working group name', 140, true);
+      const place = text(data.place ?? '', 'Place', 160);
+      const description = text(data.description ?? '', 'Group description', 1200);
+      next.groups.push({ id: uuid(), name, level: 'Local community', place, description, memberIds: [actor.id], public: false });
+      summary = 'Created a private working group.'; break;
+    }
     case 'group.join': {
       const group = find(next.groups, data.groupId, 'Group');
       if (!group.memberIds.includes(actor.id)) group.memberIds.push(actor.id);
@@ -252,7 +260,7 @@ export function executeCommand(state, actor, command, now = new Date()) {
 export function publicProjection(state, mode = 'live') {
   const contributions = state.contributions.filter(item => item.status === 'verified' && (item.publicConsent || item.namedConsent));
   return {
-    mode, sampleData: mode === 'demo' || mode === 'pilot', status: 'Movement in formation; not a registered political party. No adopted constitution.',
+    mode, sampleData: mode === 'demo', status: 'Movement in formation; not a registered political party. No adopted constitution.',
     decisions: state.decisions.filter(item => item.public).map(({ id, title, summary, date, status }) => ({ id, title, summary, date, status })),
     projects: state.projects.filter(item => item.public === true).map(({ id, title, summary, status, theme }) => ({ id, title, summary, status, theme })),
     totals: { verifiedHours: contributions.reduce((sum, item) => sum + item.hours, 0), verifiedContributions: contributions.length },

@@ -5,7 +5,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "PILOT_MODE": "fictional"
+    "PILOT_MODE": "private"
   },
   "assets": {
     "directory": "./public",
