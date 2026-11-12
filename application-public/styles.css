@@ -8,6 +8,10 @@
   --ink-muted: #51485e;
   --lavender: #f1e9f8;
   --border: #ded3e7;
+  --top-button-size: max(44px, 2.75rem);
+  --top-button-edge: max(0.625rem, env(safe-area-inset-right, 0px));
+  --page-start: max(1rem, env(safe-area-inset-left, 0px), calc((100% - 70rem) / 2));
+  --page-end: max(calc(var(--top-button-size) + var(--top-button-edge) + 0.5rem), calc((100% - 70rem) / 2));
 }
 
 * { box-sizing: border-box; }
@@ -55,7 +59,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem 1.5rem;
-  padding: 0.8rem max(1rem, calc((100% - 70rem) / 2));
+  padding: 0.8rem var(--page-end) 0.8rem var(--page-start);
   background: var(--deep-purple);
   color: white;
 }
@@ -103,8 +107,7 @@ a {
 .site-nav a[aria-current="page"] { background: #603b89; }
 
 main {
-  width: min(100% - 2rem, 70rem);
-  margin-inline: auto;
+  margin-inline: var(--page-start) var(--page-end);
   padding-block: clamp(1.75rem, 5vw, 3.5rem) 3rem;
 }
 
@@ -245,7 +248,7 @@ input, select, textarea, button { font: inherit; }
 }
 
 .guide-panel { border-top: 3px solid #946bc2; }
-.guide-panel p + p, .guide-panel h3, .guide-panel .notice { margin-top: 0.75rem; }
+.guide-panel p + p, .guide-panel h3, .guide-details + p { margin-top: 0.75rem; }
 .guide-panel h3 + p { margin-top: 0.35rem; }
 .guide-steps { margin: 0.75rem 0 0; padding-inline-start: 1.5rem; }
 .guide-steps li + li { margin-top: 0.55rem; }
@@ -254,7 +257,50 @@ input, select, textarea, button { font: inherit; }
 .guide-details dt { font-weight: 700; }
 .guide-details dd { margin: 0.15rem 0 0; color: var(--ink-muted); }
 .guide-details dd + dt { margin-top: 0.75rem; }
-.guide-apply { margin-top: 1.25rem; }
+
+.page-footer {
+  border-top: 1px solid var(--border);
+  background: var(--lavender);
+}
+
+.page-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.45rem 1rem;
+  margin-inline: var(--page-start) var(--page-end);
+  padding-block: 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.page-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-weight: 650;
+}
+
+.back-to-top {
+  position: fixed;
+  z-index: 2;
+  right: var(--top-button-edge);
+  bottom: max(0.625rem, env(safe-area-inset-bottom, 0px));
+  display: grid;
+  width: var(--top-button-size);
+  height: var(--top-button-size);
+  place-items: center;
+  border: 1px solid var(--purple);
+  border-radius: 0.65rem;
+  background: var(--deep-purple);
+  color: white;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 0.2rem 0.7rem #2c16462b;
+}
+
+.back-to-top:hover { background: var(--purple); }
 
 @media (max-width: 47rem) {
   .application-layout {

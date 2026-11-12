@@ -70,7 +70,7 @@ test('public submissions and duplicates have the same receipt and store only min
   const duplicate = await worker.fetch(post({ ...fields, email: 'example@EXAMPLE.invalid', name: 'Replacement name', contactPhone: '+61 7 1234 5678', localArea: 'Other place', electoralEnrolment: 'enrolled', membershipIntent: 'Do not overwrite', suggestedGames: 'Do not overwrite' }), env);
   for (const response of [first, duplicate]) {
     assert.equal(response.status, 303);
-    assert.equal(response.headers.get('Location'), '/?submitted=1');
+    assert.equal(response.headers.get('Location'), '/application.html?submitted=1');
     assert.equal(response.headers.get('Cache-Control'), 'no-store');
     assert.equal(await response.text(), '');
   }
@@ -80,7 +80,7 @@ test('public submissions and duplicates have the same receipt and store only min
   assert.equal(record.jurisdiction, 'qld');
   assert.equal(record.name, fields.name);
   assert.equal(record.suggestedGames, 'Cooperative puzzle\nTeam storytelling');
-  assert.equal(record.policyVersion, 'p4a-application-2026-11-12-v5');
+  assert.equal(record.policyVersion, 'p4a-application-2026-11-12-v6');
   for (const field of ['contactPhone', 'localArea', 'electoralEnrolment', 'membershipIntent']) assert.equal(record[field], fields[field]);
   assert.equal(record.status, 'received');
   assert.match(record.id, /^[\da-f-]{36}$/);
@@ -93,7 +93,7 @@ test('validation handles current notice, consent, bounded names/emails and all j
   for (const jurisdiction of ['ACT', 'nsw', 'NT', 'qld', 'SA', 'tas', 'VIC', 'wa', 'outside', 'overseas']) {
     assert.equal(validateApplication({ ...fields, jurisdiction }).jurisdiction, jurisdiction === 'overseas' ? 'outside' : jurisdiction.toLowerCase());
   }
-  for (const invalid of [{ name: '' }, { name: 'x'.repeat(121) }, { name: 'Name\u0000' }, { email: 'invalid' }, { email: 'x'.repeat(255) }, { jurisdiction: 'unknown' }, { consent: 'on' }, { consent: '' }, { policyVersion: 'p4a-application-2026-11-12' }, { policyVersion: 'p4a-application-2026-11-12-v3' }, { policyVersion: 'p4a-application-2026-11-12-v4' }]) {
+  for (const invalid of [{ name: '' }, { name: 'x'.repeat(121) }, { name: 'Name\u0000' }, { email: 'invalid' }, { email: 'x'.repeat(255) }, { jurisdiction: 'unknown' }, { consent: 'on' }, { consent: '' }, { policyVersion: 'p4a-application-2026-11-12' }, { policyVersion: 'p4a-application-2026-11-12-v3' }, { policyVersion: 'p4a-application-2026-11-12-v4' }, { policyVersion: 'p4a-application-2026-11-12-v5' }]) {
     const env = envFor();
     const response = await worker.fetch(post({ ...fields, ...invalid }), env);
     assert.equal(response.status, 400);
@@ -205,11 +205,25 @@ test('rate limiting and storage fail closed without private error details', asyn
   assert.equal((await response.text()).includes('private SQL'), false);
 });
 
+test('the membership entrance opens the guide first and the form remains a separate page', async () => {
+  const env = {
+    ...envFor(),
+    ASSETS: { fetch: request => new Response(new URL(request.url).pathname === '/guide.html' ? '<h1>Membership guide</h1>' : html, {
+      headers: { 'Content-Type': 'text/html' },
+    }) },
+  };
+  for (const route of ['/', '/index.html', '/guide.html']) {
+    const response = await worker.fetch(new Request(`https://join.example.test${route}`), env);
+    assert.equal(await response.text(), '<h1>Membership guide</h1>');
+  }
+  assert.equal(await (await worker.fetch(new Request('https://join.example.test/application.html'), env)).text(), html);
+});
+
 test('GET success changes fixed markers only and never exposes private records or user input', async () => {
   const env = envFor();
-  const original = await worker.fetch(new Request('https://join.example.test/'), env);
+  const original = await worker.fetch(new Request('https://join.example.test/application.html'), env);
   assert.equal(await original.text(), html);
-  const success = await worker.fetch(new Request('https://join.example.test/?submitted=1&name=PRIVATE'), env);
+  const success = await worker.fetch(new Request('https://join.example.test/application.html?submitted=1&name=PRIVATE'), env);
   const body = await success.text();
   assert.match(body, /id="application-entry" hidden/);
   assert.match(body, /<section id="application-success">/);

@@ -5,16 +5,16 @@ export const teamGamesLesson = {
   minutes: 7,
   sections: [
     {
-      title: 'Mix the games and the teams',
-      body: 'In your first three months, take part in facilitated game sessions. Make most games cooperative and mix in some competitive or individual strategy games. Start with a game someone in the group can teach. Next time, try a game another member brings and mix up the group. Rotate who leads, explains the rules and checks that everyone has the information they need. Ask about access, equipment and scheduling when choosing games.',
+      title: 'Make time for the work',
+      body: 'Members build policy, run party systems and do outreach. Team games are one part of the first three months. Plan one half-day or full-day session, or use informal evenings at most once a month. Keep political meetings on their own schedule. Make most games cooperative and mix in competitive or individual strategy games. Swap who leads and who teaches a game.',
     },
     {
       title: 'Choose what to practise',
       body: 'An escape room lets you practise sharing clues under time pressure. A cooperative board, card or computer game gives you a shared problem and different roles. A competitive round lets you practise making decisions with a team under pressure and giving others a fair go. An individual strategy round gives players a chance to explain how they weighed their options. Compare what you learn across formats.',
     },
     {
-      title: 'Record selected moments',
-      body: 'After the first check-in, use video, audio and screen capture to record selected moments during games. Review those moments together to see how the team works, which roles suit different people, and what members can teach each other. Explain who can see the recordings and how long they’ll be kept, and confirm consent before recording.',
+      title: 'Record each game from start to finish',
+      body: 'Do the first check-in before recording starts. Explain who can see the recordings and how long they’ll be kept, then confirm consent. Use video, audio and screen capture as suited to the game and record it from start to finish. Review the recording with the team to spot strengths, find roles that suit people and share skills.',
     },
     {
       title: 'Name something you saw',

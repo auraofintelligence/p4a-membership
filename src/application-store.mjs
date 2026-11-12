@@ -1,6 +1,6 @@
 import { AppError } from './errors.mjs';
 
-export const APPLICATION_POLICY_VERSION = 'p4a-application-2026-11-12-v5';
+export const APPLICATION_POLICY_VERSION = 'p4a-application-2026-11-12-v6';
 export const APPLICATION_JURISDICTIONS = Object.freeze(['act', 'nsw', 'nt', 'qld', 'sa', 'tas', 'vic', 'wa', 'outside']);
 const statuses = ['received', 'contacted', 'verification-pending', 'closed'];
 const transitions = { received: ['contacted', 'closed'], contacted: ['verification-pending', 'closed'], 'verification-pending': ['closed'], closed: [] };

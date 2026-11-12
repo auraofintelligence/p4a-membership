@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Apply to take part in P4A, the Purple Party for Australia, a movement in formation.">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Apply for P4A membership</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" id="top" tabindex="-1">
+    <a class="site-brand" href="https://p4a.xyz/">
+      <span class="site-mark" aria-hidden="true">P4A</span>
+      <span>Purple Party for Australia</span>
+    </a>
+    <nav class="site-nav" aria-label="Membership">
+      <a href="./guide.html">Membership guide</a>
+      <a href="./application.html" aria-current="page">Apply</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section id="application-success" hidden>
+      <h1>Application received</h1>
+      <p class="lead">A P4A reviewer will email you about the next step.</p>
+      <a class="button" href="https://p4a.xyz/">Explore P4A</a>
+    </section>
+
+    <section id="application-entry" aria-labelledby="application-title">
+      <header class="intro">
+        <h1 id="application-title">Apply for P4A membership</h1>
+        <p class="lead">Develop policy, do community outreach and build and run P4A’s systems.</p>
+        <p>P4A is a political movement in formation, growing from local communities towards future state, territory and federal parties.</p>
+        <nav class="page-links" aria-label="On this page">
+          <a href="#next-steps-title">Review, checks and fees</a>
+          <a href="#form-title">Start your application</a>
+        </nav>
+      </header>
+
+      <div class="application-layout">
+        <section class="panel next-steps" aria-labelledby="next-steps-title">
+          <h2 id="next-steps-title">Review, checks and fees</h2>
+          <ol>
+            <li><strong>Initial eligibility</strong><p>A reviewer reads your application and emails you about the next step.</p></li>
+            <li class="payment-stage"><strong>One-off application fee from A$5</strong><p>Pay after initial eligibility and before any paid checks. P4A shows the exact amount, what it covers and the refund terms first.</p></li>
+            <li><strong>Checks and decision</strong><p>Complete private identity and eligibility checks and civic induction. An independent reviewer explains the admission decision.</p></li>
+            <li class="payment-stage"><strong>First three months</strong><p>If approved, pay one-quarter of the annual membership fee.</p></li>
+            <li class="payment-stage"><strong>Annual membership</strong><p>If you continue, pay the annual fee for the next 12 months.</p></li>
+          </ol>
+          <p class="notice">We show what your membership fee covers and any processing charges before you pay.</p>
+        </section>
+
+        <section class="panel application-form" aria-labelledby="form-title">
+          <h2 id="form-title">Start your application</h2>
+          <p>Anyone can submit this form without a login.</p>
+          <form method="post" action="./apply">
+            <input type="hidden" name="policyVersion" value="p4a-application-2026-11-12-v6">
+
+            <label class="field" for="name">
+              Full name
+              <input id="name" name="name" type="text" autocomplete="name" maxlength="120" required>
+            </label>
+
+            <label class="field" for="email">
+              Email address
+              <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+            </label>
+
+            <div class="field">
+              <label for="contact-phone">Mobile or contact number</label>
+              <p class="field-hint" id="phone-hint">You can include an international country code.</p>
+              <input id="contact-phone" name="contactPhone" type="tel" autocomplete="tel" maxlength="32" aria-describedby="phone-hint" required>
+            </div>
+
+            <label class="field" for="jurisdiction">
+              Where you live
+              <select id="jurisdiction" name="jurisdiction" required>
+                <option value="" selected disabled>Choose your state or territory</option>
+                <option value="act">Australian Capital Territory</option>
+                <option value="nsw">New South Wales</option>
+                <option value="nt">Northern Territory</option>
+                <option value="qld">Queensland</option>
+                <option value="sa">South Australia</option>
+                <option value="tas">Tasmania</option>
+                <option value="vic">Victoria</option>
+                <option value="wa">Western Australia</option>
+                <option value="overseas">Outside Australia</option>
+              </select>
+            </label>
+
+            <div class="field">
+              <label for="local-area">Suburb, town or local area</label>
+              <p class="field-hint" id="local-area-hint">Enter the place name only.</p>
+              <input id="local-area" name="localArea" type="text" autocomplete="address-level2" maxlength="120" aria-describedby="local-area-hint" required>
+            </div>
+
+            <div class="field">
+              <label for="electoral-enrolment">Are you enrolled to vote in Australia?</label>
+              <p class="field-hint" id="electoral-enrolment-hint">P4A checks enrolment privately later if needed.</p>
+              <select id="electoral-enrolment" name="electoralEnrolment" aria-describedby="electoral-enrolment-hint" required>
+                <option value="" selected disabled>Choose an answer</option>
+                <option value="enrolled">Yes</option>
+                <option value="not-enrolled">No</option>
+                <option value="unsure">I’m unsure</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="membership-intent">What would you like to work on with P4A?</label>
+              <p class="field-hint" id="membership-intent-hint">Tell us about the issues you care about or the skills you can bring.</p>
+              <textarea id="membership-intent" name="membershipIntent" maxlength="600" rows="3" aria-describedby="membership-intent-hint"></textarea>
+            </div>
+
+            <div class="field">
+              <label for="suggested-games">Which game would you bring or like to try?</label>
+              <p class="field-hint" id="game-suggestion-hint">One half-day or full-day session in your first three months, or informal evenings at most once a month. Political meetings run separately.</p>
+              <p class="field-hint" id="game-recording-hint">We record every game from start to finish after the first check-in. We use video, audio and screen capture as suited to the game, with separate consent before play.</p>
+              <textarea id="suggested-games" name="suggestedGames" maxlength="400" rows="3" aria-describedby="game-suggestion-hint game-recording-hint" required></textarea>
+            </div>
+
+            <div class="privacy" aria-labelledby="privacy-title">
+              <h3 id="privacy-title">How P4A uses your details</h3>
+              <p id="application-privacy">P4A stores your application privately in Cloudflare. Reviewers use your details to assess your application and contact you. P4A uses interests and game suggestions to plan activities.</p>
+            </div>
+
+            <label class="consent" for="declaration">
+              <input id="declaration" name="declaration" type="checkbox" value="yes" required>
+              <span>I’m applying to join P4A, and my answers are accurate to the best of my knowledge.</span>
+            </label>
+
+            <label class="consent" for="consent">
+              <input id="consent" name="consent" type="checkbox" value="yes" aria-describedby="application-privacy" required>
+              <span>I agree to P4A using my details to assess my application, contact me and use my interests and game suggestions to plan activities.</span>
+            </label>
+
+            <button class="button" type="submit">Submit application</button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer class="page-footer">
+    <nav class="page-footer-nav" aria-label="Previous page">
+      <a class="page-footer-link" href="./guide.html">← Membership guide</a>
+    </nav>
+  </footer>
+  <a class="back-to-top" href="#top" aria-label="Back to top">↑</a>
+</body>
+</html>

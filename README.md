@@ -6,7 +6,7 @@ A working custom membership and civic CRM foundation for **P4A the Purple Party 
 
 [Open the public P4A membership preview](https://auraofintelligence.github.io/p4a-membership/).
 
-The [membership guide](https://auraofintelligence.github.io/p4a-membership/apply/guide.html) and [application preview](https://auraofintelligence.github.io/p4a-membership/apply/) share the P4A website styling. The preview lets people read the process and inspect the form. GitHub Pages does not receive applications or payments.
+Start with the [membership guide](https://auraofintelligence.github.io/p4a-membership/apply/), then open the [application preview](https://auraofintelligence.github.io/p4a-membership/apply/application.html). GitHub Pages does not receive applications or payments.
 
 GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Public view, Member demo and Organiser demo to explore the workbench and contribution flows. Changes exist only in the open page and reset when it reloads. Do not enter real personal or financial details. This preview does not accept real memberships or payments and has no Google, identity-verification or blockchain connection.
 
@@ -34,9 +34,9 @@ cd G:\GithubLocal-PC\p4a-membership
 npm start
 ```
 
-Open [the local workspace](http://127.0.0.1:8791/) for civic training, electoral readiness and the member and organiser views. The [membership application](http://127.0.0.1:8791/apply/) and [membership guide](http://127.0.0.1:8791/apply/guide.html) run on the same server. Use sample details and choose **Organiser demo → Membership onboarding → Open sample applications** to review them. Sample applications are cleared when the server stops.
+Open [the local workspace](http://127.0.0.1:8791/) for civic training, electoral readiness and the member and organiser views. The [membership guide](http://127.0.0.1:8791/apply/) leads to the [membership application](http://127.0.0.1:8791/apply/application.html) on the same server. Use sample details and choose **Organiser demo → Membership onboarding → Open sample applications** to review them. Sample applications are cleared when the server stops.
 
-The local workspace keeps sample project and activity changes in ignored `.local/state.json`. The server binds to this computer, refuses unexpected Host headers and cross-origin changes, and has no live payments or Google Drive connection. The [application](application-public/index.html) and [guide](application-public/guide.html) can also be opened directly as local files for reading.
+The local workspace keeps sample project and activity changes in ignored `.local/state.json`. The server binds to this computer, refuses unexpected Host headers and cross-origin changes, and has no live payments or Google Drive connection. The [guide](application-public/guide.html) and [application](application-public/application.html) can also be opened directly as local files for reading.
 
 ```powershell
 npm test

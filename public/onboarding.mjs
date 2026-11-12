@@ -154,8 +154,8 @@ export function onboardingView(state, id, { e, heading, icon, civicTools = false
   return `<div class="onboarding-page">
     ${heading('Taking part in P4A', title, intro)}
     ${review ? '' : `<div class="button-row subheading">
-      <a class="button" href="${applicationPath}guide.html">Read the membership guide</a>
-      <a class="button secondary" href="${applicationPath}">View the application form</a>
+      <a class="button" href="${applicationPath}">Read the membership guide</a>
+      <a class="button secondary" href="${applicationPath}application.html">View the application form</a>
       ${demo && state.actor?.role === 'organiser' ? '<a class="button secondary" href="#onboarding/applications">Open sample applications</a>' : ''}
     </div>`}
     ${demo ? '<p class="callout"><strong>Fictional exercise.</strong> Use the sample profiles and answers. Keep real identity documents, payment details and personal information out of this exercise.</p>' : ''}
@@ -163,8 +163,9 @@ export function onboardingView(state, id, { e, heading, icon, civicTools = false
     ${review ? '' : `<section class="panel wide-panel onboarding-steps" aria-labelledby="onboarding-steps-heading">
       <div class="section-heading"><h2 id="onboarding-steps-heading">Steps for real membership</h2>${icon('onboarding')}</div>
       <ol>${stages.map(([name, detail]) => `<li><h3>${e(name)}</h3><p>${e(detail)}</p></li>`).join('')}</ol>
-      <h3>Team games in your first three months</h3>
-      <p>Bring a game you know and try ones other members bring. Most games are cooperative, with some competitive and individual strategy games in the mix. After the first check-in, we’ll record selected moments during games using video, audio and screen capture. The team reviews those moments to work better together, find roles that suit people and share skills.</p>
+      <h3>Political work and team induction</h3>
+      <p>Members work on policy, outreach and building and running party systems. Team games are one part of induction. Plan for one half-day or full-day session in your first three months, or an informal evening format held at most once a month. Political meetings run separately.</p>
+      <p>After the first check-in, record each game from start to finish with video, audio and screen capture as suited to the game. Review the footage to see how the team works, which roles suit people and what skills they can share.</p>
       ${civicTools ? '<p><a href="#training/first-quarter-team-games">Explore the first-quarter team games lesson →</a></p>' : ''}
       <h3 class="subheading">Membership payments</h3>
       <p>After the initial eligibility review, pay a one-off application fee of at least A$5 for assessment and verification costs. On approval, pay one quarter of the annual fee for your first three months. At the end of those three months, choose whether to renew for a full year at the annual fee. You’ll see the amount, what it covers and the terms before each payment.</p>

@@ -70,7 +70,7 @@ test('Pages commands retain independent review, revision and permission rules', 
 });
 
 test('Pages build contains only reviewed static and pure-domain files and leaves production source intact', async () => {
-  const sourceNames = ['public/app.mjs', 'src/worker.mjs', 'application-public/index.html', 'application-public/guide.html', 'application-public/styles.css'];
+  const sourceNames = ['public/app.mjs', 'src/worker.mjs', 'application-public/application.html', 'application-public/guide.html', 'application-public/styles.css', 'application-public/index.html'];
   const originals = await Promise.all(sourceNames.map(name => readFile(path.join(root, name))));
   const built = await buildPages();
   const names = [];
@@ -82,7 +82,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 36);
+  assert.equal(names.length, 37);
   assert.equal(built.files, names.length);
   for (const name of [
     'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css', 'jra-values.mjs', 'onboarding.mjs',
@@ -93,7 +93,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
   }
   assert.equal(names.some(name => /\.local|\.env|workspace-store|worker\.mjs|auth\.mjs|http\.mjs|state\.json|connection\.json|application-(?:intake|store|review)|migrations\//.test(name)), false);
   assert.equal(names.some(name => /^civic-(?:training|office-training|volunteering-training)/.test(name)), false);
-  assert.deepEqual(names.filter(name => name.startsWith('apply/')).sort(), ['apply/guide.html', 'apply/index.html', 'apply/styles.css']);
+  assert.deepEqual(names.filter(name => name.startsWith('apply/')).sort(), ['apply/application.html', 'apply/guide.html', 'apply/index.html', 'apply/styles.css']);
   assert.deepEqual(names.filter(name => name.startsWith('demo-domain/')).sort(), ['constitution-seed.mjs', 'domain.mjs', 'errors.mjs', 'gamify.mjs', 'onboarding.mjs', 'seed.mjs'].map(name => `demo-domain/${name}`).sort());
   const html = await readFile(path.join(built.directory, 'index.html'), 'utf8');
   const app = await readFile(path.join(built.directory, 'app.mjs'), 'utf8');
@@ -109,9 +109,12 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
   assert.equal(/fetch\(/.test(app), false);
   assert.equal(/localStorage|sessionStorage|document\.cookie|\bfetch\(/.test(adapter), false);
   assert.match(adapter, /from '\.\/demo-domain\/domain\.mjs'/);
-  const application = await readFile(path.join(built.directory, 'apply/index.html'), 'utf8');
+  const application = await readFile(path.join(built.directory, 'apply/application.html'), 'utf8');
   const guide = await readFile(path.join(built.directory, 'apply/guide.html'), 'utf8');
+  const landing = await readFile(path.join(built.directory, 'apply/index.html'), 'utf8');
   const applicationCss = await readFile(path.join(built.directory, 'apply/styles.css'), 'utf8');
+  assert.equal(landing, guide, 'The landing page serves the guide directly, without a redirect or source-folder alias');
+  assert.equal(landing, applicationPreviewHtml(originals[3].toString(), 'guide.html'));
   for (const page of [application, guide]) {
     assert.match(page, /<aside class="notice application-preview-notice" id="application-preview-notice" role="note"><strong>APPLICATION AND GUIDE PREVIEW<\/strong>/);
     assert.match(page, /cannot submit an application or take a payment/);
@@ -122,6 +125,15 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     assert.equal((page.match(/http-equiv="Content-Security-Policy"/g) || []).length, 1);
     assert.equal(/<(?:script|iframe|object|embed|base)\b|\s(?:on[a-z]+|formaction)\s*=/i.test(page), false);
     assert.equal(/(?:href|src)="\/(?!\/)/.test(page), false);
+    assert.match(page, /<header class="site-header" id="top"(?: tabindex="-1")?>/);
+    const footer = page.match(/<footer class="page-footer">[\s\S]*?<\/footer>/)?.[0];
+    assert.ok(footer, 'Each page keeps its footer navigation');
+    assert.match(footer, /<nav class="page-footer-nav" aria-label="[^"]+">/);
+    assert.doesNotMatch(footer, /class="back-to-top"/);
+    const backToTop = page.match(/<a class="back-to-top" href="#top" aria-label="Back to top">[\s\S]*?<\/a>/)?.[0];
+    assert.ok(backToTop, 'Each page keeps an accessible back-to-top link');
+    assert.match(backToTop, /↑/);
+    assert.ok(page.indexOf('class="back-to-top"') > page.indexOf('</footer>'), 'The back-to-top control is separate from footer navigation');
     for (const [, target] of page.matchAll(/(?:href|src)="([^"]+)"/g)) {
       if (/^(?:https:\/\/|#)/.test(target)) continue;
       const resolved = path.resolve(built.directory, 'apply', target.split(/[?#]/)[0]);
@@ -132,6 +144,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
   }
   assert.match(application, /<form aria-describedby="application-preview-notice" autocomplete="off">/);
   assert.match(application, /<button class="button" type="submit" disabled aria-describedby="application-preview-notice">Submission unavailable in preview<\/button>/);
+  assert.doesNotMatch(application, /Anyone can submit this form/);
   assert.equal((application.match(/<button\b/g) || []).length, 1);
   assert.equal(/<form\b[^>]*\b(?:action|method)\s*=|<(?:input|select|textarea)\b[^>]*\bname\s*=/i.test(application), false);
   for (const id of ['name', 'email', 'contact-phone', 'jurisdiction', 'local-area', 'electoral-enrolment', 'membership-intent', 'suggested-games']) {
@@ -140,7 +153,14 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     assert.doesNotMatch(control, /\sdisabled(?:\s|>)/);
   }
   assert.equal(/<(?:form|input|select|textarea|button)\b/i.test(guide), false);
-  assert.match(guide, /href="\.\/index\.html#form-title"/);
+  assert.match(guide, /href="\.\/application\.html(?:#form-title)?"/);
+  assert.doesNotMatch(guide, /href="\.\/index\.html#form-title"/);
+  assert.match(application, /href="\.\/guide\.html"/);
+  const applicationFooter = application.match(/<footer class="page-footer">[\s\S]*?<\/footer>/)[0];
+  const guideFooter = guide.match(/<footer class="page-footer">[\s\S]*?<\/footer>/)[0];
+  assert.match(applicationFooter, /<a class="page-footer-link" href="\.\/guide\.html"(?: [^>]*)?>/);
+  assert.match(guideFooter, /<a class="page-footer-link" href="\.\/application\.html(?:#form-title)?"(?: [^>]*)?>/);
+  assert.match(guideFooter, /href="https:\/\/p4a\.xyz\/"/);
   assert.match(applicationCss, /\.application-preview-notice\s*\{/);
   assert.match(applicationCss, /\.button:disabled\s*\{/);
   assert.equal(/url\(['"]?\/|@import\b/.test(applicationCss), false);
@@ -151,7 +171,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
 });
 
 test('Application preview refuses changed live-form anchors and newly executable content', async () => {
-  const html = await readFile(path.join(root, 'application-public/index.html'), 'utf8');
+  const html = await readFile(path.join(root, 'application-public/application.html'), 'utf8');
   for (const [description, changed] of [
     ['changed submission URL', html.replace('action="./apply"', 'action="https://example.invalid/apply"')],
     ['changed submit control', html.replace('type="submit">Submit application', 'type="submit">Send application')],
@@ -164,7 +184,8 @@ test('Application preview refuses changed live-form anchors and newly executable
     ['submit override', html.replace('type="submit"', 'type="submit" formaction="./apply"')],
     ['refresh redirect', html.replace('</head>', '<meta http-equiv="refresh" content="0;url=./apply"></head>')],
     ['embedded page', html.replace('</body>', '<iframe src="./apply"></iframe></body>')],
-  ]) assert.throws(() => applicationPreviewHtml(changed, 'index.html'), /preview|Pages build/i, description);
+  ]) assert.throws(() => applicationPreviewHtml(changed, 'application.html'), /preview|Pages build/i, description);
   assert.throws(() => applicationPreviewHtml(html, 'guide.html'), /read-only/);
+  assert.throws(() => applicationPreviewHtml(html, 'index.html'), /Unexpected/, 'The source index alias is not a form build input');
   assert.throws(() => applicationPreviewHtml(html, '../index.html'), /Unexpected/);
 });

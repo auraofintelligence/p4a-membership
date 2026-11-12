@@ -63,16 +63,19 @@ export default {
         }
         await limitSubmission(request, env);
         await submitApplication(env.APPLICATIONS, await formFields(request));
-        return new Response(null, { status: 303, headers: { ...headers, Location: '/?submitted=1' } });
+        return new Response(null, { status: 303, headers: { ...headers, Location: '/application.html?submitted=1' } });
       }
       if (!['GET', 'HEAD'].includes(request.method)) return plain('Method not allowed.', 405);
       if (url.pathname === '/apply') return plain('Use the application form to submit.', 405);
       if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') return plain('The application form is temporarily unavailable.', 503);
-      const asset = await env.ASSETS.fetch(request);
+      const assetRequest = ['/', '/index.html'].includes(url.pathname)
+        ? new Request(new URL('/guide.html', url), { method: request.method, headers: request.headers })
+        : request;
+      const asset = await env.ASSETS.fetch(assetRequest);
       const outgoingHeaders = new Headers(asset.headers);
       for (const [name, value] of Object.entries(headers)) outgoingHeaders.set(name, value);
       let body = asset.body;
-      if (request.method === 'GET' && url.pathname === '/' && url.searchParams.get('submitted') === '1' && asset.ok && (asset.headers.get('content-type') || '').includes('text/html')) {
+      if (request.method === 'GET' && url.pathname === '/application.html' && url.searchParams.get('submitted') === '1' && asset.ok && (asset.headers.get('content-type') || '').includes('text/html')) {
         // Only this fixed marker changes; no URL or submitted value enters HTML.
         body = (await asset.text())
           .replace('<section id="application-success" hidden>', '<section id="application-success">')
