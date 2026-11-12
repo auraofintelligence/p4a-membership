@@ -5,7 +5,8 @@ import { federalFinanceDistricts } from '../public/finance-federal-data.mjs';
 import { stateFinanceEnrolments } from '../public/finance-state-enrolments.mjs';
 import { stateFinanceDemographics } from '../public/finance-state-demographics.mjs';
 import { membershipProjection } from '../public/membership-quick.mjs';
-import { calculateQuickMerch } from '../public/merch-quick.mjs';
+import { calculateMonthlyMerch } from '../public/merch-quick.mjs';
+import { calculateDonationScenario } from '../public/donation-simulator.mjs';
 
 test('federal membership quick projection counts one payment stream at each stage', () => {
   const result = membershipProjection(3, 1000, 75);
@@ -19,11 +20,25 @@ test('federal membership quick projection counts one payment stream at each stag
   assert.equal(membershipProjection(1, 100, 0).annualNet, 784000);
 });
 
-test('merch compares whole runs at the same cent-rounded selling price', () => {
-  assert.equal(calculateQuickMerch('', 25), null);
-  const result = calculateQuickMerch('4.21', 25);
-  assert.equal(result.priceCents, 526);
-  assert.deepEqual(result.batches.map(({ quantity, contribution }) => [quantity, contribution]), [[10, 1050], [100, 10500], [1000, 105000]]);
+test('merch adds monthly product profit within each option and preserves blank versus zero', () => {
+  const result = calculateMonthlyMerch([
+    { units: 10, profits: ['4.21', '', '0'] },
+    { units: 10000, profits: ['0.99', '7.50', '-0.01'] },
+    { units: 10001, profits: ['2', '2', '2'] },
+  ]);
+  assert.equal(result.totalUnits, 10010);
+  assert.deepEqual(result.monthly, [[4210, null, 0], [990000, 7500000, null], [null, null, null]]);
+  assert.deepEqual(result.totals, [{ cents: 994210, included: 2 }, { cents: 7500000, included: 1 }, { cents: 0, included: 1 }]);
+});
+
+test('donation scenarios separate the first round from the 12-month total', () => {
+  const monthly = calculateDonationScenario(100, '25.01', 'monthly');
+  assert.equal(monthly.firstReceiptCents, 250100);
+  assert.equal(monthly.annualCents, 3001200);
+  assert.equal(calculateDonationScenario(10000, 5, 'quarterly').annualCents, 20000000);
+  assert.equal(calculateDonationScenario(0, 25, 'once').annualCents, 0);
+  assert.equal(calculateDonationScenario(10001, 25, 'once'), null);
+  assert.equal(calculateDonationScenario(10, '', 'monthly'), null);
 });
 
 test('a zero-cash plan cannot spend hoped-for grants or later sales', () => {

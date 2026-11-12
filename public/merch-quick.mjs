@@ -1,83 +1,161 @@
-const quantities = [10, 100, 1000];
-const maximumCost = 100000;
-const maximumMarkup = 1000;
+const volumeLimits = { min: 10, max: 10000 };
+const volumePresets = [10, 100, 1000, 10000];
+const options = ['A', 'B', 'C'];
 const money = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' });
 const number = new Intl.NumberFormat('en-AU');
-const draft = { cost: '', markup: '0' };
+const draft = [{ id: 1, name: 'Purple anti-splash, anti-corruption lavender-scented piss mat', units: 100, profits: ['2', '5', '10'] }];
+let nextProductId = 2;
+
 const formatMoney = cents => cents == null ? '—' : money.format(cents / 100);
 
-export function calculateQuickMerch(unitCost, markup) {
-  if (unitCost == null || unitCost === '' || markup == null || markup === '') return null;
-  const cost = Number(unitCost);
-  const percent = Number(markup);
-  if (!Number.isFinite(cost) || cost < 0 || cost > maximumCost || !Number.isFinite(percent) || percent < 0 || percent > maximumMarkup) return null;
-  const costCents = Math.round(cost * 100);
-  const basisPoints = Math.round(percent * 100);
-  const priceCents = Math.round(costCents * (10000 + basisPoints) / 10000);
-  const contributionCents = priceCents - costCents;
-  return {
-    priceCents,
-    contributionCents,
-    batches: quantities.map(quantity => ({
-      quantity,
-      productCost: costCents * quantity,
-      sales: priceCents * quantity,
-      contribution: contributionCents * quantity,
-    })),
-  };
+export function calculateMonthlyMerch(products) {
+  const totals = options.map(() => ({ cents: 0, included: 0 }));
+  let totalUnits = 0;
+  const monthly = products.map(product => {
+    const { units } = product;
+    if (!Number.isInteger(units) || units < volumeLimits.min || units > volumeLimits.max) return options.map(() => null);
+    totalUnits += units;
+    return options.map((_, index) => {
+      const profit = product.profits[index];
+      if (profit == null || String(profit).trim() === '') return null;
+      const value = Number(profit);
+      const perItemCents = Math.round(value * 100);
+      const monthlyCents = perItemCents * units;
+      const total = totals[index];
+      if (value < 0 || !Number.isSafeInteger(monthlyCents + total.cents)) return null;
+      total.cents += monthlyCents;
+      total.included++;
+      return monthlyCents;
+    });
+  });
+  return { totalUnits, monthly, totals };
+}
+
+function productEditor(product, e) {
+  const { id } = product;
+  return `<section class="panel merch-product" data-merch-product="${id}" aria-label="${e(product.name.trim() || 'Unnamed product')}">
+    <div class="merch-product-heading">
+      <label class="field">Product name<input type="text" maxlength="100" placeholder="Name this product" value="${e(product.name)}" data-merch-name></label>
+      <button class="button secondary" type="button" data-merch-remove>Remove<span class="sr-only" data-merch-remove-label> ${e(product.name.trim() || 'unnamed product')}</span></button>
+    </div>
+    <div class="merch-product-controls">
+      <div class="merch-options">
+        ${options.map((option, index) => `<div>
+          <label class="field" for="merch-profit-${id}-${index}">Option ${option}<span>Profit per item (A$)</span></label>
+          <input id="merch-profit-${id}-${index}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="—" value="${e(product.profits[index])}" data-merch-profit="${index}">
+          <output for="merch-profit-${id}-${index} merch-units-${id}" aria-live="off" data-merch-monthly="${index}">—</output><small>per month</small>
+        </div>`).join('')}
+      </div>
+      <div class="merch-volume">
+        <div class="merch-volume-heading">
+          <label class="field" for="merch-units-${id}">Items sold per month</label>
+          <input id="merch-units-${id}" type="number" inputmode="numeric" min="${volumeLimits.min}" max="${volumeLimits.max}" step="1" value="${product.units}" data-merch-units>
+        </div>
+        <label class="sr-only" for="merch-volume-${id}">Monthly sales volume</label>
+        <input id="merch-volume-${id}" type="range" min="${volumeLimits.min}" max="${volumeLimits.max}" step="1" value="${product.units}" data-merch-volume>
+        <div class="merch-presets" aria-label="Monthly sales presets">
+          ${volumePresets.map(units => `<button class="button secondary" type="button" data-merch-preset="${units}" aria-pressed="${product.units === units}">${number.format(units)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+  </section>`;
 }
 
 export function merchQuickView({ heading, e }) {
-  return `<div class="electorate-finance quick-finance" data-merch-quick>
-    ${heading('Fundraising', 'Merch', 'Set a supplier cost and markup, then compare runs of 10, 100 and 1,000 items.', '<a class="button secondary" href="#finance/merch">Detailed merch budget</a>')}
-    <section class="panel" aria-labelledby="merch-quick-title">
-      <h2 id="merch-quick-title">Price a product</h2>
-      <p>Try the purple anti-splash, anti-corruption lavender-scented piss mat or any other merch item.</p>
-      <div class="finance-fields">
-        <label class="field">Supplier cost per item (A$)<input type="number" inputmode="decimal" min="0" max="${maximumCost}" step="0.01" placeholder="Enter your quote" value="${e(draft.cost)}" data-merch-quick-cost></label>
-        <label class="field quick-mix" for="merch-quick-markup">Markup on product cost <output for="merch-quick-markup" data-merch-quick-markup-label></output><input id="merch-quick-markup" type="range" min="0" max="${maximumMarkup}" step="1" value="${e(draft.markup)}" data-merch-quick-markup></label>
-      </div>
-      <dl class="finance-metrics" aria-live="polite">
-        <div><dt>Selling price per item</dt><dd data-merch-quick-price>—</dd></div>
-        <div><dt>Contribution per item</dt><dd data-merch-quick-contribution>—</dd></div>
+  return `<div class="electorate-finance quick-finance merch-planner" data-merch-quick>
+    ${heading('Fundraising', 'Merch', 'Compare three profit-per-item options and see what your products could earn each month.', '<button class="button" type="button" data-merch-add>Add product</button>')}
+    <section class="panel" aria-labelledby="merch-summary-title">
+      <h2 id="merch-summary-title">Monthly profit across products</h2>
+      <p>Profit per item × items sold per month. The starter figures are examples you can edit.</p>
+      <dl class="finance-metrics merch-totals" aria-live="polite" aria-atomic="true">
+        ${options.map((option, index) => `<div><dt>Option ${option}</dt><dd data-merch-total="${index}">—</dd><small data-merch-total-count="${index}"></small></div>`).join('')}
       </dl>
-      <p class="finance-context">Price = product cost × (1 + markup ÷ 100), rounded to cents. Contribution = sales − product cost.</p>
-      <div class="finance-table-wrap" tabindex="0" role="region" aria-label="Merch run comparison">
-        <table class="finance-table" aria-label="Merch run comparison in Australian dollars">
-          <thead><tr><th scope="col">Items sold</th><th scope="col">Product cost</th><th scope="col">Sales</th><th scope="col">Contribution</th></tr></thead>
-          <tbody>${quantities.map(quantity => `<tr data-merch-quick-batch><th scope="row">${number.format(quantity)}</th><td>—</td><td>—</td><td>—</td></tr>`).join('')}</tbody>
-        </table>
-      </div>
-      <p class="finance-context">Amounts in AUD. Assumes every item sells. Excludes freight, selling costs and taxes.</p>
     </section>
+    <div data-merch-products>${draft.map(product => productEditor(product, e)).join('')}</div>
+    <p class="finance-context" data-merch-empty ${draft.length ? 'hidden' : ''}>Add a product to start a monthly comparison.</p>
   </div>`;
 }
 
-export function mountMerchQuick(root) {
+export function mountMerchQuick(root, { e }) {
   const page = root.querySelector('[data-merch-quick]');
   if (!page) return;
-  const cost = page.querySelector('[data-merch-quick-cost]');
-  const markup = page.querySelector('[data-merch-quick-markup]');
-  const markupLabel = page.querySelector('[data-merch-quick-markup-label]');
-  const price = page.querySelector('[data-merch-quick-price]');
-  const contribution = page.querySelector('[data-merch-quick-contribution]');
-  const rows = Array.from(page.querySelectorAll('[data-merch-quick-batch]'));
-  const update = () => {
-    draft.cost = cost.value;
-    draft.markup = markup.value;
-    markupLabel.textContent = `${markup.value}% markup`;
-    markup.setAttribute('aria-valuetext', markupLabel.textContent);
-    const result = cost.validity.valid && markup.validity.valid ? calculateQuickMerch(draft.cost, draft.markup) : null;
-    price.textContent = formatMoney(result?.priceCents);
-    contribution.textContent = formatMoney(result?.contributionCents);
-    rows.forEach((row, index) => {
-      const batch = result?.batches[index];
-      row.cells[1].textContent = formatMoney(batch?.productCost);
-      row.cells[2].textContent = formatMoney(batch?.sales);
-      row.cells[3].textContent = formatMoney(batch?.contribution);
+  const list = page.querySelector('[data-merch-products]');
+  const add = page.querySelector('[data-merch-add]');
+  const empty = page.querySelector('[data-merch-empty]');
+
+  function refresh() {
+    const { totalUnits, monthly, totals } = calculateMonthlyMerch(draft);
+    draft.forEach((product, index) => {
+      const card = list.querySelector(`[data-merch-product="${product.id}"]`);
+      card.querySelectorAll('[data-merch-monthly]').forEach((output, option) => {
+        const formatted = formatMoney(monthly[index][option]);
+        if (output.textContent !== formatted) output.textContent = formatted;
+      });
     });
-  };
-  cost.addEventListener('input', update);
-  markup.addEventListener('input', update);
-  update();
+    totals.forEach(({ cents, included }, index) => {
+      const amount = page.querySelector(`[data-merch-total="${index}"]`);
+      const label = page.querySelector(`[data-merch-total-count="${index}"]`);
+      const formatted = formatMoney(included ? cents : null);
+      const context = included === draft.length && included ? `${number.format(totalUnits)} items per month` : `${included} of ${draft.length} products with profit entered`;
+      if (amount.textContent !== formatted) amount.textContent = formatted;
+      if (label.textContent !== context) label.textContent = context;
+    });
+    empty.hidden = draft.length > 0;
+  }
+
+  function setUnits(card, product, units, source) {
+    product.units = units;
+    const slider = card.querySelector('[data-merch-volume]');
+    const exact = card.querySelector('[data-merch-units]');
+    if (source !== slider) slider.value = units;
+    if (source !== exact) exact.value = units;
+    card.querySelectorAll('[data-merch-preset]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.merchPreset) === units)));
+    refresh();
+  }
+
+  list.addEventListener('input', ({ target }) => {
+    const card = target.closest('[data-merch-product]');
+    const product = draft.find(item => item.id === Number(card?.dataset.merchProduct));
+    if (!product) return;
+    if (target.matches('[data-merch-name]')) {
+      product.name = target.value;
+      card.setAttribute('aria-label', product.name.trim() || 'Unnamed product');
+      card.querySelector('[data-merch-remove-label]').textContent = ` ${product.name.trim() || 'unnamed product'}`;
+    } else if (target.matches('[data-merch-units], [data-merch-volume]')) {
+      if (target.value && target.validity.valid) setUnits(card, product, target.valueAsNumber, target);
+    } else if (target.matches('[data-merch-profit]')) {
+      product.profits[Number(target.dataset.merchProfit)] = target.validity.valid ? target.value : '';
+      refresh();
+    }
+  });
+
+  list.addEventListener('change', ({ target }) => {
+    if (!target.matches('[data-merch-units]') || (target.value && target.validity.valid)) return;
+    const id = Number(target.closest('[data-merch-product]').dataset.merchProduct);
+    target.value = draft.find(product => product.id === id).units;
+  });
+
+  list.addEventListener('click', ({ target }) => {
+    const button = target.closest('button');
+    const card = button?.closest('[data-merch-product]');
+    if (!card) return;
+    const index = draft.findIndex(product => product.id === Number(card.dataset.merchProduct));
+    if (button.matches('[data-merch-preset]')) setUnits(card, draft[index], Number(button.dataset.merchPreset));
+    if (button.matches('[data-merch-remove]')) {
+      const next = card.nextElementSibling || card.previousElementSibling;
+      draft.splice(index, 1);
+      card.remove();
+      (next?.querySelector('[data-merch-name]') || add).focus();
+      refresh();
+    }
+  });
+
+  add.addEventListener('click', () => {
+    const product = { id: nextProductId++, name: '', units: 100, profits: ['', '', ''] };
+    draft.push(product);
+    list.insertAdjacentHTML('beforeend', productEditor(product, e));
+    list.lastElementChild.querySelector('[data-merch-name]').focus();
+    refresh();
+  });
+  refresh();
 }

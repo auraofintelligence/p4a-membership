@@ -76,6 +76,29 @@
 .quick-formulas dt { font-weight: 650; }
 .quick-formulas dd { margin: 0; }
 .quick-extra { gap: 12px 20px; }
+.merch-product-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 14px; }
+.merch-product-heading .button { min-height: 44px; }
+.merch-product-controls { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr); gap: 12px; margin-top: 15px; }
+.merch-volume { padding: 12px 14px; background: #f7f2fb; border: 1px solid #ded4eb; border-radius: 9px; }
+.merch-volume-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.merch-volume-heading input { width: 104px; background: white; }
+.merch-volume > input[type="range"] { width: 100%; }
+.merch-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.merch-presets .button { min-height: 44px; padding-inline: 10px; }
+.merch-presets button[aria-pressed="true"] { color: white; background: #533082; border-color: #533082; }
+.merch-options, .merch-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.merch-options > div { display: grid; align-content: start; gap: 5px; min-width: 0; padding: 11px; background: #f7f2fb; border: 1px solid #ded4eb; border-radius: 9px; }
+.merch-options .field span { color: #50465d; font-size: 13px; font-weight: 400; }
+.merch-options input { width: 100%; background: white; }
+.merch-options output, .merch-totals dd { color: #402266; font-size: clamp(16px, 1.6vw, 22px); font-weight: 720; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.merch-options small { color: #50465d; }
+.donation-simulator { margin-bottom: 20px; }
+.donation-simulator .finance-fields { align-items: start; }
+.donation-simulator [data-donation-preset] { min-height: 44px; }
+.donation-simulator [data-donation-preset][aria-pressed="true"] { color: white; background: #533082; border-color: #533082; }
+@media (max-width: 1000px) {
+  .merch-product-controls { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 540px) {
   .finance-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .electorate-finance .panel { padding: 14px; }
@@ -85,4 +108,8 @@
   .quick-results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .quick-formulas > div { grid-template-columns: 1fr; gap: 1px; }
   .quick-coverage-table { min-width: 470px; }
+  .merch-options, .merch-totals { gap: 6px; }
+  .merch-options > div, .merch-totals > div { padding: 7px; }
+  .merch-totals small { font-size: 12px; line-height: 1.35; display: block; }
+  .donation-simulator .finance-fields { gap: 10px; }
 }

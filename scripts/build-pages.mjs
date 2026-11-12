@@ -9,7 +9,7 @@ const publicFiles = [
   'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'onboarding.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
   'electorate-finance.mjs', 'electorate-finance.css', 'electorate-budget.mjs', 'electorate-merch.mjs', 'electorate-referendum.mjs',
-  'membership-quick.mjs', 'merch-quick.mjs',
+  'membership-quick.mjs', 'merch-quick.mjs', 'donation-simulator.mjs',
   'electoral-readiness-data.mjs', 'electoral-funding-data.mjs', 'electoral-funding.mjs',
   'finance-federal-data.mjs', 'finance-state-enrolments.mjs', 'finance-state-demographics.mjs',
   'favicon.svg', 'robots.txt', 'LICENCE.md',
