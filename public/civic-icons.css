@@ -18,6 +18,7 @@
 .civic-icon-resources { background-position: 91.2713% 36.4326%; }
 .civic-icon-constitution { background-position: 8.3017% 64.1841%; }
 .civic-icon-profile { background-image: url('/artwork/p4a-membership.png'); background-size: contain; background-position: center; }
+.civic-icon-onboarding { background-position: 36.1006% 63.6622%; }
 .civic-icon-nodes { background-position: 63.7571% 63.7571%; }
 .civic-icon-abundance { background-position: 91.2713% 63.6148%; }
 .civic-icon-missing-middle { background-position: 8.444% 91.2713%; }
@@ -26,6 +27,8 @@
 .civic-icon-bills { background-position: 91.4611% 91.3188%; }
 .civic-icon-gamify { background-image: url('/artwork/gamify-democracy.svg'); background-size: contain; background-position: center; }
 .civic-icon-campaigns { background-image: url('/artwork/campaign-command-centre.png'); background-size: contain; background-position: center; }
+.civic-icon-readiness { background-image: url('/artwork/electoral-readiness.png'); background-size: contain; background-position: center; }
+.civic-icon-training { background-image: url('/artwork/civic-training.png'); background-size: contain; background-position: center; }
 .civic-icon-genesis { background-image: url('/artwork/aura-genesis-geode.png'); background-size: contain; background-position: center; }
 
 :is(.civic-icon-relevance, .civic-icon-committees, .civic-icon-twins,
@@ -38,6 +41,13 @@
 .civic-icon-twins { background-position: 100% 0%; }
 .civic-icon-redlands { background-position: 0% 100%; }
 .civic-icon-scan { background-position: 50% 100%; }
+
+#workspace-menu { display: none; }
+.private-workspace { font-size: 1rem; }
+.private-workspace .nav-link { font-size: 0.9375rem; }
+.private-workspace .nav-label { font-size: 0.75rem; }
+.private-workspace .breadcrumb, .private-workspace .pilot-banner, .private-workspace .pilot-signout { font-size: 0.875rem; }
+.private-workspace .pilot-signout { min-height: 44px; }
 
 .nav-link { padding: 8px 9px; gap: 10px; font-size: 12px; }
 .nav-link .nav-short-label { display: none; }
@@ -101,4 +111,24 @@
   .topbar { gap: 8px; padding: 0 14px; }
   .top-actions select { max-width: 110px; }
   .breadcrumb { font-size: 10px; }
+}
+
+@media (min-width: 641px) and (max-width: 800px) {
+  .private-workspace .nav-full-label { display: block; font-size: 0.75rem; overflow-wrap: anywhere; }
+  .private-workspace .nav-short-label { display: none; }
+}
+
+@media (max-width: 640px) {
+  .private-workspace { display: block; }
+  .private-workspace .workspace { width: 100%; margin: 0; }
+  .private-workspace .sidebar { position: static; width: 100%; padding: 10px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; overflow: visible; }
+  .private-workspace .sidebar .brand { justify-content: start; }
+  .private-workspace .sidebar #workspace-links { grid-column: 1 / -1; margin: 0; }
+  .private-workspace #workspace-menu { display: block; justify-self: end; max-width: 100%; min-height: 44px; padding: 6px 12px; border: 1px solid #cfb4e6; border-radius: 8px; background: #412461; color: #fff; font-size: 0.9375rem; }
+  .private-workspace #workspace-menu[aria-expanded='false'] + nav { display: none; }
+  .private-workspace .nav-link { flex-direction: row; justify-content: flex-start; gap: 12px; text-align: left; padding: 6px 10px; min-height: 44px; }
+  .private-workspace .nav-full-label { display: block; overflow-wrap: anywhere; }
+  .private-workspace .nav-short-label { display: none; }
+  .private-workspace .topbar { height: auto; min-height: 56px; flex-wrap: wrap; padding-block: 8px; }
+  .private-workspace .toast { left: 50%; }
 }

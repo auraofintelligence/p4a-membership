@@ -6,6 +6,8 @@ A working custom membership and civic CRM foundation for **P4A the Purple Party 
 
 [Open the public P4A membership preview](https://auraofintelligence.github.io/p4a-membership/).
 
+The [membership guide](https://auraofintelligence.github.io/p4a-membership/apply/guide.html) and [application preview](https://auraofintelligence.github.io/p4a-membership/apply/) share the P4A website styling. The preview lets people read the process and inspect the form. GitHub Pages does not receive applications or payments.
+
 GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Public view, Member demo and Organiser demo to explore the workbench and contribution flows. Changes exist only in the open page and reset when it reloads. Do not enter real personal or financial details. This preview does not accept real memberships or payments and has no Google, identity-verification or blockchain connection.
 
 The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership/#constitution/trial) demonstrates how Aura could prepare records of overlapping voluntary work from agreed evidence. Compare the drafts, choose what to share, then try evidence review, a fictional ballot, sunset and audit download.
@@ -25,14 +27,16 @@ See [Cloudflare Worker Access](https://developers.cloudflare.com/workers/configu
 
 ## Run the working review
 
-Requires Node.js 20.10 or later. No package installation or frontend build is required.
+Use Node.js 24 for the full local site, including application submission and review. No package installation or frontend build is required.
 
 ```powershell
 cd G:\GithubLocal-PC\p4a-membership
 npm start
 ```
 
-Open **http://127.0.0.1:8791/**. Choose **Member demo**, **Organiser demo** or **Public view** in the top-right selector. All people, groups and activity in the review are fictional. The local server binds to this computer and stores changes in ignored `.local/state.json`; it never connects that demo file to Google Drive. The server refuses unexpected Host headers and cross-origin changes. Treat this local mode as a review environment, not a production login service.
+Open [the local workspace](http://127.0.0.1:8791/) for civic training, electoral readiness and the member and organiser views. The [membership application](http://127.0.0.1:8791/apply/) and [membership guide](http://127.0.0.1:8791/apply/guide.html) run on the same server. Use sample details and choose **Organiser demo → Membership onboarding → Open sample applications** to review them. Sample applications are cleared when the server stops.
+
+The local workspace keeps sample project and activity changes in ignored `.local/state.json`. The server binds to this computer, refuses unexpected Host headers and cross-origin changes, and has no live payments or Google Drive connection. The [application](application-public/index.html) and [guide](application-public/guide.html) can also be opened directly as local files for reading.
 
 ```powershell
 npm test
@@ -69,7 +73,7 @@ An interim private Drive folder and empty register have been prepared in the Goo
 
 The Google adapter uses signed requests, a serial writer and optimistic revisions against one private Drive JSON document. This provides a concrete Workspace integration to test, with a current 1 MiB protocol limit. It is replaceable as measured needs grow. It does not automatically share Google Docs with members or make Drive permissions follow application membership.
 
-See [Google integration and identity setup](docs/WORKSPACE.md), [the concept mapping](docs/CONCEPTS.md) and [verification and remaining live setup](docs/BUILD-STATUS.md).
+See the [membership onboarding guide](docs/ONBOARDING.md), [Google integration and identity setup](docs/WORKSPACE.md), [the concept mapping](docs/CONCEPTS.md) and [verification and remaining live setup](docs/BUILD-STATUS.md).
 
 Payments are intentionally inactive: the operator, paid benefits, pricing, terms and provider remain undecided. A production billing integration, reconciliation and regulatory reporting workflows still need implementation before money is collected. The present transparency view is not a regulator filing service or an accounting ledger.
 
@@ -78,6 +82,7 @@ Payments are intentionally inactive: the operator, paid benefits, pricing, terms
 | Path | Purpose |
 | --- | --- |
 | `public/` | Responsive member and organiser interface; no secrets or CRM data |
+| `application-public/` | Styled membership form and applicant guide |
 | `src/domain.mjs` | Validated commands, authorisation, public and private projections |
 | `src/http.mjs` | JSON API, same-origin checks and private response headers |
 | `src/worker.mjs` | Cloudflare entry point |

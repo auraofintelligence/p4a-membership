@@ -1,6 +1,7 @@
 import { api, json, securityHeaders } from './http.mjs';
-import { getPilotRole, pilotActorForRole } from './pilot-auth.mjs';
+import { getPilotIdentity, pilotActorForRole } from './pilot-auth.mjs';
 import { pilotStore } from './pilot-store.mjs';
+import { reviewApplications } from './application-review.mjs';
 
 const pilotHeaders = {
   'Cache-Control': 'no-store',
@@ -12,16 +13,17 @@ export default {
     if (env.PILOT_MODE !== 'private') {
       return json({ error: 'The private pilot is not configured.' }, 503, pilotHeaders);
     }
-    const role = await getPilotRole(request, env);
-    if (!role) return json({ error: 'Sign in with an invited Cloudflare Access account.' }, 401, pilotHeaders);
+    const identity = await getPilotIdentity(request, env);
+    if (!identity) return json({ error: 'Sign in with an invited Cloudflare Access account.' }, 401, pilotHeaders);
 
     const path = new URL(request.url).pathname;
+    if (path === '/api/applications') return reviewApplications(request, env.APPLICATIONS, identity, pilotHeaders);
     if (path.startsWith('/api/')) {
       if (path.startsWith('/api/demo/')) return json({ error: 'Not found.' }, 404, pilotHeaders);
       try {
         const response = await api(request, {
           store: pilotStore(env, { id: 'pilot-organiser', name: env.PILOT_ORGANISER_NAME }),
-          getActor: async (_request, state) => pilotActorForRole(role, state),
+          getActor: async (_request, state) => pilotActorForRole(identity.role, state),
           mode: 'pilot',
           workspace: false,
         });

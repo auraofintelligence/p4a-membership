@@ -48,7 +48,10 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
     if (url.pathname === '/api/export' && request.method === 'GET') return json(projectState(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
     if (url.pathname === '/api/commands' && request.method === 'POST') {
       const command = await readBody(request);
-      const outcome = executeCommand(state, actor, command);
+      if (mode !== 'demo' && ['membership.apply', 'membership.review'].includes(command?.type)) {
+        throw new AppError('Membership admission is not available until the required checks are in place.', 403);
+      }
+      const outcome = executeCommand(state, actor, command, new Date(), { mode });
       if (!outcome.result.replayed && !(await store.compareAndSwap(state.revision, outcome.state))) return json({ error: 'The workspace changed. Refresh and try again.' }, 409);
       return json(outcome.result);
     }

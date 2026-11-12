@@ -20,13 +20,18 @@ function parseAllowlist(value) {
   }
 }
 
-export async function getPilotRole(request, env) {
+export async function getPilotIdentity(request, env) {
   const organisers = parseAllowlist(env.PILOT_ORGANISER_EMAILS);
   if (!organisers?.size) return null;
 
   const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
   if (claims?.type !== 'app') return null;
-  return organisers.has(normalisedEmail(claims.email)) ? 'organiser' : null;
+  if (!organisers.has(normalisedEmail(claims.email))) return null;
+  return { role: 'organiser', subject: claims.sub };
+}
+
+export async function getPilotRole(request, env) {
+  return (await getPilotIdentity(request, env))?.role ?? null;
 }
 
 // The Worker must pass a role returned by getPilotRole, never a client-supplied role.

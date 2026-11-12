@@ -1,6 +1,7 @@
 import { starterClauses, sourceUrl as constitutionSourceUrl } from './constitution-seed.mjs';
 import { AppError } from './errors.mjs';
 import { executeGamifyCommand, financialProjection } from './gamify.mjs';
+import { executeOnboardingCommand, onboardingProjection, requireOnboardingDemo } from './onboarding.mjs';
 export { AppError } from './errors.mjs';
 export { gamifyProjection } from './gamify.mjs';
 
@@ -41,12 +42,13 @@ function owns(state, actor, project) {
   if (!group.memberIds.includes(actor.id)) fail('You must belong to this working group to manage its project.', 403);
 }
 export function emptyState() {
-  return { revision: 0, people: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], activity: [], processed: [] };
+  return { revision: 0, people: [], groups: [], projects: [], memberships: [], onboardingCases: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], activity: [], processed: [] };
 }
 export function normaliseState(state) {
-  const next = { ...state, constitutions: state.constitutions === undefined ? [] : state.constitutions, financialContributions: state.financialContributions === undefined ? [] : state.financialContributions };
+  const next = { ...state, constitutions: state.constitutions === undefined ? [] : state.constitutions, financialContributions: state.financialContributions === undefined ? [] : state.financialContributions, onboardingCases: state.onboardingCases === undefined ? [] : state.onboardingCases };
   if (!Array.isArray(next.constitutions)) fail('The constitution register is invalid.', 503);
   if (!Array.isArray(next.financialContributions)) fail('The financial contribution register is invalid.', 503);
+  if (!Array.isArray(next.onboardingCases)) fail('The onboarding rehearsal register is invalid.', 503);
   return next;
 }
 export function createConstitution({ id = uuid(), title, scope, actorId, at }) {
@@ -59,10 +61,13 @@ export function actorFor(state, id) {
   const person = state.people.find(item => item.id === id);
   return person ? { id: person.id, name: person.name, role: person.role === 'organiser' ? 'organiser' : 'member' } : null;
 }
-export function executeCommand(state, actor, command, now = new Date()) {
+export function executeCommand(state, actor, command, now = new Date(), { mode } = {}) {
   state = normaliseState(state);
   if (!actor || !state.people.some(person => person.id === actor.id)) fail('Sign in before making changes.', 401);
   if (!command || typeof command !== 'object' || Array.isArray(command)) fail('Send a valid command.');
+  // Check the trusted server mode before receipts, so a demo replay cannot
+  // masquerade as a successful onboarding action in the live application.
+  if (typeof command.type === 'string' && command.type.startsWith('onboarding.')) requireOnboardingDemo(mode);
   if (typeof command.id !== 'string' || !/^[a-zA-Z0-9-]{8,80}$/.test(command.id)) fail('A unique command ID is required.');
   const previously = state.processed.find(item => item.id === command.id);
   const fingerprint = JSON.stringify({ type: command.type, data: command.data });
@@ -248,7 +253,7 @@ export function executeCommand(state, actor, command, now = new Date()) {
       summary = 'Withdrew own constitution draft proposal.'; break;
     }
     default:
-      summary = executeGamifyCommand(next, actor, command.type, data, now);
+      summary = executeOnboardingCommand(next, actor, command.type, data, now, { mode }) || executeGamifyCommand(next, actor, command.type, data, now);
       if (!summary) fail('This action is not supported.');
   }
   next.revision += 1;
@@ -270,6 +275,7 @@ export function publicProjection(state, mode = 'live') {
 export function projectState(state, actor, mode = 'live', workspace = false) {
   state = normaliseState(state);
   const base = { mode, actor, revision: state.revision, people: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], activity: [], billing: { enabled: false }, integrations: { workspace }, public: publicProjection(state, mode) };
+  base.onboarding = onboardingProjection(state, actor, mode);
   base.decisions = base.public.decisions;
   if (!actor) { base.projects = base.public.projects; return base; }
   const organiser = actor.role === 'organiser';

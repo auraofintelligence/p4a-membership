@@ -4,7 +4,7 @@ export const iconNames = Object.freeze([
   'groups', 'hours', 'transparency', 'resources',
   'constitution', 'profile', 'nodes', 'abundance',
   'missing-middle', 'verse-box', 'legal', 'bills',
-  'gamify', 'campaigns',
+  'gamify', 'campaigns', 'readiness', 'training', 'onboarding',
   'relevance', 'committees', 'twins', 'redlands', 'scan', 'genesis',
 ]);
 
@@ -17,5 +17,5 @@ export const compactLabels = Object.freeze({
   home: 'Home', projects: 'Projects', priority: 'Priorities', people: 'People',
   groups: 'Groups', nodes: 'Local nodes', hours: 'Contribution', gamify: 'Gamify',
   transparency: 'Transparency', resources: 'Ideas & tools',
-  constitution: 'Constitution', profile: 'Membership', campaigns: 'Campaigns',
+  constitution: 'Constitution', profile: 'Membership', campaigns: 'Campaigns', readiness: 'Readiness', training: 'Training', onboarding: 'Onboarding',
 });

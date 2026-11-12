@@ -6,19 +6,48 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
 const publicFiles = [
   'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs',
-  'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs',
+  'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'onboarding.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
   'favicon.svg', 'robots.txt', 'LICENCE.md',
   'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg', 'artwork/campaign-command-centre.png',
   'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png', 'artwork/p4a-membership.png',
   'artwork/p4a-membership-mark.png',
 ];
-const domainFiles = ['domain.mjs', 'gamify.mjs', 'errors.mjs', 'seed.mjs', 'constitution-seed.mjs'];
+const domainFiles = ['domain.mjs', 'gamify.mjs', 'errors.mjs', 'seed.mjs', 'constitution-seed.mjs', 'onboarding.mjs'];
+const applicationFiles = ['index.html', 'guide.html', 'styles.css'];
+const applicationPolicy = "default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;self&#39;; img-src &#39;self&#39;; font-src &#39;self&#39;; connect-src &#39;none&#39;; object-src &#39;none&#39;; frame-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;";
 
 function replaceOnce(content, expression, replacement, label) {
   const matches = content.match(expression);
   if (!matches || matches.length !== 1) throw new Error(`Pages build could not identify ${label}. Review the source before publishing.`);
   return content.replace(expression, replacement);
+}
+
+// The live form is a separate Worker. This static copy is deliberately inert:
+// no script, submission endpoint, successful named fields, or payment service.
+// Fail when the reviewed markup changes rather than publish a live form by mistake.
+export function applicationPreviewHtml(contents, page) {
+  if (!['index.html', 'guide.html'].includes(page)) throw new Error('Unexpected application preview page.');
+  if (/<(?:script|iframe|object|embed|base)\b|\s(?:on[a-z]+|formaction)\s*=|http-equiv\s*=|(?:href|src)\s*=\s*["']\s*(?:javascript|data|vbscript):/i.test(contents)) {
+    throw new Error('Application preview contains unreviewed executable markup.');
+  }
+  contents = replaceOnce(contents, /<meta charset="utf-8">/g, `<meta charset="utf-8">\n  <meta http-equiv="Content-Security-Policy" content="${applicationPolicy}">\n  <meta name="referrer" content="no-referrer">`, 'the application preview security policy');
+  contents = replaceOnce(contents, /<main id="main" tabindex="-1">/g, '<main id="main" tabindex="-1">\n    <aside class="notice application-preview-notice" id="application-preview-notice" role="note"><strong>APPLICATION AND GUIDE PREVIEW</strong><p>Explore the form and membership pathway using made-up details only. This preview cannot submit an application or take a payment. Nothing you type is sent or saved by P4A.</p><a href="../">Return to the civic workspace preview</a></aside>', 'the application preview notice');
+  contents = contents.replace(/\b(href|src)="\/(?!\/)/g, '$1="./');
+  if (page === 'index.html') {
+    if ((contents.match(/<form\b/gi) || []).length !== 1 || (contents.match(/<\/form>/gi) || []).length !== 1) throw new Error('Expected exactly one application preview form.');
+    contents = replaceOnce(contents, /<form method="post" action="\.\/apply">/g, '<form aria-describedby="application-preview-notice" autocomplete="off">', 'the live application form');
+    contents = replaceOnce(contents, /<button class="button" type="submit">Submit application<\/button>/g, '<button class="button" type="submit" disabled aria-describedby="application-preview-notice">Submission unavailable in preview</button>', 'the application submit button');
+    contents = replaceOnce(contents, /<p>Anyone can submit this form without a login\.<\/p>/g, '<p>Explore these fields with made-up details. Submitting is disabled in this preview.</p>', 'the application form introduction');
+    contents = contents.replace(/<(?:input|select|textarea)\b[^>]*>/gi, tag => tag.replace(/\sname="[^"]*"/g, '').replace(/\sautocomplete="[^"]*"/g, ' autocomplete="off"'));
+    const buttons = contents.match(/<button\b[^>]*>/gi) || [];
+    if (buttons.length !== 1 || !/\sdisabled(?:\s|>)/.test(buttons[0]) || /<(?:input|select|textarea)\b[^>]*\bname\s*=|<input\b[^>]*\btype\s*=\s*["'](?:submit|image)["']/i.test(contents)) {
+      throw new Error('Application preview contains an unreviewed submission control.');
+    }
+  } else if (/<(?:form|input|select|textarea|button)\b/i.test(contents)) {
+    throw new Error('Application guide must remain a read-only page.');
+  }
+  return contents;
 }
 
 // Never recursively enumerate the checkout. Only these reviewed source paths
@@ -60,8 +89,19 @@ export async function buildPages() {
   for (const relative of domainFiles) await copyFile(await source(path.join('src', relative)), path.join(output, 'demo-domain', relative));
   const adapter = (await readFile(await source('preview/demo-api.mjs'), 'utf8')).replaceAll("'../src/", "'./demo-domain/");
   await writeFile(path.join(output, 'demo-api.mjs'), adapter);
+  await mkdir(path.join(output, 'apply'), { recursive: true });
+  for (const relative of applicationFiles) {
+    let contents = await readFile(await source(path.join('application-public', relative)), 'utf8');
+    if (relative.endsWith('.html')) contents = applicationPreviewHtml(contents, relative);
+    else {
+      if (/@import\b|url\(\s*['"]?(?:https?:|\/\/|data:)/i.test(contents)) throw new Error('Application preview CSS contains an unreviewed external dependency.');
+      contents = contents.replace(/url\((['"]?)\/(?!\/)/g, 'url($1./');
+      contents += '\n.application-preview-notice { margin-bottom: 1.5rem; border: 2px solid var(--purple); }\n.application-preview-notice p { margin-block: 0.5rem; }\n.button:disabled { opacity: 0.7; cursor: not-allowed; }\n';
+    }
+    await writeFile(path.join(output, 'apply', relative), contents);
+  }
   await writeFile(path.join(output, '.nojekyll'), '');
-  return { directory: output, files: publicFiles.length + domainFiles.length + 2 };
+  return { directory: output, files: publicFiles.length + domainFiles.length + applicationFiles.length + 2 };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

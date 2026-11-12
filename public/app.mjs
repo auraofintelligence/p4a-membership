@@ -4,14 +4,17 @@ import {homeDoors, campaignsView, campaignReplicationPrompt, localNodesView, red
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {trialView, handleTrialAction, trialAuditRecord} from './constitution-trial.mjs';
 import {gamifyView, loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
+import {jraSource, jraValues} from './jra-values.mjs';
+import {onboardingView} from './onboarding.mjs';
 const $ = (s, root = document) => root.querySelector(s);
 const e = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths = {arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',out:'M14 3h7v7 M21 3 10 14 M10 3H3v18h18v-7',check:'M5 12l4 4L19 6'};
 const icon = key => civicIcon(key) || (paths[key] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[key]}"/></svg>` : '');
 const themes = {'everyday-life':'Everyday life','missing-middle':'Missing Middle','verse-box':'Verse Box','civic-evidence':'Civic evidence','local-care':'Local care'};
-const routes = [['home','Your workspace'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['hours','Contributions'],['gamify','Gamify Democracy'],['transparency','Open transparency'],['resources','Connected ideas'],['constitution','Constitution workbench'],['profile','Your membership']];
+const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['hours','Contributions'],['gamify','Gamify Democracy']];
+const accountabilityRoutes = [['transparency','Open transparency'],['resources','Connected ideas'],['constitution','Constitution workbench'],['profile','Your membership']];
 const resources = [
-  {icon:'abundance',name:'Joyful Responsible Abundance',label:'Purpose & perspective',description:'A connected view of agency, shared capacity and the choices ahead.',url:'https://auraofintelligence.github.io/joyful-responsible-abundance/index.html'},
+  {icon:'abundance',name:'Joyful Responsible Abundance',label:'Purpose & perspective',description:'Explore how truth, responsibility and shared capacity can widen people’s opportunities as AI advances.',url:jraSource},
   {icon:'missing-middle',name:'Installing the Missing Middle',label:'Local infrastructure',description:'Explore community compute, useful workloads, ownership and renewal.',url:'https://auraofintelligence.github.io/installing-the-missing-middle/'},
   {icon:'verse-box',name:'The Verse Box',label:'An assisted way in',description:'A proposed place to learn, try something useful and take your work home.',url:'https://auraofintelligence.github.io/aura-verse-box/'},
   {icon:'relevance',name:'Your Relevance',label:'Start with your life',description:'Optional private reflection, with a choice about what you share.',url:'https://p4a.xyz/pages/your-relevance.html'},
@@ -33,6 +36,8 @@ const group = id => state.groups.find(g=>g.id===id);
 const project = id => state.projects.find(p=>p.id===id);
 const isOrganiser = () => state.actor?.role === 'organiser';
 const isPilot = () => state.mode === 'pilot';
+const isLocalReview = () => state.mode === 'demo' && !state.preview;
+const hasCivicTools = () => isPilot() || isLocalReview();
 const isParticipant = p => isOrganiser() || p.participantIds?.includes(state.actor?.id);
 const dateText = date => date ? new Intl.DateTimeFormat('en-AU',{day:'numeric',month:'short',year:'numeric',timeZone:'Australia/Brisbane'}).format(new Date(date.length === 10 ? `${date}T00:00:00+10:00` : date)) : 'Not set';
 const today = () => new Date().toLocaleDateString('en-CA',{timeZone:'Australia/Brisbane'});
@@ -43,6 +48,10 @@ const sourceLink = value => safeUrl(value) ? `<a class="source-link" href="${e(s
 const actionButton = (label, action, id='', classes='secondary', extra='') => `<button class="button ${classes}" data-action="${action}" data-id="${e(id)}" ${extra}>${e(label)}</button>`;
 const canEdit = p => isOrganiser() || p.ownerId === state.actor?.id;
 
+let readiness;
+let readinessTimer;
+let training;
+let applicationReview;
 async function api(path, options={}) {
   const response = await fetch(path,{credentials:'same-origin',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});
   const data = await response.json();
@@ -66,26 +75,31 @@ function requireMember() {
 function projectCard(p){const done=(p.tasks||[]).filter(t=>t.done).length;return `<a class="project-card" href="#project/${e(p.id)}"><div class="project-top">${tag(themes[p.theme]||p.theme)}${tag(p.status,statusTone(p.status))}</div><h3>${e(p.title)}</h3><p>${e(p.summary)}</p><div class="card-bottom"><span class="mini-avatar">${e(initials(person(p.ownerId)?.name||'P4A'))}</span><span>${e(group(p.groupId)?.name||'Working group')}</span><span class="push">${state.actor?`${done}/${(p.tasks||[]).length} tasks`:'Public overview'}</span>${icon('arrow')}</div></a>`;}
 function matrix(compact=false){if(!state.actor)return '<p class="muted">Open a member workspace to view its project assessments. The public source explains the wider purpose and evidence.</p>';const quadrants=[{name:'Act together',subtitle:'Urgent · Important',cls:'now',filter:p=>p.urgency>=4&&p.importance>=4},{name:'Build the foundations',subtitle:'Less urgent · Important',cls:'plan',filter:p=>p.urgency<4&&p.importance>=4},{name:'Respond with care',subtitle:'Urgent · Lower importance',cls:'',filter:p=>p.urgency>=4&&p.importance<4},{name:'Keep in view',subtitle:'Less urgent · Lower importance',cls:'',filter:p=>p.urgency<4&&p.importance<4}];return `<div class="matrix ${compact?'':'big-matrix'}">${quadrants.map(q=>{const records=state.projects.filter(p=>p.status!=='complete'&&q.filter(p));return `<div class="quadrant ${q.cls}"><strong>${q.name}</strong><span>${q.subtitle}</span>${compact?`<b>${records.length}</b>`:records.map(p=>`<a class="matrix-item" href="#project/${e(p.id)}">${e(p.title)}<small>Urgency ${p.urgency}/5 · Importance ${p.importance}/5</small></a>`).join('')||'<p class="muted">No current projects</p>'}</div>`;}).join('')}</div>`;}
 
-function home(){const me=person(state.actor?.id);const verified=state.contributions.filter(c=>c.status==='verified').reduce((n,c)=>n+Number(c.hours),0);const mine=state.projects.filter(p=>p.participantIds?.includes(state.actor?.id));return `${heading('People & possibility',state.actor?`Good to have you here, ${state.actor.name.split(' ')[0]}.`:'A movement grows through its people.','Find your people. Work on what matters. See what changes.',state.actor?projectStartAction():actionButton('Explore the public work','resources','','secondary'))}
-<section class="hero"><div><span class="eyebrow">From where we are · Towards what could be</span><h2>Big possibilities.<br>Shared, local action.</h2><p>Your experience, curiosity and contribution belong in the work of building a more joyful, responsible and abundant Australia.</p><div class="button-row">${state.actor?'<a class="button" href="#projects">Find a project '+icon('arrow')+'</a>':state.mode==='demo'?actionButton('Open the member demo','demo-member','',''):'<a class="button" href="#resources">Explore the connected ideas</a>'}<a class="button quiet" href="#priority">What matters now ↗</a></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"><div class="orbit-center">People.<br>Place.<br>Possibility.</div><span class="orbit-label">Joy</span><span class="orbit-label">Responsibility</span><span class="orbit-label">Abundance</span></div></div></section>
-${homeDoors(icon)}
+function jraQuestions(showExamples = false) {
+  return `<dl class="jra-questions">${jraValues.map(({title, question, example}) => `<div><dt>${e(title)}</dt><dd>${e(question)}${showExamples ? `<p>${e(example)}</p>` : ''}</dd></div>`).join('')}</dl>`;
+}
+
+function home(){const verified=state.contributions.filter(c=>c.status==='verified').reduce((n,c)=>n+Number(c.hours),0);const mine=state.projects.filter(p=>p.participantIds?.includes(state.actor?.id));return `${heading('People & possibility',state.actor?`Good to have you here, ${state.actor.name.split(' ')[0]}.`:'A movement grows through its people.','Find a way to contribute and work with others on issues that matter to you.',state.actor?projectStartAction():actionButton('Explore the public work','resources','','secondary'))}
+<section class="hero"><div><h2>Truth, trust and a fair go for all</h2><p>Rise above the fray. Check what we say, treat people fairly and share what we learn so others can build on it.</p><div class="button-row">${state.actor?'<a class="button" href="#projects">Find a project '+icon('arrow')+'</a>':state.mode==='demo'?actionButton('Open the member demo','demo-member','',''):'<a class="button" href="#resources">Explore the connected ideas</a>'}<a class="button quiet" href="#priority">What matters now ↗</a></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"><div class="orbit-center">People.<br>Place.<br>Possibility.</div><span class="orbit-label">Joy</span><span class="orbit-label">Responsibility</span><span class="orbit-label">Abundance</span></div></div></section>
+<section class="panel jra-home" aria-labelledby="jra-home-title"><div class="jra-heading">${icon('abundance')}<h2 id="jra-home-title">Joyful Responsible Abundance</h2></div><p>As AI advances and the possibility of superintelligence comes into view, take time to know ourselves and remember why we want to do better. Make room for friendships and families to thrive, and build alliances with people who bring different strengths.</p><p>A rising tide can lift all ships when people share in what we build. Ask these questions, act together and improve what we can, day by day.</p>${jraQuestions(true)}<div class="button-row"><a class="button secondary" href="${e(jraSource)}" target="_blank" rel="noopener noreferrer">Explore Joyful Responsible Abundance ↗</a>${isPilot() ? '<a class="button quiet" href="#training/joyful-responsible-abundance">Try the values lesson →</a>' : ''}</div></section>
+${homeDoors(icon, hasCivicTools())}
 <div class="stats"><div class="stat"><div class="stat-top">${state.actor?'Your shared projects':'Visible projects'}${icon('projects')}</div><strong>${state.actor?mine.length:state.projects.length}</strong><small>Ideas becoming shared work</small></div><div class="stat"><div class="stat-top">Working circles${icon('groups')}</div><strong>${state.groups.length}</strong><small>${state.mode==='demo'?'Illustrative groups':'Groups in this workspace'}</small></div><div class="stat"><div class="stat-top">Verified contribution${icon('hours')}</div><strong>${verified.toLocaleString()}<small> hours</small></strong><small>${isOrganiser()?'Across this workspace':'Visible to you'} · counted once</small></div><div class="stat"><div class="stat-top">Your next step${icon('check')}</div><strong class="next-step">${state.actor?'Take part':'Explore'}</strong><small>Choose a useful contribution</small></div></div>
 <div class="grid-main"><section><div class="section-heading"><h2>Work worth doing, together</h2><a href="#projects">All projects →</a></div>${state.projects.slice(0,3).map(projectCard).join('')||(isPilot()?'<div class="panel"><p class="muted">No projects yet. Projects are organised by working group.</p><a class="button quiet" href="#groups">Open working groups</a></div>':'<div class="panel"><p class="muted">Shared projects appear here when you join the workspace.</p></div>')}</section><div><section class="panel"><div class="section-heading"><h2>What matters now</h2><a href="#priority" aria-label="Open urgency and importance assessment">↗</a></div>${matrix(true)}<div class="matrix-note"><span>HUMAN JUDGEMENT</span><span>OPEN TO REVIEW</span></div><p class="muted">Urgency and importance, informed by Joyful Responsible Abundance.</p></section><section class="panel"><span class="eyebrow">A movement from the ground up</span><h3>Grow through relationships.</h3><div class="path"><div class="path-step current">People</div><div class="path-step current">Local groups</div><div class="path-step">State</div><div class="path-step">Federal</div></div><p class="muted">Build shared capacity locally. Future parties will have their own rules, consent and governance.</p></section></div></div><div class="quick-links">${resources.slice(0,3).map(resourceCard).join('')}</div>`;}
 function projects(){return `${heading('Shared work','From a good idea to something useful.','Gather people, agree the next actions and keep a record of what changes.',projectStartAction())}<div class="filters"><label class="sr-only" for="project-search">Search projects</label><input id="project-search" type="search" placeholder="Search projects, purposes and places…"><label class="sr-only" for="theme-filter">Project pathway</label><select id="theme-filter"><option value="">All pathways</option>${Object.entries(themes).map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select><label class="sr-only" for="status-filter">Project status</label><select id="status-filter"><option value="">All stages</option>${['proposed','active','review','complete'].map(s=>`<option>${s}</option>`).join('')}</select></div><div class="projects-grid" id="project-results">${state.projects.map(projectCard).join('')||(isPilot()?'<div class="empty">No projects yet. Projects are organised by working group.</div>':'<div class="empty">No projects to show yet.</div>')}</div><div class="callout">Missing Middle and Verse Box projects begin as proposals. A planning record does not establish a host agreement, operating installation or confirmed event.</div>`;}
-function priorities(){return `${heading('Joyful Responsible Abundance','What matters now. And what matters next.','Make the reasons visible. Revisit the assessment as evidence and circumstances change.')}<div class="grid-main"><section>${matrix()}</section><aside class="panel"><span class="eyebrow">A proposed working method</span><h2>Two questions. Three bearings.</h2><p class="muted"><strong>Urgency:</strong> what is happening now, is there a real decision window, and what is the cost of delay?</p><p class="muted"><strong>Importance:</strong> whose life improves, how much changes, and what enduring capacity does it create?</p><div class="meta-row"><strong>Joy</strong><span>Lives made better</span></div><div class="meta-row"><strong>Responsibility</strong><span>Consent, costs, stewardship</span></div><div class="meta-row"><strong>Abundance</strong><span>Useful capacity shared</span></div><p class="muted">Each axis uses 1–5. Ratings of 4 or 5 appear in the higher band. Readiness stays separate: a project can matter deeply while still needing people or resources.</p><p class="muted">These are reviewable assessments of projects. They do not score people or their civic worth.</p><div class="subheading">${resourceCard(resources[0])}</div></aside></div>`;}
+function priorities(){return `${heading('Joyful Responsible Abundance','What matters now. And what matters next.','Show your reasons and revisit them as evidence and circumstances change.')}<div class="grid-main"><section>${matrix()}</section><aside class="panel jra-priorities"><h2>How we assess the work</h2><p><strong>Urgency.</strong> What is happening now, when does a decision need to be made and what would delay cost?</p><p><strong>Importance.</strong> How much could this change people’s lives, and what benefit might last?</p>${jraQuestions()}<p>Use 1–5 for urgency and importance. Ratings of 4 or 5 appear in the higher band. Record separately what the project needs before it can go ahead.</p><a href="${e(jraSource)}" target="_blank" rel="noopener noreferrer">Explore Joyful Responsible Abundance ↗</a></aside></div>`;}
 function projectDetail(id){const p=project(id);if(!p)return `${heading('Shared work','Project unavailable','This project may be outside your groups, or the link may have changed.')}<a href="#projects">Back to projects</a>`;if(!state.actor)return `${heading(themes[p.theme]||'Public project',p.title,p.summary)}${requireMember()}`;const participating=isParticipant(p);return `<a class="back-link" href="#projects">← Shared projects</a>${heading(themes[p.theme]||'Shared project',p.title,p.summary,state.actor&&!p.participantIds?.includes(state.actor.id)?actionButton('Take part','join-project',p.id,''):tag(p.status,statusTone(p.status)))}<div class="button-row">${tag(group(p.groupId)?.name||'Working circle')}${tag(p.status,statusTone(p.status))}${canEdit(p)?actionButton('Update project stage','project-stage',p.id,'secondary small'):''}</div><div class="detail-grid"><div><section class="panel"><div class="section-heading"><h2>Next actions</h2><small class="muted">${(p.tasks||[]).filter(t=>t.done).length}/${(p.tasks||[]).length} complete</small></div>${(p.tasks||[]).map(t=>`<label class="task-row ${t.done?'done':''}"><input type="checkbox" data-task="${e(t.id)}" data-project="${e(p.id)}" ${t.done?'checked':''} ${!participating?'disabled':''}><span>${e(t.title)}</span></label>`).join('')||'<p class="muted">Agree a useful next action together.</p>'}${participating?`<form class="inline-form" data-form="task" data-id="${e(p.id)}"><label class="sr-only" for="new-task">New task</label><input id="new-task" name="title" placeholder="Add a clear next action…" maxlength="160" required><button class="button" type="submit">Add</button></form>`:'<p class="muted metric-explainer">Take part in the project to add actions and join the discussion.</p>'}</section>${pathwayPanel(p)}<section class="panel"><h2>The conversation</h2>${(p.comments||[]).map(c=>`<div class="comment"><strong>${e(person(c.personId)?.name||'Project participant')}</strong> <small>${dateText(c.createdAt)}</small><p>${e(c.text)}</p></div>`).join('')||'<p class="muted">Bring an observation, a useful question or an update.</p>'}${participating?`<form data-form="comment" data-id="${e(p.id)}"><label class="field subheading">Your contribution<textarea name="text" placeholder="Keep private household, legal and health details in your own files." maxlength="2000" required></textarea></label><button class="button" type="submit">Add to the conversation</button></form>`:''}</section></div><aside><section class="panel"><div class="section-heading"><h2>Why this matters</h2>${canEdit(p)?actionButton('Review','priority',p.id,'quiet small'):''}</div><div class="scores"><div><div class="score">${p.urgency}<small>Urgency / 5</small></div></div><div><div class="score">${p.importance}<small>Importance / 5</small></div></div></div><p class="muted">${e(p.reason||'Assessment awaiting a reason.')}</p>${['joy','responsibility','abundance'].filter(k=>p[k]).map(k=>`<p class="muted"><strong>${e(k[0].toUpperCase()+k.slice(1))}:</strong> ${e(p[k])}</p>`).join('')}<div class="meta-row"><span>Review due</span><strong>${dateText(p.reviewDate)}</strong></div><div class="meta-row"><span>Readiness</span><strong>${e(p.readiness||'To discuss')}</strong></div>${p.uncertainty?`<p class="muted"><strong>Open questions:</strong> ${e(p.uncertainty)}</p>`:''}<div class="subheading">${sourceLink(p.evidenceUrl)}</div>${(p.assessmentHistory||[]).length?`<details class="assessment-history"><summary>Previous assessments (${p.assessmentHistory.length})</summary>${p.assessmentHistory.slice().reverse().map(a=>`<div class="activity-line"><div><strong>Urgency ${a.urgency}/5 · Importance ${a.importance}/5</strong><p>${e(a.reason)}</p><small>${dateText(a.assessedAt)}</small></div></div>`).join('')}</details>`:''}</section><section class="panel"><h2>People & contribution</h2><div class="meta-row"><span>Coordinated by</span><strong>${e(person(p.ownerId)?.name||'Project coordinator')}</strong></div><div class="meta-row"><span>Participants</span><strong>${p.participantIds?.length||0}</strong></div><p class="muted">${isPilot()?'Contribution capture will open when Aura-assisted intake is ready.':'Record time freely given and submit it for independent verification.'}</p>${participating&&!isPilot()?actionButton('Record a contribution','log-hours',p.id,'secondary') : ''}</section></aside></div>`;}
 function pathwayPanel(p){if(p.theme==='missing-middle')return `<section class="panel"><span class="eyebrow">Missing Middle · Local opportunity</span><h2>Make the opportunity concrete.</h2><p class="muted">Agree the host, useful workloads and local responsibilities before treating an installation as confirmed.</p><div class="button-row subheading">${['Host & place','Workloads & users','Power, connection & heat','Ownership & renewal','Skills & maintenance'].map(s=>tag(s)).join('')}</div><p class="muted">Use the next actions and discussion to identify unknowns, agree an owner and record evidence. Commercial and co-operative relationships remain distinct from P4A membership.</p><a class="source-link" target="_blank" rel="noopener noreferrer" href="${resources[1].url}">Read the Missing Middle proposal ↗</a></section>`;if(p.theme==='verse-box')return `<section class="panel"><span class="eyebrow">Verse Box · Assisted participation</span><h2>Try something useful. Take it with you.</h2><p class="muted">Begin with a participant-chosen question, a learning task or a local project. Use sample material, inspect the result together, then let the participant choose what to keep and share.</p><div class="path"><div class="path-step current">Choose a task</div><div class="path-step">Try & review</div><div class="path-step">Take it home</div></div><p class="muted">Planning includes a host agreement, accessibility, assistance, consent, a tested handover and clearing public equipment. Personal Aura and Genesis records stay separate.</p><div class="button-row subheading">${actionButton('Make a take-home note','handover',p.id,'secondary')}<a class="source-link" target="_blank" rel="noopener noreferrer" href="${resources[2].url}">Explore the Verse Box ↗</a></div></section>`;return '';}
 function people() {
   if (!state.actor) return requireMember();
   const pilot = isPilot();
-  const applications = state.memberships.filter(m => m.status === 'pending');
+  const applications = state.memberships.filter(m => m.status === 'pending' && m.personId !== state.actor.id);
   return `${heading('Relationships', 'People make the movement.', pilot ? 'See the people and contacts available to your workspace role.' : 'Profiles are shared by choice. Joining a working group and joining an organisation are separate actions.', isOrganiser() ? actionButton('Add a contact', 'new-person', '', '') : '')}
     <div class="filters"><label class="sr-only" for="people-search">Find a person</label><input id="people-search" type="search" placeholder="Search visible names, places or skills…"></div>
     <div class="table-wrap" data-scroll-key="people-table"><table><thead><tr><th>Person</th><th>Place</th><th>Skills & interests</th><th>Sharing</th></tr></thead><tbody id="people-results">${peopleRows(state.people)}</tbody></table></div>
-    ${isOrganiser() ? `${pilot ? '' : `<h2 class="subheading">Movement applications</h2>
+    ${isOrganiser() ? `${isLocalReview() && state.onboarding?.enabled ? '<p class="subheading"><a class="button secondary" href="#onboarding/review">Review practice applications</a></p>' : ''}${isLocalReview() && state.onboarding?.enabled && applications.length ? `<h2 class="subheading">Earlier demo applications</h2>
       <div class="panel">${applications.map(m => `<div class="membership-status"><div><strong>${e(person(m.personId)?.name || 'Applicant')}</strong><p>Movement participation · Applied ${dateText(m.createdAt)}</p></div>
         <div class="button-row">${actionButton('Accept', 'accept-membership', m.id, 'secondary small')}${actionButton('Close application', 'close-membership', m.id, 'secondary small')}</div>
-      </div>`).join('') || '<p class="muted">No pending applications.</p>'}</div>`}
+      </div>`).join('')}</div>` : ''}
       <section class="panel subheading"><h2>Recent changes</h2>${state.activity.slice(0,12).map(a=>`<div class="activity-line"><div>${e(a.summary)}<small>${e(person(a.actorId)?.name||'Workspace participant')} · ${dateText(a.at)}</small></div></div>`).join('')||'<p class="muted">Changes will appear here.</p>'}</section>` :
       '<div class="callout">The member directory includes only people who chose to appear. Organisers have a separate, restricted relationship view.</div>'}`;
 }
@@ -123,12 +137,11 @@ function profile() {
   const pilot = isPilot();
   const me = person(state.actor.id) || state.actor;
   const membership = state.memberships.find(m => m.personId === state.actor.id && m.status !== 'withdrawn');
-  const participation = pilot ? `<section class="panel"><h2>Workspace access</h2><p class="muted">Your invitation gives you access to work on groups, projects and drafts. Membership applications are handled separately from this workspace.</p></section>` : `<section class="panel">
-    <h2>Movement participation</h2>
-    <p class="muted">An application to the movement in formation is separate from any future registered party membership.</p>
-    <div class="membership-status"><div>${tag(membership?.status || 'Not applied', statusTone(membership?.status))}</div>
-      ${membership ? actionButton('Withdraw', 'withdraw-membership', membership.id, 'secondary small') : actionButton('Apply to take part', 'apply-membership', '', 'secondary small')}
-    </div>
+  const participation = `<section class="panel">
+    <h2>Membership onboarding</h2>
+    <p class="muted">${pilot ? 'Your invitation gives you access to groups, projects and drafts. See what applying to the movement would involve.' : 'See how to prepare for induction, identity checks and an independent review.'}</p>
+    <a class="button quiet" href="#onboarding">Open membership onboarding →</a>
+    ${membership ? `<div class="membership-status"><div>${tag(membership.status, statusTone(membership.status))}</div>${actionButton('Withdraw', 'withdraw-membership', membership.id, 'secondary small')}</div>` : ''}
   </section>`;
   return `${heading(pilot ? 'Private workspace' : 'Your participation', pilot ? 'Your workspace profile' : 'Your details. Your choices.', pilot ? 'Manage your profile and sharing choices within the workspace.' : 'Choose what is shared, manage your participation and take a copy of your records.')}
     <div class="detail-grid">
@@ -158,8 +171,12 @@ function render() {
   rememberScrollPositions(document);
   const [route = 'home', id] = (location.hash.slice(1) || 'home').split('/');
   const pilot = isPilot();
+  const civicTools = hasCivicTools();
+  const trainingActor = state.actor?.id || 'local-public';
+  $('.shell').classList.toggle('private-workspace', pilot);
+  const availableWorkspaceRoutes = workspaceRoutes.filter(([key]) => civicTools || (key !== 'readiness' && key !== 'training'));
   const pilotLabels = { profile: 'Your profile', transparency: 'Restricted transparency' };
-  const current = routes.find(r => r[0] === route) || ['projects', 'Shared projects'];
+  const current = [...availableWorkspaceRoutes, ...accountabilityRoutes].find(r => r[0] === route) || ['home', 'Your workspace'];
   const currentLabel = pilot ? pilotLabels[current[0]] || current[1] : current[1];
   document.title = `${currentLabel} · P4A`;
   const navLink = ([key, label]) => {
@@ -169,7 +186,7 @@ function render() {
   };
   const roleLabel = state.actor?.role || 'Everyone is welcome';
   $('#sidebar').innerHTML = `<a class="brand" href="#home" aria-label="P4A workspace home"><span class="brand-mark">P4A</span><span><strong>People & possibility</strong><small>A shared civic workspace</small></span></a>
-    <div class="nav-label">${pilot ? 'Private workspace' : 'Your movement'}</div><nav>${routes.slice(0, 9).map(navLink).join('')}<div class="nav-label">Open & accountable</div>${routes.slice(9).map(navLink).join('')}</nav>
+    ${pilot ? '<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Workspace menu</button>' : ''}<nav id="workspace-links" aria-label="Workspace pages"><div class="nav-label">${pilot ? 'Private workspace' : 'Your movement'}</div>${availableWorkspaceRoutes.map(navLink).join('')}<div class="nav-label">Open & accountable</div>${accountabilityRoutes.map(navLink).join('')}</nav>
     <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong>Build from people and local groups, with room for the whole vision.<br><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
     <div class="identity"><span class="avatar">${e(initials(state.actor?.name || 'Public'))}</span><div>${e(state.actor?.name || 'Public visitor')}<small>${e(roleLabel)}</small></div></div></div>`;
   let accountControl = `<span class="muted"><span class="status-dot"></span>${state.actor ? 'Signed in' : 'Public view'}</span>`;
@@ -185,10 +202,74 @@ function render() {
   banner.innerHTML = pilot
     ? '<strong>PRIVATE WORKSPACE</strong> Access is limited to invited accounts. Your working groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
-  const views = { gamify: () => gamifyView(state, gamifyHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people, groups, hours, transparency, resources: connected, profile };
+  const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyView(state, gamifyHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people, groups, hours, transparency, resources: connected, profile };
+  const isApplicationsPage = route === 'onboarding' && id === 'applications' && civicTools && isOrganiser();
+  if (isApplicationsPage) {
+    views.onboarding = () => applicationReview?.applicationReviewView({ heading }) || '<p role="status">Opening the applications register…</p>';
+  }
+  clearInterval(readinessTimer);
+  if (route === 'readiness' && civicTools) {
+    views.readiness = () => readiness?.readinessView(id, { e, heading, icon }) || '<div class="panel"><p role="status">Opening the electoral readiness calendar…</p></div>';
+  }
+  if (route === 'training' && civicTools) {
+    views.training = () => training?.trainingView(id, trainingActor, { e, heading }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
+  }
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
+  const trainingTitle = route === 'training' ? $('#main .civic-training-page h1')?.textContent : null;
+  if (trainingTitle && trainingTitle !== currentLabel) document.title = `${trainingTitle} · Civic training · P4A`;
   restoreScrollPositions(document);
+  if (isApplicationsPage) {
+    if (applicationReview) {
+      applicationReview.mountApplicationReview($('[data-applications]'), { api, e });
+    } else {
+      import('./application-review.mjs').then(module => {
+        applicationReview = module;
+        if (location.hash === '#onboarding/applications') {
+          render();
+          focusPage();
+        }
+      }).catch(() => {
+        if (location.hash === '#onboarding/applications') $('#main').innerHTML = '<p role="alert">The applications register could not open. Reload the workspace to try again.</p>';
+      });
+    }
+  }
   if (route === 'transparency') void loadPublic();
+  if (route === 'training' && civicTools) {
+    if (training) {
+      training.mountTraining($('#main'), trainingActor);
+    } else {
+      import('./civic-training.mjs').then(module => {
+        training = module;
+        if (location.hash.split('/')[0] === '#training') {
+          const focusWasInMain = document.activeElement === $('#main');
+          render();
+          if (focusWasInMain) focusPage();
+        }
+      }).catch(() => {
+        if (location.hash.split('/')[0] === '#training') $('#main').innerHTML = '<div class="panel"><h1>Civic training</h1><p>The modules could not open. Reload the workspace to try again.</p></div>';
+      });
+    }
+  }
+  if (route === 'readiness' && civicTools) {
+    if (readiness) {
+      readiness.mountFundingCalculator($('#main'));
+      const refresh = () => readiness.refreshClocks($('#main'));
+      refresh();
+      readinessTimer = setInterval(refresh, 30000);
+    } else {
+      import('./electoral-readiness.mjs').then(module => {
+        readiness = module;
+        if (location.hash.split('/')[0] === '#readiness') render();
+      }).catch(() => {
+        if (location.hash.split('/')[0] === '#readiness') $('#main').innerHTML = '<div class="panel"><h1>Electoral readiness</h1><p>The calendar could not open. Reload the workspace to try again.</p></div>';
+      });
+    }
+  }
+}
+function focusPage() {
+  const target = $('#main :is(.civic-training-page, .onboarding-page) h1') || $('#main');
+  target.tabIndex = -1;
+  target.focus({ preventScroll: true });
 }
 function constitutionPage(documentId) {
   const helpers = {e,heading,tag,person,dateText,actionButton,sourceLink,requireMember};
@@ -209,7 +290,7 @@ function constitutionPage(documentId) {
 function gamifyHelpers(){return {e,heading,tag,person,dateText,actionButton,field,showDialog,command,notify,closeDialog,today,api,render,logHours};}
 function showDialog(title,intro,body,form,submit='Save',id=''){dialogReturnFocus=document.activeElement;$('#dialog').innerHTML=`<div class="dialog-heading"><h2 id="dialog-title">${e(title)}</h2><button class="close" data-action="close-dialog" aria-label="Close dialog">×</button></div><p class="dialog-intro">${e(intro)}</p><form data-form="${form}" data-id="${e(id)}"><div class="form-grid">${body}</div><div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="button secondary" data-action="close-dialog">Cancel</button><button class="button" type="submit">${e(submit)}</button></div></form>`;$('#dialog').showModal();}
 function closeDialog(){$('#dialog').close();if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus();else $('#main').focus({preventScroll:true});}
-function priorityFields(p={}){return `<label class="field">Urgency<select name="urgency">${[1,2,3,4,5].map(n=>`<option ${Number(p.urgency||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: can wait · 5: immediate decision or harm</small></label><label class="field">Importance<select name="importance">${[1,2,3,4,5].map(n=>`<option ${Number(p.importance||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: limited change · 5: substantial lasting change</small></label><label class="field full">Reasons for this assessment<textarea name="reason" required maxlength="1800">${e(p.reason)}</textarea></label>${field('Joy: whose life improves?','joy',p.joy,{full:true,length:500})}${field('Responsibility: who decides and carries the costs?','responsibility',p.responsibility,{full:true,length:500})}${field('Abundance: what useful capacity becomes accessible?','abundance',p.abundance,{full:true,length:500})}${field('Supporting source (https://)','evidenceUrl',p.evidenceUrl,{type:'url',full:true,length:1000})}${field('Next review','reviewDate',p.reviewDate||today(),{type:'date',required:true})}${field('Readiness','readiness',p.readiness||'Exploring')}${field('Uncertainty and dependencies','uncertainty',p.uncertainty,{full:true,length:500})}`;}
+function priorityFields(p={}){return `<label class="field">Urgency<select name="urgency">${[1,2,3,4,5].map(n=>`<option ${Number(p.urgency||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: can wait · 5: immediate decision or harm</small></label><label class="field">Importance<select name="importance">${[1,2,3,4,5].map(n=>`<option ${Number(p.importance||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: limited change · 5: substantial lasting change</small></label><label class="field full">Reasons for this assessment<textarea name="reason" required maxlength="1800">${e(p.reason)}</textarea></label>${jraValues.map(({title, question}) => { const key = title.toLowerCase(); return field(title + " · " + question, key, p[key], {full:true,length:500}); }).join("")}${field('Supporting source (https://)','evidenceUrl',p.evidenceUrl,{type:'url',full:true,length:1000})}${field('Next review','reviewDate',p.reviewDate||today(),{type:'date',required:true})}${field('Readiness','readiness',p.readiness||'Exploring')}${field('Uncertainty and dependencies','uncertainty',p.uncertainty,{full:true,length:500})}`;}
 function projectGroups() {
   return state.groups.filter(g => isOrganiser() || g.memberIds?.includes(state.actor?.id));
 }
@@ -234,13 +315,15 @@ function handover(id){showDialog('A note to take with you','Write only what you 
 function download(name,text,type='application/json'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function setRole(role) {
   if (state.mode !== 'demo') return;
+  const focusWasInOnboarding = Boolean(document.activeElement?.closest('.onboarding-page'));
   await api('/api/demo/session', { method: 'POST', body: JSON.stringify({ role }) });
   await load();
   render();
+  if (focusWasInOnboarding) focusPage();
   notify(role === 'public' ? 'Now showing the public view.' : `Now exploring as a fictional ${role}.`);
 }
 
-document.addEventListener('click',async event=>{if(event.target.closest('.skip-link')){event.preventDefault();$('#main').focus();return;}const button=event.target.closest('[data-action]');if(!button)return;const {action,id,subid}=button.dataset;try{
+document.addEventListener('click',async event=>{if(event.target.closest('.skip-link')){event.preventDefault();$('#main').focus();return;}const menu=event.target.closest('#workspace-menu');if(menu){menu.setAttribute('aria-expanded',String(menu.getAttribute('aria-expanded')==='false'));return;}const button=event.target.closest('[data-action]');if(!button)return;const {action,id,subid}=button.dataset;try{
   if (action === 'copy-campaign-prompt') {
     const prompt = $('#campaign-prompt');
     try {
@@ -294,13 +377,7 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
   if(action==='log-hours')return logHours(id);
   if(action==='handover')return handover(id);
   if(action==='project-stage'){const p=project(id);return showDialog('Update the project stage','Record the present stage of the work.',`<label class="field full">Stage<select name="status">${['proposed','active','review','complete'].map(s=>`<option ${p.status===s?'selected':''}>${s}</option>`).join('')}</select></label>`,'stage','Update stage',id);}
-  if (action === 'apply-membership') {
-    if (isPilot()) return;
-    const acknowledgement = 'I understand that P4A is a movement in formation, with no adopted constitution or party registration. This application is separate from future party membership and paid services.';
-    return showDialog('Apply to the movement', 'This review build demonstrates an application. It does not register you with a political party.', `<label class="check-field field full"><input name="acknowledged" type="checkbox" required><span>${acknowledgement}</span></label>`, 'membership', 'Submit application');
-  }
   if (action === 'withdraw-membership') {
-    if (isPilot()) return;
     return showDialog('Withdraw movement participation', 'Your membership record will show that you have withdrawn. Your account and working group choices remain separate.', '<p class="field full">This updates your participation status and retains its history.</p>', 'withdraw', 'Withdraw', id);
   }
   if(action==='export'){const data=await api('/api/export');download(isPilot()?'p4a-pilot-records.json':'p4a-my-records.json',JSON.stringify(data,null,2));notify('Your records have been downloaded.');return;}
@@ -324,9 +401,18 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
     if(kind==='comment'){type='comment.add';payload={projectId:id,text:data.text};}
     if(kind==='stage'){type='project.status';payload={projectId:id,status:data.status};}
     if(kind==='hours'){type='contribution.log';payload={...data,hours:Number(data.hours),publicConsent:fd.has('publicConsent')};}
-    if(kind==='membership'){type='membership.apply';payload={acknowledged:fd.has('acknowledged')};}
     if(kind==='withdraw'){type='membership.withdraw';payload={membershipId:id};}
-    if(!type)throw new Error('Unknown action.');await command(type,payload);if($('#dialog').open)closeDialog();notify(kind==='hours'?'Contribution submitted for independent review.':'Saved. Your workspace is up to date.');
+    if (kind === 'onboarding-start') { type = 'onboarding.start'; payload = { policyVersion: data.policyVersion, acknowledged: fd.has('acknowledged') }; }
+    if (kind === 'onboarding-submit') {
+      type = 'onboarding.submit';
+      const answers = Object.fromEntries(Object.entries(data).filter(([key]) => key.startsWith('answer.')).map(([key, value]) => [key.slice(7), value]));
+      payload = { caseId: id, policyVersion: data.policyVersion, answers };
+    }
+    if (kind === 'onboarding-review') { type = 'onboarding.review'; payload = { caseId: id, outcome: data.outcome, reason: data.reason }; }
+    if (kind === 'onboarding-withdraw') { type = 'onboarding.withdraw'; payload = { caseId: id }; }
+    if(!type)throw new Error('Unknown action.');await command(type,payload);if($('#dialog').open)closeDialog();
+    if (type.startsWith('onboarding.')) { focusPage(); notify('Saved in the practice application.'); }
+    else notify(kind==='hours'?'Contribution submitted for independent review.':'Saved. Your workspace is up to date.');
   }catch(err){if(error)error.textContent=err.message;else notify(err.message);}finally{if(submit)submit.disabled=false;}
 });
 document.addEventListener('change',async event=>{try{if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
@@ -338,6 +424,6 @@ document.addEventListener('input', event => {
   $('#campaign-prompt').value = campaignReplicationPrompt(fields);
 });
 document.addEventListener('input',event=>{if(event.target.id==='project-search')filterProjects();if(event.target.id==='people-search'){$('#people-results').innerHTML=peopleRows(state.people.filter(p=>`${p.name} ${p.place} ${p.skills} ${p.interests}`.toLowerCase().includes(event.target.value.toLowerCase())));}});
-window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});});
+window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);focusPage();});
 $('#dialog').addEventListener('click',event=>{if(event.target===$('#dialog')){const r=$('#dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();}});
 try{await load();render();}catch(err){$('#main').innerHTML=`<div class="panel"><h1>The workspace could not open.</h1><p class="muted subheading">${e(err.message)}</p><button class="button" id="retry">Try again</button></div>`;$('#retry').onclick=()=>location.reload();}

@@ -10,7 +10,7 @@ export function createPreviewApi({ now = () => new Date() } = {}) {
   const seedTime = now();
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit' }).format(seedTime);
   const apply = (id, type, data) => {
-    const outcome = executeCommand(state, actorFor(state, id), { id: crypto.randomUUID(), revision: state.revision, type, data }, seedTime);
+    const outcome = executeCommand(state, actorFor(state, id), { id: crypto.randomUUID(), revision: state.revision, type, data }, seedTime, { mode: 'demo' });
     state = outcome.state;
   };
   // These are illustrative fixtures, never the user's local review register.
@@ -46,7 +46,7 @@ export function createPreviewApi({ now = () => new Date() } = {}) {
     if (!actor) throw new AppError('Choose a fictional member or organiser perspective to explore this preview.', 401);
     if (method === 'GET' && url.pathname === '/api/export') return { ...projectState(state, actor, 'demo', false), preview: true };
     if (method === 'POST' && url.pathname === '/api/commands') {
-      const outcome = executeCommand(state, actor, bodyOf(options), now());
+      const outcome = executeCommand(state, actor, bodyOf(options), now(), { mode: 'demo' });
       state = outcome.state;
       return structuredClone(outcome.result);
     }

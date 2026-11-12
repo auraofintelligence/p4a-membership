@@ -54,8 +54,9 @@ For the public dashboard, study the Redlands Coast Intelligence independent draf
 6. Record open questions and link to current official election, disclosure and authorisation guidance. Include setup instructions, tests for private/public access and dataset provenance, and a brief walkthrough. Leave deployment and external actions for explicit approval.`;
 }
 
-export function homeDoors(icon) {
+export function homeDoors(icon, pilot = false) {
   return `<section class="home-doors" aria-label="Build, contribute and connect locally">
+    <a class="home-door onboarding-door" href="#onboarding">${icon('onboarding')}<div><h2>Membership onboarding</h2><p>See how applications, civic induction and independent review fit together.</p><span class="door-action">Explore the membership path →</span></div></a>
     <a class="home-door gamify-door" href="#gamify">
       ${icon('gamify')}
       <div><span class="eyebrow">Recognise what we contribute</span><h2>Gamify Democracy</h2><p>See the funding and freely given time behind shared work. Explore two leaderboards, verified receipts and your recognition choices.</p><span class="door-action">Explore contribution leaderboards →</span></div>
@@ -68,6 +69,7 @@ export function homeDoors(icon) {
       ${icon('campaigns')}
       <div><h2>Campaign Command Centre</h2><p>Find campaign workspaces by place and see how to access them.</p><span class="door-action">Browse command centres →</span></div>
     </a>
+    ${pilot ? `<a class="home-door training-door" href="#training">${icon('training')}<div><h2>Civic training</h2><p>Take part, volunteer, stand for election or learn how to serve in office.</p><span class="door-action">Choose where to start →</span></div></a>` : ''}
     <a class="home-door node-door" href="${strangeButTrue.url}" target="_blank" rel="noopener noreferrer">
       ${icon('nodes')}
       <div><span class="eyebrow">A local node · Minjerribah</span><h2>Strange But True</h2><p>Practical tech and AI help, creative work and community ideas on Straddie.</p><span class="door-action">Visit the local node ↗</span></div>
@@ -79,7 +81,7 @@ export function homeDoors(icon) {
   </section>`;
 }
 
-export function campaignsView({heading, icon}) {
+export function campaignsView({heading, icon, pilot}) {
   return `${heading('Campaign operations', 'Campaign Command Centre', 'Browse campaign workspaces by place and adapt the Redlands model to your electorate.')}
     <section class="quick-links" aria-label="Campaign workspaces and references">
       ${campaignCentres.map(centre => `<a class="resource-card" href="${centre.url}" target="_blank" rel="noopener noreferrer">
@@ -97,6 +99,7 @@ export function campaignsView({heading, icon}) {
         <span class="door-action">Open the former mayoral site ↗</span>
       </a>
     </section>
+    ${pilot ? `<a class="home-door campaign-door readiness-door" href="#readiness">${icon('readiness')}<div><h2>Electoral readiness</h2><p>Check registration targets, six-month readiness dates and campaign rules across Australia.</p><span class="door-action">Open the electoral calendar →</span></div></a>` : ''}
     <section class="panel wide-panel subheading" aria-labelledby="campaign-model-heading">
       <h2 id="campaign-model-heading">How the Redlands model works</h2>
       <p class="muted">The Command Centre was the private operations workspace for the former Redlands mayoral campaign. It brings research, communications drafts and finance records together for review.</p>
