@@ -3,13 +3,17 @@ import { sportGames } from './team-games-sports.mjs';
 
 const formats = {
   board: 'Board games',
+  card: 'Card games',
   sport: 'Sports',
-  conversation: 'Social and reflection',
+  computer: 'Computer games',
+  escape: 'Escape rooms',
+  conversation: 'Conversation and reflection',
 };
 
 const styles = {
   cooperative: 'Cooperative',
   competitive: 'Competitive',
+  individual: 'Individual strategy',
 };
 
 const selectedFilters = { format: '', style: '' };
@@ -51,7 +55,7 @@ export function teamGamesIndex({ e, actionButton, actor, civicTools }) {
       <label class="field">Play style<select data-team-game-filter="style">${filterOptions(styles, 'All styles', selectedFilters.style, e)}</select></label>
       <p class="metric-explainer" data-team-game-count role="status">${teamGames.length} games</p>
     </div>
-    <p data-team-game-empty hidden>Choose a different format or play style to see more games.</p>
+    <p data-team-game-empty hidden>No games listed for these filters yet. ${actor ? 'Use Suggest a game to bring one.' : 'You can name a game you’d bring during onboarding.'}</p>
     <div class="team-games-grid">${teamGames.map(game => gameCard(game, { e, actionButton, actor })).join('')}</div>
   </section>`;
 }
