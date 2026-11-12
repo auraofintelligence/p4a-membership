@@ -6,7 +6,11 @@ export { AppError } from './errors.mjs';
 export { gamifyProjection } from './gamify.mjs';
 
 const THEMES = ['everyday-life', 'missing-middle', 'verse-box', 'civic-evidence', 'local-care'];
-const PERSONAL_ACTIVITY = new Set(['training.complete', 'team-game.record', 'team-game.remove', 'gamify.idea.propose', 'gamify.idea.withdraw']);
+const INFLUENCE_KINDS = ['book', 'tv', 'movie', 'song', 'art', 'podcast'];
+const PERSONAL_ACTIVITY = new Set([
+  'training.complete', 'team-game.record', 'team-game.remove', 'gamify.idea.propose', 'gamify.idea.withdraw',
+  'profile.influence.add', 'profile.influence.update', 'profile.influence.remove',
+]);
 const brisbaneDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit' });
 const fail = (message, status = 400) => { throw new AppError(message, status); };
 const text = (value, name, max = 600, required = false) => {
@@ -24,6 +28,13 @@ const catalogueId = (value, name) => {
   return value;
 };
 const safeURL = value => { if (!value) return ''; const result = text(value, 'Evidence link', 1200); let url; try { url = new URL(result); } catch { fail('Use a valid https source link.'); } if (url.protocol !== 'https:') fail('Use a valid https source link.'); return url.href; };
+function influenceContent(data) {
+  return {
+    kind: choose(data.kind, INFLUENCE_KINDS, 'type of work'),
+    title: text(data.title, 'Title', 140, true),
+    note: text(data.note, 'Why it matters to you', 600, true),
+  };
+}
 const priority = data => {
   const result = {};
   for (const key of ['urgency', 'importance']) {
@@ -94,6 +105,23 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
       for (const field of ['name', 'place', 'skills', 'interests']) if (field in data) profile[field] = text(data[field], field, field === 'name' ? 100 : 600, field === 'name');
       for (const field of ['directoryConsent', 'contactConsent']) if (field in data) profile[field] = bool(data[field], field);
       summary = 'Updated own profile and sharing choices.'; break;
+    case 'profile.influence.add': {
+      const influence = { id: uuid(), ...influenceContent(data) };
+      (profile.influences ??= []).push(influence);
+      summary = 'Added a work to own profile.'; break;
+    }
+    case 'profile.influence.update': {
+      const influence = find(profile.influences ?? [], data.influenceId, 'Profile entry');
+      Object.assign(influence, influenceContent(data));
+      summary = 'Updated a work on own profile.'; break;
+    }
+    case 'profile.influence.remove': {
+      const influences = profile.influences ?? [];
+      const index = influences.findIndex(influence => influence.id === data.influenceId);
+      if (index === -1) fail('Profile entry was not found.', 404);
+      influences.splice(index, 1);
+      summary = 'Removed a work from own profile.'; break;
+    }
     case 'training.complete': {
       const moduleId = catalogueId(data.moduleId, 'training module');
       if (!next.learningCompletions.some(item => item.personId === actor.id && item.moduleId === moduleId)) {
@@ -315,7 +343,7 @@ export function publicProjection(state, mode = 'live') {
 }
 export function projectState(state, actor, mode = 'live', workspace = false) {
   state = normaliseState(state);
-  const base = { mode, actor, revision: state.revision, people: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], myLearning: [], myGamePlays: [], gamifyIdeas: [], activity: [], billing: { enabled: false }, integrations: { workspace }, public: publicProjection(state, mode) };
+  const base = { mode, actor, revision: state.revision, people: [], memberProfiles: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], myLearning: [], myGamePlays: [], gamifyIdeas: [], activity: [], billing: { enabled: false }, integrations: { workspace }, public: publicProjection(state, mode) };
   base.onboarding = onboardingProjection(state, actor, mode);
   base.decisions = base.public.decisions;
   if (!actor) { base.projects = base.public.projects; return base; }
@@ -323,12 +351,15 @@ export function projectState(state, actor, mode = 'live', workspace = false) {
   base.constitutions = structuredClone(state.constitutions);
   base.people = state.people.filter(person => organiser || person.id === actor.id || person.directoryConsent === true).map(person => {
     if (organiser || person.id === actor.id) {
-      const { authSubject, role, ...profile } = person;
+      const { authSubject, role, influences, ...profile } = person;
       return profile;
     }
     const { id, name, place, skills, interests } = person;
     return { id, name, place, skills, interests, directoryConsent: true };
   });
+  base.memberProfiles = state.people.filter(person => person.influences?.length).map(({ id, name, influences }) => ({
+    id, name, influences: influences.map(({ id, kind, title, note }) => ({ id, kind, title, note })),
+  }));
   base.groups = state.groups.map(group => ({ ...group, memberIds: organiser ? [...group.memberIds] : group.memberIds.filter(id => id === actor.id), memberCount: group.memberIds.length }));
   base.projects = state.projects.filter(project => organiser || state.groups.find(group => group.id === project.groupId)?.memberIds.includes(actor.id)).map(project => structuredClone(project));
   base.memberships = state.memberships.filter(item => organiser || item.personId === actor.id).map(item => structuredClone(item));

@@ -283,3 +283,24 @@
   margin: .4rem 0;
   padding: 0;
 }
+
+.profile-influences { margin-top: 1.25rem; }
+.profile-influences-header, .profile-influence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+}
+.profile-influences-header p { margin: .35rem 0; }
+.profile-influences-list { padding: 0; margin: 1rem 0 0; list-style: none; }
+.profile-influence { border-top: 1px solid var(--line); padding: 1rem 0; }
+.profile-influence:last-child { padding-bottom: 0; }
+.profile-influence-description { flex: 1 1 16rem; min-width: 0; overflow-wrap: anywhere; }
+.profile-influence-description h3 { margin: .35rem 0; }
+.profile-influence-description p { white-space: pre-wrap; }
+.profile-influences-empty { margin-top: 1rem; }
+.profile-influences .button, .profile-influences-back { min-height: 44px; }
+.person-influences-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .9rem; }
+.member-influences-page .page-heading { margin-top: .5rem; }
+.member-influences-page .page-heading h1 { overflow-wrap: anywhere; }
