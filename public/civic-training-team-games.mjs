@@ -10,7 +10,7 @@ export const teamGamesLesson = {
     },
     {
       title: 'Choose what to practise',
-      body: 'Pick a game from the Team games index. In Eco, negotiate a rule with people who depend on different resources. In Pictionary, find a clue your teammate can read without words. In doubles tennis, agree who covers the middle and check how you call it. Choose a different format next time and see which skills carry across.',
+      body: 'Pick something from the Team games index. In Pictionary, find a clue your teammate can read without words. In doubles tennis, agree who covers the middle and check how you call it. At karaoke, see what helps someone feel comfortable taking a turn. Choose a different format next time and see which skills carry across.',
     },
     {
       title: 'Record each game from start to finish',

@@ -35,31 +35,17 @@ export const classicGames = [
     debrief: 'Which answer got stronger when someone quieter spoke up? How could you make space for that in a meeting?',
   },
   {
-    id: 'bridge', title: 'Bridge', format: 'card', style: 'competitive', players: '4 players in 2 pairs',
-    url: 'https://www.acbl.org/learn/',
-    aim: 'Make commitments your partner can interpret and plan around.',
-    setup: 'Play four deals. Agree a simple bidding system and share it with both pairs before starting. After each deal, check what one bid was meant to communicate and how the partner read it.',
-    debrief: 'Where do you use a term in project updates that a teammate might interpret differently?',
-  },
-  {
-    id: 'euchre', title: 'Euchre', format: 'card', style: 'competitive', players: '4 players in 2 pairs',
-    url: 'https://bicyclecards.com/how-to-play/euchre',
-    aim: 'Coordinate with a partner when each of you sees only part of the situation.',
-    setup: 'Play four hands in fixed pairs and rotate the dealer. Afterwards, replay a trick where taking the lead early helped your partner or made their next move harder.',
-    debrief: 'What would you check with a teammate before taking over their part of a task?',
-  },
-  {
-    id: 'uno', title: 'UNO', format: 'card', style: 'competitive', players: '2–10 players',
-    url: 'https://shop.mattel.com/products/uno-card-game-42003',
-    aim: 'Make rules clear and apply them consistently when play moves quickly.',
-    setup: 'Play one round using the rule sheet in the deck. Before dealing, compare any rules people remember differently, such as stacking Draw Two cards. Check the sheet together if a disputed play comes up.',
-    debrief: 'What would help a newcomer tell whether a group follows a written rule or an informal custom?',
-  },
-  {
     id: 'tarot-reflection', title: 'Tarot (group reflection)', format: 'conversation', style: 'cooperative', players: '2–6 people',
     url: 'https://www.usgamesinc.com/tarot-and-inspiration/all-products/Rider-Waite-Smith',
     aim: 'Explore how people read the same symbols and what they bring to a shared question.',
     setup: 'Choose a question about your work together, such as how the team handles uncertainty. Draw one card from a tarot deck, such as Rider–Waite–Smith. Give each person time to share what they see and what it brings to mind, or to pass. Let people explain their own reading.',
     debrief: 'What different meanings did people see in the same card? Did hearing another reading change how you saw the question?',
+  },
+  {
+    id: 'karaoke', title: 'Karaoke', format: 'conversation', style: 'cooperative', players: 'Solo, duets or groups',
+    url: 'https://www.karafun.com/help/web_460.html', sourceLabel: 'Setup guide',
+    aim: 'Have a sing and make it easy for everyone who wants the mic to get a turn.',
+    setup: 'Put together a song queue. Give everyone who wants to sing a turn before anyone goes twice. Start with a duet or group number if people want company, and rotate who hosts the queue.',
+    debrief: 'What did the host or the group do that helped someone feel comfortable taking a turn?',
   },
 ];
