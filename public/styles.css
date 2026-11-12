@@ -238,3 +238,48 @@
 .onboarding-history ol { margin-bottom: 0; padding-inline-start: 1.4em; }
 .onboarding-history li + li { margin-top: 10px; }
 .onboarding-history time { color: #51485c; font-size: 0.875rem; }
+
+.aura-overview {
+  display: grid;
+  gap: 1.25rem;
+  font-size: 1rem;
+}
+.aura-overview > .aura-source { justify-self: start; }
+.aura-overview .page-heading { margin: 0; }
+.aura-overview .page-heading p { font-size: 1rem; }
+.aura-overview p { max-width: 74ch; margin: .45rem 0; line-height: 1.65; }
+.aura-section { min-width: 0; }
+.aura-projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: .85rem;
+}
+.aura-project { min-width: 0; margin: 0; }
+.aura-project :is(h2, h3) { margin: .55rem 0 0; }
+.aura-genesis {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f5eff9;
+  padding: clamp(.85rem, 2vw, 1.5rem);
+}
+.aura-genesis .aura-projects { margin-top: .75rem; }
+.aura-source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: .35rem;
+  padding-block: .35rem;
+  color: var(--purple);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.aura-project .aura-source { display: flex; width: fit-content; }
+.aura-links {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+  list-style: none;
+  margin: .4rem 0;
+  padding: 0;
+}

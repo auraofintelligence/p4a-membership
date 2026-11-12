@@ -82,7 +82,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 55);
+  assert.equal(names.length, 56);
   assert.equal(built.files, names.length);
   for (const name of [
     'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css', 'jra-values.mjs', 'onboarding.mjs',

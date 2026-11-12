@@ -10,15 +10,15 @@ export const teamGamesLesson = {
     },
     {
       title: 'Choose what to practise',
-      body: 'An escape room lets you practise sharing clues under time pressure. A cooperative board, card or computer game gives you a shared problem and different roles. A competitive round lets you practise making decisions with a team under pressure and giving others a fair go. An individual strategy round gives players a chance to explain how they weighed their options. Compare what you learn across formats.',
+      body: 'Pick a published game from the Team games index. In Eco, negotiate a rule with people who depend on different resources. In Daybreak, coordinate climate decisions across regions. In Democracy 4, start from the same situation and compare how two policy choices play out. Choose a different format next time and see which skills carry across.',
     },
     {
       title: 'Record each game from start to finish',
-      body: 'Do the first check-in before recording starts. Explain who can see the recordings and how long they’ll be kept, then confirm consent. Use video, audio and screen capture as suited to the game and record it from start to finish. Review the recording with the team to spot strengths, find roles that suit people and share skills.',
+      body: 'Before choosing a game, check whether the publisher or venue allows the planned recording and use. Do the first check-in before recording starts. Explain who can see the recordings and how long they’ll be kept, then confirm consent. Use video, audio and screen capture as suited to the game and record it from start to finish. Review the recording with the team to spot strengths, find roles that suit people and share skills.',
     },
     {
-      title: 'Name something you saw',
-      body: 'Review a moment together. Ask who clarified a confusing rule, made space for someone else or changed course after a better clue. Describe what happened and invite the person to explain their side. Look for how people contribute in different settings. A good observation names an action the team can learn from.',
+      title: 'Review how the team played',
+      body: 'Look at a specific moment together. Did a handover leave someone guessing? Was a rule applied fairly to everyone? Who made room for another player to contribute? Describe what happened and ask the people involved what they saw. Pick a change to try in the next round and see what improves.',
     },
     {
       title: 'Carry the learning into real work',
