@@ -100,7 +100,7 @@ export function readinessView(id, { e, heading, icon }, now = new Date()) {
   const minimum = jurisdiction.minimum.toLocaleString('en-AU');
   const target = (jurisdiction.minimum * 2).toLocaleString('en-AU');
   return `<div class="electoral-readiness" data-readiness-time-zone="${e(jurisdiction.timeZone)}">
-    ${heading('Campaign Command Centre', 'Electoral readiness', 'Choose an election to see how to register a party, run for office and claim campaign funding.', '<div class="button-row readiness-page-actions"><button type="button" class="button secondary" data-funding-jump>Funding calculator</button><a class="button quiet" href="https://p4a.xyz/pages/states.html" target="_blank" rel="noopener noreferrer">Public election clocks ↗</a></div>')}
+    ${heading('Campaign Command Centre', 'Electoral readiness', 'Choose an election to see how to register a party, run for office and claim campaign funding.', '<div class="button-row readiness-page-actions"><button type="button" class="button secondary" data-funding-jump>Funding calculator</button><a class="button quiet" href="#finance">Electorate budgets</a><a class="button quiet" href="https://p4a.xyz/pages/states.html" target="_blank" rel="noopener noreferrer">Public election clocks ↗</a></div>')}
     <nav class="readiness-jurisdictions" aria-label="Federal, state and territory elections">
       ${electoralJurisdictions.map(item => `<a href="#readiness/${e(item.id)}" aria-label="${e(item.name)}"${item === jurisdiction ? ' aria-current="page"' : ''}>${e(item.label)}</a>`).join('')}
     </nav>

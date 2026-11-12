@@ -11,7 +11,7 @@ const e = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<
 const paths = {arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',out:'M14 3h7v7 M21 3 10 14 M10 3H3v18h18v-7',check:'M5 12l4 4L19 6'};
 const icon = key => civicIcon(key) || (paths[key] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[key]}"/></svg>` : '');
 const themes = {'everyday-life':'Everyday life','missing-middle':'Missing Middle','verse-box':'Verse Box','civic-evidence':'Civic evidence','local-care':'Local care'};
-const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['hours','Contributions'],['gamify','Gamify Democracy']];
+const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['finance','Electorate finance'],['hours','Contributions'],['gamify','Gamify Democracy']];
 const accountabilityRoutes = [['transparency','Open transparency'],['resources','Connected ideas'],['constitution','Constitution workbench'],['profile','Your membership']];
 const resources = [
   {icon:'abundance',name:'Joyful Responsible Abundance',label:'Purpose & perspective',description:'Explore how truth, responsibility and shared capacity can widen people’s opportunities as AI advances.',url:jraSource},
@@ -52,6 +52,7 @@ let readiness;
 let readinessTimer;
 let training;
 let applicationReview;
+let electorateFinance;
 async function api(path, options={}) {
   const response = await fetch(path,{credentials:'same-origin',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});
   const data = await response.json();
@@ -214,6 +215,9 @@ function render() {
   if (route === 'training' && civicTools) {
     views.training = () => training?.trainingView(id, trainingActor, { e, heading }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
   }
+  if (route === 'finance') {
+    views.finance = () => electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening electorate finance…</p></div>';
+  }
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
   const trainingTitle = route === 'training' ? $('#main .civic-training-page h1')?.textContent : null;
   if (trainingTitle && trainingTitle !== currentLabel) document.title = `${trainingTitle} · Civic training · P4A`;
@@ -265,9 +269,18 @@ function render() {
       });
     }
   }
+  if (route === 'finance') {
+    if (electorateFinance) electorateFinance.mountElectorateFinance($('#main'), { e });
+    else import('./electorate-finance.mjs').then(module => {
+      electorateFinance = module;
+      if (location.hash === '#finance') render();
+    }).catch(() => {
+      if (location.hash === '#finance') $('#main').innerHTML = '<div class="panel"><h1>Electorate finance</h1><p>The calculators could not open. Reload the workspace to try again.</p></div>';
+    });
+  }
 }
 function focusPage() {
-  const target = $('#main :is(.civic-training-page, .onboarding-page) h1') || $('#main');
+  const target = $('#main :is(.civic-training-page, .onboarding-page, .electorate-finance) h1') || $('#main');
   target.tabIndex = -1;
   target.focus({ preventScroll: true });
 }

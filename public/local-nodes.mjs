@@ -100,6 +100,7 @@ export function campaignsView({heading, icon, pilot}) {
       </a>
     </section>
     ${pilot ? `<a class="home-door campaign-door readiness-door" href="#readiness">${icon('readiness')}<div><h2>Electoral readiness</h2><p>Check registration targets, six-month readiness dates and campaign rules across Australia.</p><span class="door-action">Open the electoral calendar →</span></div></a>` : ''}
+    <a class="home-door campaign-door readiness-door" href="#finance">${icon('finance')}<div><h2>Electorate finance</h2><p>Build a cash-funded plan from A$0 with electorate enrolment, budgets, merch and the 2031 referendum calculator.</p><span class="door-action">Open the calculators →</span></div></a>
     <section class="panel wide-panel subheading" aria-labelledby="campaign-model-heading">
       <h2 id="campaign-model-heading">How the Redlands model works</h2>
       <p class="muted">The Command Centre was the private operations workspace for the former Redlands mayoral campaign. It brings research, communications drafts and finance records together for review.</p>

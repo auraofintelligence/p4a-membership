@@ -1,0 +1,64 @@
+.finance-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  font-size: 25px;
+  line-height: 1;
+}
+.home-door .finance-icon { flex-basis: 46px; width: 46px; height: 46px; font-size: 34px; }
+.electorate-finance { font-size: 16px; min-width: 0; }
+.electorate-finance [data-finance-content] { min-width: 0; display: grid; gap: 16px; }
+.electorate-finance .panel { margin: 0; min-width: 0; }
+.electorate-finance h2 { font-size: 23px; }
+.electorate-finance h3 { font-size: 18px; margin-top: 20px; }
+.electorate-finance p { margin: 9px 0; max-width: 95ch; }
+.finance-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.finance-tabs button {
+  min-height: 44px;
+  padding: 8px 15px;
+  background: white;
+  border: 1px solid #b6a6cb;
+  color: #402266;
+  border-radius: 9px;
+  font-weight: 650;
+  text-align: left;
+}
+.finance-tabs button[aria-pressed="true"] { color: white; background: #533082; border-color: #533082; }
+.finance-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(215px, 100%), 1fr)); gap: 15px; margin: 15px 0; align-items: end; }
+.electorate-finance .field { font-size: 15px; min-width: 0; margin: 0; }
+.electorate-finance :is(select, input:not([type="checkbox"])) { min-height: 44px; border: 1px solid #a897bc; border-radius: 7px; font-size: 16px; padding: 7px 9px; }
+.electorate-finance input:invalid { border-color: #a82f40; }
+.electorate-finance :is(input, select, summary):focus-visible { outline: 3px solid #8a55be; }
+.electorate-finance .finance-import input { width: auto; max-width: 100%; }
+.finance-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(195px, 100%), 1fr)); gap: 9px; margin: 16px 0; }
+.finance-metrics > div { border: 1px solid #ded4eb; border-radius: 10px; background: #f7f2fb; padding: 13px; }
+.finance-metrics dt, .finance-metrics small, .finance-context { color: #50465d; font-size: 14px; }
+.finance-metrics dd { margin: 3px 0; color: #402266; font-size: 21px; font-weight: 720; font-variant-numeric: tabular-nums; }
+.finance-sources { gap: 12px 18px; }
+.electorate-finance .source-link { font-size: 14px; }
+.finance-table-wrap, .electorate-finance .table-wrap { overflow-x: auto; margin: 12px 0; max-width: 100%; }
+.finance-table, .electorate-finance .table-wrap table { width: 100%; border-collapse: collapse; font-size: 15px; text-align: left; }
+.finance-table :is(th, td), .electorate-finance .table-wrap :is(th, td) { padding: 9px 12px; border-bottom: 1px solid #ded6e7; vertical-align: middle; }
+.finance-table td, .electorate-finance .table-wrap td { font-variant-numeric: tabular-nums; }
+.finance-table thead th, .electorate-finance .table-wrap thead th { color: #33244b; background: #eee6f7; }
+.finance-table tbody th, .electorate-finance .table-wrap tbody th { font-weight: 560; }
+.finance-table td { min-width: 115px; }
+.finance-table td input { width: 100%; }
+.finance-details > summary { cursor: pointer; min-height: 44px; padding: 9px 0; color: #482779; font-weight: 680; }
+.finance-check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.finance-check input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: #533082; }
+.finance-callout { background: #fff3e4; border-left: 4px solid #af6232; border-radius: 3px; padding: 10px 12px; color: #673813; }
+.finance-text-button { color: #4d287f; padding: 0 2px; min-height: 30px; border: 0; background: transparent; text-decoration: underline; font-weight: 650; }
+.electorate-finance [data-electorate-merch] > .finance-fields { grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr)); align-items: start; }
+.electorate-finance [data-merch-profile] { grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); align-items: start; }
+.electorate-finance [data-electorate-merch] > h2 { margin-top: 5px; }
+.electorate-finance [data-referendum] .finance-table { min-width: 690px; }
+@media (max-width: 540px) {
+  .finance-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .electorate-finance .panel { padding: 14px; }
+  .finance-table :is(th, td) { padding: 8px; }
+  .finance-table td { min-width: 90px; }
+  .finance-fields { grid-template-columns: minmax(0, 1fr); }
+}

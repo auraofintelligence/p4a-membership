@@ -12,6 +12,8 @@ GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Pub
 
 The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership/#constitution/trial) demonstrates how Aura could prepare records of overlapping voluntary work from agreed evidence. Compare the drafts, choose what to share, then try evidence review, a fictional ballot, sunset and audit download.
 
+**Electorate finance** starts at A$0 for every electorate and runs from November 2026 to December 2031. It covers the federal House and every state and territory lower house, with dated electoral roll and ABS population and Census sources. The operating and campaign funds stay separate, and neither can spend money from the other. Existing bills are visible, reserves carry forward, and unfunded commitments stay deferred. Membership fees, merch and the 2031 referendum all have their own calculators. Save an electorate plan to a local file to keep it between sessions.
+
 `npm run build:pages` creates an allowlisted `dist/` using public assets and shared domain rules. The Pages workflow tests the application and publishes that output on pushes to `main`. It excludes local records, credentials and live storage/authentication adapters. The Cloudflare Worker remains the separate intended production runtime.
 
 ## Private Cloudflare pilot
