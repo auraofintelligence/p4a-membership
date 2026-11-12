@@ -6,7 +6,7 @@ import { stateFinanceEnrolments } from '../public/finance-state-enrolments.mjs';
 import { stateFinanceDemographics } from '../public/finance-state-demographics.mjs';
 import { membershipProjection } from '../public/membership-quick.mjs';
 import { calculateMonthlyMerch } from '../public/merch-quick.mjs';
-import { calculateDonationScenario } from '../public/donation-simulator.mjs';
+import { calculateDonationPlan, calculateDonationScenario } from '../public/donation-simulator.mjs';
 
 test('federal membership quick projection counts one payment stream at each stage', () => {
   const result = membershipProjection(3, 1000, 75);
@@ -39,6 +39,36 @@ test('donation scenarios separate the first round from the 12-month total', () =
   assert.equal(calculateDonationScenario(0, 25, 'once').annualCents, 0);
   assert.equal(calculateDonationScenario(10001, 25, 'once'), null);
   assert.equal(calculateDonationScenario(10, '', 'monthly'), null);
+});
+
+test('donation plans total four independent giving schedules', () => {
+  const plan = calculateDonationPlan({
+    once: { donors: 3, amount: '10.25' },
+    monthly: { donors: 2, amount: 5 },
+    quarterly: { donors: 4, amount: '2.50' },
+    annual: { donors: 1, amount: 100 },
+  });
+  assert.equal(plan.complete, true);
+  assert.equal(plan.firstReceiptCents, 15075);
+  assert.equal(plan.annualCents, 29075);
+  assert.deepEqual(
+    ['once', 'monthly', 'quarterly', 'annual'].map(key => plan.groups[key].annualCents),
+    [3075, 12000, 4000, 10000],
+  );
+});
+
+test('donation plans preserve zero and exclude missing or invalid schedules', () => {
+  const plan = calculateDonationPlan({
+    monthly: { donors: 0, amount: 25 },
+    quarterly: { donors: 2, amount: '' },
+    annual: { donors: 1, amount: '8.20' },
+  });
+  assert.equal(plan.complete, false);
+  assert.equal(plan.groups.once, null);
+  assert.equal(plan.groups.quarterly, null);
+  assert.equal(plan.groups.monthly.annualCents, 0);
+  assert.equal(plan.firstReceiptCents, 820);
+  assert.equal(plan.annualCents, 820);
 });
 
 test('a zero-cash plan cannot spend hoped-for grants or later sales', () => {
