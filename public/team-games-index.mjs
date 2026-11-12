@@ -1,9 +1,13 @@
+import { classicGames } from './team-games-classics.mjs';
+import { sportGames } from './team-games-sports.mjs';
+
 const formats = {
-  computer: 'Computer games',
-  escape: 'Escape rooms',
   board: 'Board games',
   card: 'Card games',
-  conversation: 'Conversation games',
+  sport: 'Sports',
+  computer: 'Computer games',
+  escape: 'Escape rooms',
+  conversation: 'Conversation and reflection',
 };
 
 const styles = {
@@ -15,6 +19,8 @@ const styles = {
 const selectedFilters = { format: '', style: '' };
 
 export const teamGames = [
+  ...classicGames,
+  ...sportGames,
   {
     id: 'eco', title: 'Eco', format: 'computer', style: 'cooperative', players: 'Online multiplayer',
     url: 'https://www.play.eco/',
@@ -225,13 +231,14 @@ function filterOptions(values, all, selected, e) {
 }
 
 function gameCard(game, { e, actionButton, actor }) {
+  const sourceLabel = game.format === 'sport' ? 'Rules' : 'Game site';
   return `<article class="panel team-game-card" data-team-game data-format="${e(game.format)}" data-style="${e(game.style)}" aria-labelledby="team-game-${e(game.id)}">
     <div class="team-game-meta"><span>${e(formats[game.format])}</span><span>${e(styles[game.style])}</span><span>${e(game.players)}</span></div>
     <h3 id="team-game-${e(game.id)}">${e(game.title)}</h3>
     <p>${e(game.aim)}</p>
     <details class="team-game-instructions"><summary>Setup and debrief</summary><p>${e(game.setup)}</p><p><strong>After the game</strong> ${e(game.debrief)}</p></details>
     <div class="button-row">
-      <a class="button quiet" href="${e(game.url)}" target="_blank" rel="noopener noreferrer" aria-label="${e(game.title)} game site (opens in a new tab)">Game site ↗</a>
+      <a class="button quiet" href="${e(game.url)}" target="_blank" rel="noopener noreferrer" aria-label="${e(game.title)} ${sourceLabel.toLowerCase()} (opens in a new tab)">${sourceLabel} ↗</a>
       ${actor ? actionButton('Record a game played', 'team-game-played', game.id) : ''}
     </div>
   </article>`;
@@ -242,10 +249,10 @@ export function teamGamesIndex({ e, actionButton, actor, civicTools }) {
     ? '<a href="#training/first-quarter-team-games">First-quarter team games lesson</a>'
     : '<a href="#onboarding">First-quarter team games in onboarding</a>';
   return `<section class="team-games-index" data-team-games-index aria-labelledby="team-games-title">
-    <div class="section-heading"><div><h2 id="team-games-title">Team games index</h2><p>This starter catalogue spans computer, board and card games, boxed escape rooms and conversation games. Applicants can name games during onboarding, and members can suggest them at any time.</p></div></div>
+    <div class="section-heading"><div><h2 id="team-games-title">Team games index</h2><p>Pick a classic, a newer game or a sport for your next session. Applicants can name games during onboarding, and members can suggest them at any time.</p></div></div>
     <div class="button-row">${trainingLink}${actor ? actionButton('Suggest a game', 'participation-idea', 'game', 'secondary') : ''}</div>
     <details class="panel team-games-host"><summary>Set up an accessible session</summary>
-      <p>Ask about access needs and check that the publisher and venue allow full-game recording for the planned use. Mix people who are new to the game with people who know it. Make most sessions cooperative and rotate who teaches, leads and observes.</p>
+      <p>Ask about access needs and check any game and venue rules on full-game recording. Mix people who are new to the game with people who know it. Make most sessions cooperative and rotate who teaches, leads and observes.</p>
       <p>Use the first check-in to agree what clear communication, fair treatment and teamwork should look like. Keep that check-in off the recording. Agree who can see recordings and how long they’ll be kept, then confirm everyone’s consent before recording the full game with audio, video and screen capture as suited to the activity.</p>
       <p>After the game, revisit those same expectations. Point to a specific moment that helped the team and one that got in its way. Ask what the team would do differently at its next session or in civic work.</p>
     </details>

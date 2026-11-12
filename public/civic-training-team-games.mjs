@@ -10,11 +10,11 @@ export const teamGamesLesson = {
     },
     {
       title: 'Choose what to practise',
-      body: 'Pick a published game from the Team games index. In Eco, negotiate a rule with people who depend on different resources. In Daybreak, coordinate climate decisions across regions. In Democracy 4, start from the same situation and compare how two policy choices play out. Choose a different format next time and see which skills carry across.',
+      body: 'Pick a game from the Team games index. In Eco, negotiate a rule with people who depend on different resources. In Pictionary, find a clue your teammate can read without words. In doubles tennis, agree who covers the middle and check how you call it. Choose a different format next time and see which skills carry across.',
     },
     {
       title: 'Record each game from start to finish',
-      body: 'Before choosing a game, check whether the publisher or venue allows the planned recording and use. Do the first check-in before recording starts. Explain who can see the recordings and how long they’ll be kept, then confirm consent. Use video, audio and screen capture as suited to the game and record it from start to finish. Review the recording with the team to spot strengths, find roles that suit people and share skills.',
+      body: 'Before choosing a game, check any game and venue rules on the planned recording and use. Do the first check-in before recording starts. Explain who can see the recordings and how long they’ll be kept, then confirm consent. Use video, audio and screen capture as suited to the game and record it from start to finish. Review the recording with the team to spot strengths, find roles that suit people and share skills.',
     },
     {
       title: 'Review how the team played',
