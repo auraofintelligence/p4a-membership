@@ -43,9 +43,19 @@ function stateControls(e) {
 
 const shownStates = () => scenario.view === 'one' ? [scenario.single] : scenario.view === 'all' ? Object.keys(names) : Object.keys(names).filter(code => scenario.multiple.has(code));
 
+export function membershipSnapshot() {
+  return {
+    membersPerElectorate: scenario.members,
+    standardShare: scenario.share,
+    byElectorate: membershipProjection(1, scenario.members, scenario.share),
+    jurisdictions: Object.entries(names).map(([code, name]) => ({ code, name, covered: scenario.coverage[code], available: federalTotals[code] })),
+    selectedJurisdictions: shownStates(),
+  };
+}
+
 export function membershipQuickView({ heading, e }) {
   return `<div class="electorate-finance quick-finance" data-membership-quick>
-    ${heading('Campaign Command Centre', 'Electorate finance', 'See what federal membership brings in as P4A expands across Australia.', '<a class="button secondary" href="#merch">Merch calculator</a>')}
+    ${heading('Campaign Command Centre', 'Electorate finance', 'See what federal membership brings in as P4A expands across Australia.', '<div class="button-row"><a class="button secondary" href="#merch">Merch calculator</a><a class="button secondary" href="#finance/compare">Combine estimates</a></div>')}
     <section class="panel quick-assumptions" aria-label="Membership assumptions">
       <p><strong>A$5</strong> to apply <span aria-hidden="true">·</span> <strong>A$120</strong> standard annual <span aria-hidden="true">·</span> <strong>A$80</strong> concession annual <span aria-hidden="true">·</span> <strong>2%</strong> processing</p>
       <p>One membership payment covers federal and state membership in this model. Each member pays for one application and one quarter on approval, then annual dues from month four if they continue.</p>

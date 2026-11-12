@@ -9,6 +9,7 @@ import {onboardingView} from './onboarding.mjs';
 import {membershipQuickView, mountMembershipQuick} from './membership-quick.mjs';
 import {merchQuickView, mountMerchQuick} from './merch-quick.mjs';
 import {donationSimulatorView, mountDonationSimulator} from './donation-simulator.mjs';
+import {fundraisingCompareView, mountFundraisingCompare} from './fundraising-compare.mjs';
 const $ = (s, root = document) => root.querySelector(s);
 const e = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths = {arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',out:'M14 3h7v7 M21 3 10 14 M10 3H3v18h18v-7',check:'M5 12l4 4L19 6'};
@@ -183,6 +184,7 @@ function field(label,name,value='',options={}){return `<label class="field ${opt
 function render() {
   rememberScrollPositions(document);
   const [route = 'home', id] = (location.hash.slice(1) || 'home').split('/');
+  const compareFinance = route === 'finance' && id === 'compare';
   const financeTab = route === 'finance' && ['detail', 'fees', 'merch', 'referendum'].includes(id) ? (id === 'detail' ? 'budgets' : id) : null;
   const pilot = isPilot();
   const civicTools = hasCivicTools();
@@ -229,7 +231,8 @@ function render() {
     views.training = () => training?.trainingView(id, trainingActor, { e, heading }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
   }
   if (route === 'finance') {
-    views.finance = () => financeTab ? (electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening detailed budgets…</p></div>') : membershipQuickView({ e, heading });
+    if (compareFinance) views.finance = () => fundraisingCompareView({ e, heading });
+    else views.finance = () => financeTab ? (electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening detailed budgets…</p></div>') : membershipQuickView({ e, heading });
   }
   if (route === 'merch') views.merch = () => merchQuickView({ e, heading });
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
@@ -285,7 +288,8 @@ function render() {
   }
   if (route === 'finance') {
     const requestedRoute = location.hash;
-    if (!financeTab) mountMembershipQuick($('#main'), { e });
+    if (compareFinance) mountFundraisingCompare($('#main'), { e });
+    else if (!financeTab) mountMembershipQuick($('#main'), { e });
     else if (electorateFinance) electorateFinance.mountElectorateFinance($('#main'), { e }, financeTab);
     else import('./electorate-finance.mjs').then(module => {
       electorateFinance = module;

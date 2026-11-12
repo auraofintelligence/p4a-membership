@@ -7,9 +7,10 @@ const frequencies = [
   ['quarterly', 'Quarterly', 4],
   ['annual', 'Annually', 1],
 ];
+const starterDonors = { once: [12, 6, 2, 1], monthly: [4, 2, 1, 0], quarterly: [2, 1, 0, 0], annual: [0, 0, 1, 0] };
 let nextGiftId = 1;
-const draft = Object.fromEntries(frequencies.map(([key]) => [key, amounts.map(amount => ({
-  id: nextGiftId++, amount: String(amount), donors: key === 'once' && amount === 25 ? '100' : '0',
+const draft = Object.fromEntries(frequencies.map(([key]) => [key, amounts.map((amount, index) => ({
+  id: nextGiftId++, amount: String(amount), donors: String(starterDonors[key][index]),
 }))]));
 draft.bequest = [{ id: nextGiftId++, donors: '1', amount: '' }];
 const money = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' });
@@ -56,6 +57,29 @@ export function calculateBequests(input = []) {
   return { gifts, totalCents, complete: totalCents !== null && gifts.every(Boolean) };
 }
 
+function draftTotals() {
+  const inputs = Object.fromEntries(Object.entries(draft).map(([key, gifts]) => [key, gifts.map(({ donors, amount, validAmount = true }) => {
+    const validGift = validAmount ? amount : null;
+    return { donors, amount: donors === '0' && validGift === '' ? '0' : validGift };
+  })]));
+  const bases = Object.fromEntries(frequencies.map(([key]) => [key, inputs[key][0]]));
+  const extras = Object.fromEntries(frequencies.map(([key]) => [key, inputs[key].slice(1)]));
+  const plan = calculateDonationPlan(bases, extras);
+  const bequests = calculateBequests(inputs.bequest);
+  const hasGifts = Object.values(plan.groups).some(Boolean);
+  return {
+    plan,
+    firstReceiptCents: hasGifts ? plan.firstReceiptCents : null,
+    annualCents: hasGifts ? plan.annualCents : null,
+    bequestsCents: bequests.gifts.some(Boolean) ? bequests.totalCents : null,
+  };
+}
+
+export function donationSnapshot() {
+  const { plan, firstReceiptCents, annualCents, bequestsCents } = draftTotals();
+  return { firstReceiptCents, annualCents, complete: plan.complete, bequestsCents };
+}
+
 function giftEditor(key, label, gift, e) {
   const bequest = key === 'bequest';
   const giftName = bequest ? 'bequest' : 'gift amount';
@@ -89,10 +113,12 @@ export function donationSimulatorView(e) {
   return `<section class="panel electorate-finance quick-finance donation-simulator" data-donation-simulator aria-labelledby="donation-simulator-heading">
     <h2 id="donation-simulator-heading">Donation simulator</h2>
     <p>Try a mix of gift amounts in each schedule. Move the sliders or enter the exact donor counts.</p>
+    <p class="finance-context">The starter mix is a worked example for one electorate.</p>
     <dl class="finance-metrics quick-results" aria-live="polite" aria-atomic="true">
       <div><dt>Combined first round of gifts</dt><dd data-donation-first>—</dd></div>
       <div><dt>Combined total over 12 months</dt><dd data-donation-annual>—</dd></div>
     </dl>
+    <p><a href="#finance/compare">Combine estimates</a></p>
     <p class="finance-context" data-donation-status role="status" hidden></p>
     <datalist id="donation-larger-amounts">${largerAmounts.map(amount => `<option value="${amount}"></option>`).join('')}</datalist>
     <div class="donation-schedules">${frequencies.map(frequency => schedule(frequency, e)).join('')}</div>
@@ -117,36 +143,30 @@ export function mountDonationSimulator(root, { e }) {
   const schedules = [...simulator.querySelectorAll('[data-donation-group]')];
 
   function update() {
-    const giftInputs = Object.fromEntries(giftSections.map(section => {
+    for (const section of giftSections) {
       const key = section.dataset.donationGifts;
       const label = section.dataset.donationLabel;
       const countLabel = key === 'bequest' ? 'bequests' : 'donors';
       const rows = [...section.querySelectorAll('[data-donation-gift]')];
-      return [key, rows.map((row, index) => {
+      rows.forEach((row, index) => {
         const donors = row.querySelector('[data-gift-donors]');
         const amount = row.querySelector('[data-gift-amount]');
         const slider = row.querySelector('[data-gift-slider]');
-        Object.assign(draft[key][index], { donors: donors.value, amount: amount.value });
+        Object.assign(draft[key][index], { donors: donors.value, amount: amount.value, validAmount: amount.validity.valid });
         const tier = amount.value && amount.validity.valid ? `${label} ${money.format(amount.valueAsNumber)}` : label;
         donors.setAttribute('aria-label', `${tier} ${countLabel}`);
         slider.setAttribute('aria-label', `Adjust ${tier} ${countLabel}`);
         slider.setAttribute('aria-valuetext', `${count.format(Number(slider.value))} ${countLabel}`);
-        const emptyTier = donors.value === '0' && amount.value === '' && amount.validity.valid;
-        return { donors: donors.validity.valid ? donors.value : null, amount: emptyTier ? '0' : amount.validity.valid ? amount.value : null };
-      })];
-    }));
-    const bases = Object.fromEntries(frequencies.map(([key]) => [key, giftInputs[key][0]]));
-    const extras = Object.fromEntries(frequencies.map(([key]) => [key, giftInputs[key].slice(1)]));
-    const plan = calculateDonationPlan(bases, extras);
-    const bequests = calculateBequests(giftInputs.bequest);
-    const hasResult = Object.values(plan.groups).some(Boolean);
-    first.textContent = formatMoney(hasResult ? plan.firstReceiptCents : null);
-    annual.textContent = formatMoney(hasResult ? plan.annualCents : null);
+      });
+    }
+    const { plan, firstReceiptCents, annualCents, bequestsCents } = draftTotals();
+    first.textContent = formatMoney(firstReceiptCents);
+    annual.textContent = formatMoney(annualCents);
     status.hidden = plan.complete;
     status.textContent = plan.complete ? '' : plan.firstReceiptCents === null || plan.annualCents === null
       ? 'The combined amounts are too large to calculate. Reduce the gift amounts or donor counts.'
       : 'Combined totals include entries with a valid gift amount and donor count.';
-    bequestTotal.textContent = formatMoney(bequests.gifts.some(Boolean) ? bequests.totalCents : null);
+    bequestTotal.textContent = formatMoney(bequestsCents);
     for (const schedule of schedules) {
       const group = plan.groups[schedule.dataset.donationGroup];
       schedule.querySelector('[data-donation-row-first]').textContent = formatMoney(group?.firstReceiptCents);

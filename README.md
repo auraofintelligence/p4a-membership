@@ -14,6 +14,8 @@ The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership
 
 The [Electorate finance calculator](https://auraofintelligence.github.io/p4a-membership/#finance) uses one payment per member, the standard and concession mix, and federal electorate coverage. The [Merch calculator](https://auraofintelligence.github.io/p4a-membership/#merch) groups monthly sales by dollar profit per item. [Contributions](https://auraofintelligence.github.io/p4a-membership/#hours) combines different gift amounts within each donation schedule, with a separate total for potential bequests. The [detailed cash budget](https://auraofintelligence.github.io/p4a-membership/#finance/detail) starts each electorate at A$0, keeps operating and campaign funds separate, and supports planning and local file export through 2031.
 
+[Combine estimates](https://auraofintelligence.github.io/p4a-membership/#finance/compare) rolls the three quick calculators into a 12-month exercise with two reference electorates, adjustable donation and merch activity, and CSV export. AEC electorate types and matched ABS population, area and Census figures provide context for the assumptions you choose.
+
 `npm run build:pages` creates an allowlisted `dist/` using public assets and shared domain rules. The Pages workflow tests the application and publishes that output on pushes to `main`. It excludes local records, credentials and live storage/authentication adapters. The Cloudflare Worker remains the separate intended production runtime.
 
 ## Private Cloudflare pilot

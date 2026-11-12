@@ -112,11 +112,23 @@
 .donation-bequests h3 { margin-top: 0; }
 .donation-bequests .finance-metrics { max-width: 310px; }
 .donation-bequests .donation-gift-section { max-width: 560px; }
+.fundraising-compare > .panel { margin-bottom: 16px; }
+.fundraising-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.fundraising-compare .fundraising-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fundraising-basis dd { overflow-wrap: anywhere; }
+.fundraising-basis a { display: inline-block; font-size: 14px; }
+.fundraising-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 12px; border-radius: 8px; background: #f7f2fb; }
+.fundraising-context dt { font-size: 13px; color: #50465d; }
+.fundraising-context dd { margin: 1px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+.fundraising-total-row { background: #f0e9f8; color: #402266; font-weight: 720; }
+.fundraising-table td { white-space: nowrap; }
+.fundraising-sources { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
 @media (max-width: 1000px) {
   .merch-band-controls { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 820px) {
   .donation-schedules { grid-template-columns: minmax(0, 1fr); }
+  .fundraising-groups { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 540px) {
   .finance-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

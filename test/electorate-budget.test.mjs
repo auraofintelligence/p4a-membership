@@ -2,11 +2,62 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { calculateElectorateBudget, priceForWork, projectMembership, referendumVotes, monthDate, planningMonths } from '../public/electorate-budget.mjs';
 import { federalFinanceDistricts } from '../public/finance-federal-data.mjs';
+import { federalAreaByAbsCode, federalClassificationByAbsCode } from '../public/finance-federal-area.mjs';
 import { stateFinanceEnrolments } from '../public/finance-state-enrolments.mjs';
 import { stateFinanceDemographics } from '../public/finance-state-demographics.mjs';
-import { membershipProjection } from '../public/membership-quick.mjs';
-import { calculateMerchBands } from '../public/merch-quick.mjs';
-import { calculateBequests, calculateDonationPlan, calculateDonationScenario } from '../public/donation-simulator.mjs';
+import { membershipProjection, membershipSnapshot } from '../public/membership-quick.mjs';
+import { calculateMerchBands, merchSnapshot } from '../public/merch-quick.mjs';
+import { calculateBequests, calculateDonationPlan, calculateDonationScenario, donationSnapshot } from '../public/donation-simulator.mjs';
+import { combineFundraising } from '../public/fundraising-compare.mjs';
+
+test('fundraising combines each group at its activity levels over 12 months', () => {
+  const { applicationNet, quarterNet, annualNet } = membershipSnapshot().byElectorate;
+  const { firstReceiptCents, annualCents, bequestsCents } = donationSnapshot();
+  assert.equal(firstReceiptCents, 70500);
+  assert.equal(annualCents, 238000);
+  assert.equal(bequestsCents, null);
+  const base = {
+    membershipCents: applicationNet + quarterNet + annualNet,
+    donationCents: annualCents,
+    monthlyMerchCents: merchSnapshot().monthlyProfitCents,
+  };
+  const groups = [
+    { seats: 2, donationScale: 100, merchScale: 50 },
+    { seats: 3, donationScale: 50, merchScale: 150 },
+  ];
+  const estimate = combineFundraising(base, groups, 5);
+  assert.equal(estimate.assigned, 5);
+  assert.equal(estimate.withinCoverage, true);
+  assert.deepEqual(estimate.groups.map(group => group.grouped.total), [3624000, 6879000]);
+  assert.deepEqual(estimate.totals, { membership: 6370000, donations: 833000, merch: 3300000, total: 10503000 });
+
+  const overCoverage = combineFundraising(base, groups, 4);
+  assert.equal(overCoverage.withinCoverage, false);
+  assert.equal(overCoverage.totals.total, null);
+});
+
+test('fundraising preserves missing estimates and counts disabled activity as zero', () => {
+  const base = { membershipCents: 10000, donationCents: null, monthlyMerchCents: null };
+  const groups = [
+    { seats: 0, donationScale: '', merchScale: 100 },
+    { seats: 2, donationScale: 0, merchScale: 100 },
+  ];
+  const estimate = combineFundraising(base, groups, 2);
+  assert.deepEqual(estimate.groups[0].grouped, { membership: 0, donations: 0, merch: 0, total: 0 });
+  assert.deepEqual(estimate.totals, { membership: 20000, donations: 0, merch: null, total: null });
+  assert.equal(combineFundraising(base, [{ ...groups[0], seats: '' }], 2).withinCoverage, false);
+});
+
+test('the comparison joins a positive area and AEC classification to each federal electorate', () => {
+  const validTypes = new Set(['Inner Metropolitan', 'Outer Metropolitan', 'Provincial', 'Rural']);
+  assert.equal(Object.keys(federalAreaByAbsCode).length, 150);
+  assert.equal(Object.keys(federalClassificationByAbsCode).length, 150);
+  for (const { absCode, name } of federalFinanceDistricts) {
+    const area = federalAreaByAbsCode[absCode];
+    assert.ok(Number.isFinite(area) && area > 0, name);
+    assert.ok(validTypes.has(federalClassificationByAbsCode[absCode]), name);
+  }
+});
 
 test('federal membership quick projection counts one payment stream at each stage', () => {
   const result = membershipProjection(3, 1000, 75);

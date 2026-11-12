@@ -39,6 +39,15 @@ export function calculateMerchBands(input = []) {
   return { bands: results, totalUnits, totalCents, included };
 }
 
+export function merchSnapshot() {
+  const result = calculateMerchBands(bands);
+  return {
+    monthlyProfitCents: result.included ? result.totalCents : null,
+    monthlyUnits: result.totalUnits,
+    complete: result.bands.every(({ units, monthlyCents }) => units === 0 || monthlyCents !== null),
+  };
+}
+
 function productEditor(product, e) {
   return `<div class="merch-band-product-row" data-band-product="${product.id}">
     <label class="field">Product name<input type="text" maxlength="100" value="${e(product.name)}" placeholder="Name this product" data-band-product-name></label>
@@ -88,6 +97,7 @@ export function merchQuickView({ heading, e }) {
         <div><dt>Monthly profit</dt><dd data-merch-profit>—</dd><small data-merch-profit-note hidden></small></div>
         <div><dt>Units sold per month</dt><dd data-merch-units>0</dd></div>
       </dl>
+      <p><a href="#finance/compare">Combine estimates</a></p>
     </section>
     <div data-merch-bands>${bands.map(band => bandEditor(band, e)).join('')}</div>
     <p class="finance-context" data-merch-empty${bands.length ? ' hidden' : ''}>Add a profit band to start a monthly estimate.</p>

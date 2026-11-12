@@ -82,12 +82,13 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 51);
+  assert.equal(names.length, 53);
   assert.equal(built.files, names.length);
   for (const name of [
     'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css', 'jra-values.mjs', 'onboarding.mjs',
     'electorate-finance.mjs', 'electorate-budget.mjs', 'electorate-merch.mjs', 'electorate-referendum.mjs', 'electorate-finance.css',
     'membership-quick.mjs', 'merch-quick.mjs', 'donation-simulator.mjs',
+    'fundraising-compare.mjs', 'finance-federal-area.mjs',
     'finance-federal-data.mjs', 'finance-state-enrolments.mjs', 'finance-state-demographics.mjs',
     'artwork/campaign-command-centre.png', 'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png',
     'artwork/p4a-membership.png', 'artwork/p4a-membership-mark.png',
