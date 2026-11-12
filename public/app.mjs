@@ -3,7 +3,9 @@ import {civicIcon, compactLabels} from './civic-icons.mjs';
 import {homeDoors, campaignsView, campaignReplicationPrompt, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {trialView, handleTrialAction, trialAuditRecord} from './constitution-trial.mjs';
-import {gamifyView, loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
+import {loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
+import {gamifyPage, memberParticipation} from './member-participation.mjs';
+import {teamGames, mountTeamGamesIndex} from './team-games-index.mjs';
 import {jraSource, jraValues} from './jra-values.mjs';
 import {onboardingView} from './onboarding.mjs';
 import {membershipQuickView, mountMembershipQuick} from './membership-quick.mjs';
@@ -55,6 +57,7 @@ const canEdit = p => isOrganiser() || p.ownerId === state.actor?.id;
 let readiness;
 let readinessTimer;
 let training;
+let trainingLoad;
 let applicationReview;
 let electorateFinance;
 async function api(path, options={}) {
@@ -65,10 +68,10 @@ async function api(path, options={}) {
 }
 async function load(){state=await api('/api/bootstrap');for(const key of ['people','groups','projects','memberships','contributions','financialContributions','decisions','activity'])state[key] ||= [];if(!isPilot())await loadGamify(api);}
 function notify(message){clearTimeout(noticeTimer);$('#notice').textContent=message;$('#notice').hidden=false;noticeTimer=setTimeout(()=>$('#notice').hidden=true,6000);}
-async function command(type,data){
+async function command(type,data,{rerender=true}={}){
   const key=JSON.stringify({actorId:state.actor?.id,type,data});
   const id=pendingCommands.get(key)||crypto.randomUUID();pendingCommands.set(key,id);
-  try {await api('/api/commands',{method:'POST',body:JSON.stringify({id,revision:state.revision,type,data})});await load();render();pendingCommands.delete(key);}
+  try {await api('/api/commands',{method:'POST',body:JSON.stringify({id,revision:state.revision,type,data})});await load();if(rerender)render();pendingCommands.delete(key);}
   catch(err){if(err.status===409){await load();if(err.message.toLowerCase().includes('workspace changed'))throw new Error('The workspace changed while you were editing. Your draft is still here. Review it and save again.');}throw err;}
 }
 function resourceCard(r){return `<a class="resource-card" href="${e(r.url)}" target="_blank" rel="noopener noreferrer">${r.icon?icon(r.icon):''}<small>${e(r.label)} <span class="arrow">↗</span></small><h3>${e(r.name)}</h3><p>${e(r.description)}</p></a>`;}
@@ -158,6 +161,7 @@ function profile() {
     ${membership ? `<div class="membership-status"><div>${tag(membership.status, statusTone(membership.status))}</div>${actionButton('Withdraw', 'withdraw-membership', membership.id, 'secondary small')}</div>` : ''}
   </section>`;
   return `${heading(pilot ? 'Private workspace' : 'Your participation', pilot ? 'Your workspace profile' : 'Your details. Your choices.', pilot ? 'Manage your profile and sharing choices within the workspace.' : 'Choose what is shared, manage your participation and take a copy of your records.')}
+    ${memberParticipation(state, participationHelpers())}
     <div class="detail-grid">
       <section class="panel">
         <h2>Your profile</h2>
@@ -218,7 +222,7 @@ function render() {
   banner.innerHTML = pilot
     ? '<strong>PRIVATE WORKSPACE</strong> Access is limited to invited accounts. Your working groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
-  const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyView(state, gamifyHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people, groups, hours, transparency, resources: connected, profile };
+  const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people, groups, hours, transparency, resources: connected, profile };
   const isApplicationsPage = route === 'onboarding' && id === 'applications' && civicTools && isOrganiser();
   if (isApplicationsPage) {
     views.onboarding = () => applicationReview?.applicationReviewView({ heading }) || '<p role="status">Opening the applications register…</p>';
@@ -228,7 +232,7 @@ function render() {
     views.readiness = () => readiness?.readinessView(id, { e, heading, icon }) || '<div class="panel"><p role="status">Opening the electoral readiness calendar…</p></div>';
   }
   if (route === 'training' && civicTools) {
-    views.training = () => training?.trainingView(id, trainingActor, { e, heading }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
+    views.training = () => training?.trainingView(id, trainingActor, { e, heading, sharedCompleted: state.actor ? state.myLearning : undefined }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
   }
   if (route === 'finance') {
     if (compareFinance) views.finance = () => fundraisingCompareView({ e, heading });
@@ -255,21 +259,33 @@ function render() {
     }
   }
   if (route === 'transparency') void loadPublic();
-  if (route === 'training' && civicTools) {
-    if (training) {
-      training.mountTraining($('#main'), trainingActor);
-    } else {
-      import('./civic-training.mjs').then(module => {
-        training = module;
-        if (location.hash.split('/')[0] === '#training') {
-          const focusWasInMain = document.activeElement === $('#main');
-          render();
-          if (focusWasInMain) focusPage();
-        }
-      }).catch(() => {
-        if (location.hash.split('/')[0] === '#training') $('#main').innerHTML = '<div class="panel"><h1>Civic training</h1><p>The modules could not open. Reload the workspace to try again.</p></div>';
-      });
-    }
+  if (route === 'gamify' && id === 'games') mountTeamGamesIndex($('#main'));
+  if (route === 'training' && civicTools && training) {
+    training.mountTraining($('#main'), trainingActor, {
+      sharedCompleted: state.myLearning || [],
+      completeModule: state.actor ? moduleId => {
+        if (state.actor?.id !== trainingActor) throw new Error('The active profile changed. Open the module again.');
+        return command('training.complete', { moduleId }, { rerender: false });
+      } : undefined,
+    });
+  }
+  if (civicTools && !training && !trainingLoad && usesTrainingProgress(route, id)) {
+    trainingLoad = import('./civic-training.mjs').then(module => {
+      training = module;
+      if (!hasCivicTools() || !usesTrainingProgress(...location.hash.slice(1).split('/'))) return;
+      if (location.hash.split('/')[0] !== '#training') {
+        const metric = $('[data-training-progress]');
+        const progress = training.trainingProgress(state.actor.id, state.myLearning);
+        if (metric) metric.textContent = `${progress.completed} of ${progress.total}`;
+        return;
+      }
+      const focusWasInMain = document.activeElement === $('#main');
+      render();
+      if (focusWasInMain) focusPage();
+    }).catch(() => {
+      trainingLoad = null;
+      if (location.hash.split('/')[0] === '#training') $('#main').innerHTML = '<div class="panel"><h1>Civic training</h1><p>The modules could not open. Reload the workspace to try again.</p></div>';
+    });
   }
   if (route === 'readiness' && civicTools) {
     if (readiness) {
@@ -323,6 +339,13 @@ function constitutionPage(documentId) {
   return constitutionView(state, {...helpers, trialEntry}, documentId);
 }
 function gamifyHelpers(){return {e,heading,tag,person,dateText,actionButton,field,showDialog,command,notify,closeDialog,today,api,render,logHours};}
+function usesTrainingProgress(route, id) {
+  return route === 'training' || Boolean(state.actor && (route === 'profile' || (route === 'gamify' && id !== 'games')));
+}
+function participationHelpers() {
+  const civicTools = hasCivicTools();
+  return { ...gamifyHelpers(), icon, civicTools, trainingProgress: civicTools && state.actor ? training?.trainingProgress(state.actor.id, state.myLearning) : null };
+}
 function showDialog(title,intro,body,form,submit='Save',id=''){dialogReturnFocus=document.activeElement;$('#dialog').innerHTML=`<div class="dialog-heading"><h2 id="dialog-title">${e(title)}</h2><button class="close" data-action="close-dialog" aria-label="Close dialog">×</button></div><p class="dialog-intro">${e(intro)}</p><form data-form="${form}" data-id="${e(id)}"><div class="form-grid">${body}</div><div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="button secondary" data-action="close-dialog">Cancel</button><button class="button" type="submit">${e(submit)}</button></div></form>`;$('#dialog').showModal();}
 function closeDialog(){$('#dialog').close();if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus();else $('#main').focus({preventScroll:true});}
 function priorityFields(p={}){return `<label class="field">Urgency<select name="urgency">${[1,2,3,4,5].map(n=>`<option ${Number(p.urgency||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: can wait · 5: immediate decision or harm</small></label><label class="field">Importance<select name="importance">${[1,2,3,4,5].map(n=>`<option ${Number(p.importance||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: limited change · 5: substantial lasting change</small></label><label class="field full">Reasons for this assessment<textarea name="reason" required maxlength="1800">${e(p.reason)}</textarea></label>${jraValues.map(({title, question}) => { const key = title.toLowerCase(); return field(title + " · " + question, key, p[key], {full:true,length:500}); }).join("")}${field('Supporting source (https://)','evidenceUrl',p.evidenceUrl,{type:'url',full:true,length:1000})}${field('Next review','reviewDate',p.reviewDate||today(),{type:'date',required:true})}${field('Readiness','readiness',p.readiness||'Exploring')}${field('Uncertainty and dependencies','uncertainty',p.uncertainty,{full:true,length:500})}`;}
@@ -393,6 +416,13 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
     }
     return;
   }
+  if (action === 'team-game-played') {
+    const game = teamGames.find(entry => entry.id === id);
+    if (game) return showDialog(`Log ${game.title}`, 'Record a session you took part in.', field('Date played', 'playedOn', today(), { type: 'date', required: true, max: today(), full: true }), action, 'Log session', id);
+  }
+  if (action === 'team-game-remove') return showDialog('Remove this game entry?', 'This session will be removed from your game log.', '', action, 'Remove entry', id);
+  if (action === 'participation-idea') return showDialog('Suggest a way to gamify participation', state.mode === 'demo' ? 'Your idea will be saved in this demo workspace.' : 'Your idea will be shared with other signed-in members.', `${field('Give your idea a name', 'title', '', { required: true, full: true, length: 140 })}<label class="field full">What should we try?<textarea name="description" maxlength="2000" required></textarea><small>Tell us how it would put joy, responsibility or abundance into practice, and how we could tell if it works.</small></label>`, action, 'Share idea');
+  if (action === 'participation-idea-withdraw') return showDialog('Withdraw this idea?', 'The idea will be removed from the board.', '', action, 'Withdraw idea', id);
   if(await handleGamifyClick(action,id,state,gamifyHelpers()))return;
   if(action==='constitution-clause'){selectClause(id,subid);render();focusSelectedClause($('#main'));return;}
   if(action==='constitution-create')return showDialog('Open a working draft','Each document has its own scope and history. Creating one does not establish a party or adopt rules.',`${field('Document title','title','',{full:true,required:true,length:160})}<label class="field full">Scope<select name="scope"><option value="movement">Movement</option><option value="local-charter">Local charter</option><option value="state">Future state or territory party</option><option value="federal">Future federal party</option></select></label>`,'constitution-create','Create working draft');
@@ -437,6 +467,14 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
     if(kind==='stage'){type='project.status';payload={projectId:id,status:data.status};}
     if(kind==='hours'){type='contribution.log';payload={...data,hours:Number(data.hours),publicConsent:fd.has('publicConsent')};}
     if(kind==='withdraw'){type='membership.withdraw';payload={membershipId:id};}
+    if (kind === 'team-game-played') {
+      const game = teamGames.find(entry => entry.id === id);
+      if (!game) throw new Error('This game is no longer in the index.');
+      type = 'team-game.record'; payload = { gameId: game.id, title: game.title, playedOn: data.playedOn };
+    }
+    if (kind === 'team-game-remove') { type = 'team-game.remove'; payload = { playId: id }; }
+    if (kind === 'participation-idea') type = 'gamify.idea.propose';
+    if (kind === 'participation-idea-withdraw') { type = 'gamify.idea.withdraw'; payload = { ideaId: id }; }
     if (kind === 'onboarding-start') { type = 'onboarding.start'; payload = { policyVersion: data.policyVersion, acknowledged: fd.has('acknowledged') }; }
     if (kind === 'onboarding-submit') {
       type = 'onboarding.submit';

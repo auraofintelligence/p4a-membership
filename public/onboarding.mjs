@@ -166,7 +166,8 @@ export function onboardingView(state, id, { e, heading, icon, civicTools = false
       <h3>Political work and team induction</h3>
       <p>Members work on policy, outreach and building and running party systems. Team games are one part of induction. Plan for one half-day or full-day session in your first three months, or an informal evening format held at most once a month. Political meetings run separately.</p>
       <p>After the first check-in, record each game from start to finish with video, audio and screen capture as suited to the game. Review the footage to see how the team works, which roles suit people and what skills they can share.</p>
-      ${civicTools ? '<p><a href="#training/first-quarter-team-games">Explore the first-quarter team games lesson →</a></p>' : ''}
+      <p>Keep building skills together after induction. In Gamify Democracy you can track your participation and suggest new activities for members to try.</p>
+      <div class="button-row subheading"><a class="button secondary" href="#gamify/games">Browse the team games index</a>${civicTools ? '<a class="button quiet" href="#training/first-quarter-team-games">Open the first-quarter team games lesson →</a>' : ''}</div>
       <h3 class="subheading">Membership payments</h3>
       <p>After the initial eligibility review, pay a one-off application fee of at least A$5 for assessment and verification costs. On approval, pay one quarter of the annual fee for your first three months. At the end of those three months, choose whether to renew for a full year at the annual fee. You’ll see the amount, what it covers and the terms before each payment.</p>
       <p class="subheading">You can take part in public civic work, explore the ideas and learn at your own pace while the membership process is being developed.</p>

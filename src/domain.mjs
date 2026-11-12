@@ -6,6 +6,8 @@ export { AppError } from './errors.mjs';
 export { gamifyProjection } from './gamify.mjs';
 
 const THEMES = ['everyday-life', 'missing-middle', 'verse-box', 'civic-evidence', 'local-care'];
+const PERSONAL_ACTIVITY = new Set(['training.complete', 'team-game.record', 'team-game.remove', 'gamify.idea.propose', 'gamify.idea.withdraw']);
+const brisbaneDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit' });
 const fail = (message, status = 400) => { throw new AppError(message, status); };
 const text = (value, name, max = 600, required = false) => {
   if (typeof value !== 'string' || value.length > max || (required && !value.trim())) fail(`${name} is required and must be no more than ${max} characters.`);
@@ -17,6 +19,10 @@ const find = (items, id, label) => items.find(item => item.id === id) || fail(`$
 const requireOrganiser = actor => actor.role === 'organiser' || fail('This action needs an organiser.', 403);
 const uuid = () => crypto.randomUUID();
 const day = value => { const parsed = new Date(value); if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) fail('Choose a valid date.'); return value; };
+const catalogueId = (value, name) => {
+  if (typeof value !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || value.length > 100) fail(`Choose a valid ${name}.`);
+  return value;
+};
 const safeURL = value => { if (!value) return ''; const result = text(value, 'Evidence link', 1200); let url; try { url = new URL(result); } catch { fail('Use a valid https source link.'); } if (url.protocol !== 'https:') fail('Use a valid https source link.'); return url.href; };
 const priority = data => {
   const result = {};
@@ -42,13 +48,15 @@ function owns(state, actor, project) {
   if (!group.memberIds.includes(actor.id)) fail('You must belong to this working group to manage its project.', 403);
 }
 export function emptyState() {
-  return { revision: 0, people: [], groups: [], projects: [], memberships: [], onboardingCases: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], activity: [], processed: [] };
+  return { revision: 0, people: [], groups: [], projects: [], memberships: [], onboardingCases: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], learningCompletions: [], gamePlays: [], gamifyIdeas: [], activity: [], processed: [] };
 }
 export function normaliseState(state) {
-  const next = { ...state, constitutions: state.constitutions === undefined ? [] : state.constitutions, financialContributions: state.financialContributions === undefined ? [] : state.financialContributions, onboardingCases: state.onboardingCases === undefined ? [] : state.onboardingCases };
+  const { constitutions = [], financialContributions = [], onboardingCases = [], learningCompletions = [], gamePlays = [], gamifyIdeas = [] } = state;
+  const next = { ...state, constitutions, financialContributions, onboardingCases, learningCompletions, gamePlays, gamifyIdeas };
   if (!Array.isArray(next.constitutions)) fail('The constitution register is invalid.', 503);
   if (!Array.isArray(next.financialContributions)) fail('The financial contribution register is invalid.', 503);
   if (!Array.isArray(next.onboardingCases)) fail('The onboarding rehearsal register is invalid.', 503);
+  if (![learningCompletions, gamePlays, gamifyIdeas].every(Array.isArray)) fail('The member participation register is invalid.', 503);
   return next;
 }
 export function createConstitution({ id = uuid(), title, scope, actorId, at }) {
@@ -86,6 +94,40 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
       for (const field of ['name', 'place', 'skills', 'interests']) if (field in data) profile[field] = text(data[field], field, field === 'name' ? 100 : 600, field === 'name');
       for (const field of ['directoryConsent', 'contactConsent']) if (field in data) profile[field] = bool(data[field], field);
       summary = 'Updated own profile and sharing choices.'; break;
+    case 'training.complete': {
+      const moduleId = catalogueId(data.moduleId, 'training module');
+      if (!next.learningCompletions.some(item => item.personId === actor.id && item.moduleId === moduleId)) {
+        next.learningCompletions.push({ personId: actor.id, moduleId });
+      }
+      summary = 'Marked a training module complete.'; break;
+    }
+    case 'team-game.record': {
+      const gameId = catalogueId(data.gameId, 'team game');
+      const title = text(data.title, 'Game title', 140, true);
+      const playedOn = day(data.playedOn);
+      if (playedOn > brisbaneDate.format(now)) fail('A team game must have already happened.');
+      next.gamePlays.push({ id: uuid(), personId: actor.id, gameId, title, playedOn });
+      summary = 'Recorded a team game in own participation.'; break;
+    }
+    case 'team-game.remove': {
+      const index = next.gamePlays.findIndex(item => item.id === data.playId && item.personId === actor.id);
+      if (index === -1) fail('Your team game was not found.', 404);
+      next.gamePlays.splice(index, 1);
+      summary = 'Removed a team game from own participation.'; break;
+    }
+    case 'gamify.idea.propose': {
+      const title = text(data.title, 'Idea title', 140, true);
+      const description = text(data.description, 'Idea description', 2000, true);
+      next.gamifyIdeas.push({ id: uuid(), personId: actor.id, title, description, createdAt: at });
+      summary = 'Shared a Gamify Democracy idea in the workspace.'; break;
+    }
+    case 'gamify.idea.withdraw': {
+      const index = next.gamifyIdeas.findIndex(item => item.id === data.ideaId);
+      if (index === -1) fail('The idea was not found.', 404);
+      if (next.gamifyIdeas[index].personId !== actor.id) fail('You can only withdraw your own idea.', 403);
+      next.gamifyIdeas.splice(index, 1);
+      summary = 'Withdrew own Gamify Democracy idea.'; break;
+    }
     case 'person.create': {
       requireOrganiser(actor);
       const email = text(data.email, 'Email', 254, true).toLowerCase();
@@ -177,8 +219,7 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
       const project = find(next.projects, data.projectId, 'Project'); participation(next, actor, project);
       if (data.namedConsent === true && project.public !== true) fail('Named recognition requires a public project.');
       const date = day(data.date);
-      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-      if (date > today) fail('A contribution must have already happened.');
+      if (date > brisbaneDate.format(now)) fail('A contribution must have already happened.');
       if (typeof data.hours !== 'number' || !Number.isFinite(data.hours) || data.hours < 0.25 || data.hours > 24) fail('Record between 0.25 and 24 hours.');
       const description = text(data.description, 'Contribution description', 1000, true);
       if (next.contributions.some(item => item.personId === actor.id && item.projectId === project.id && item.date === date && item.hours === data.hours && item.description === description && item.status !== 'rejected')) fail('This contribution has already been recorded.', 409);
@@ -274,7 +315,7 @@ export function publicProjection(state, mode = 'live') {
 }
 export function projectState(state, actor, mode = 'live', workspace = false) {
   state = normaliseState(state);
-  const base = { mode, actor, revision: state.revision, people: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], activity: [], billing: { enabled: false }, integrations: { workspace }, public: publicProjection(state, mode) };
+  const base = { mode, actor, revision: state.revision, people: [], groups: [], projects: [], memberships: [], contributions: [], financialContributions: [], decisions: [], constitutions: [], myLearning: [], myGamePlays: [], gamifyIdeas: [], activity: [], billing: { enabled: false }, integrations: { workspace }, public: publicProjection(state, mode) };
   base.onboarding = onboardingProjection(state, actor, mode);
   base.decisions = base.public.decisions;
   if (!actor) { base.projects = base.public.projects; return base; }
@@ -293,6 +334,11 @@ export function projectState(state, actor, mode = 'live', workspace = false) {
   base.memberships = state.memberships.filter(item => organiser || item.personId === actor.id).map(item => structuredClone(item));
   base.contributions = state.contributions.filter(item => organiser || item.personId === actor.id).map(item => structuredClone(item));
   base.financialContributions = state.financialContributions.filter(item => organiser || item.personId === actor.id).map(financialProjection);
-  base.activity = state.activity.filter(item => organiser || item.actorId === actor.id).slice(-100).reverse().map(item => ({ ...item }));
+  base.myLearning = state.learningCompletions.filter(item => item.personId === actor.id).map(({ moduleId }) => moduleId);
+  base.myGamePlays = state.gamePlays.filter(item => item.personId === actor.id).reverse()
+    .sort((first, second) => second.playedOn.localeCompare(first.playedOn))
+    .map(({ id, gameId, title, playedOn }) => ({ id, gameId, title, playedOn }));
+  base.gamifyIdeas = state.gamifyIdeas.map(({ id, personId, title, description, createdAt }) => ({ id, title, description, createdAt, mine: personId === actor.id })).reverse();
+  base.activity = state.activity.filter(item => item.actorId === actor.id || (organiser && !PERSONAL_ACTIVITY.has(item.type))).slice(-100).reverse().map(item => ({ ...item }));
   return base;
 }

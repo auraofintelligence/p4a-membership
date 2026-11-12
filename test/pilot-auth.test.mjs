@@ -94,6 +94,7 @@ test('Pilot authentication uses verified Access identities and maps them to the 
 
   await t.test('the hosted Worker protects assets and persists new work across both organiser aliases', async () => {
     let snapshot = structuredClone(state);
+    for (const collection of ['learningCompletions', 'gamePlays', 'gamifyIdeas']) delete snapshot[collection];
     let assetRequests = 0;
     const pilotEnv = {
       ...env,
@@ -138,7 +139,7 @@ test('Pilot authentication uses verified Access identities and maps them to the 
     assert.equal(bootstrap.mode, 'pilot');
     assert.deepEqual(bootstrap.actor, organiser);
     assert.deepEqual(bootstrap.people.map(person => person.id), [organiser.id]);
-    for (const collection of ['projects', 'groups', 'memberships', 'contributions', 'decisions', 'constitutions']) {
+    for (const collection of ['projects', 'groups', 'memberships', 'contributions', 'decisions', 'constitutions', 'myLearning', 'myGamePlays', 'gamifyIdeas']) {
       assert.deepEqual(bootstrap[collection], []);
     }
     assert.equal(bootstrap.public.sampleData, false);
@@ -159,6 +160,14 @@ test('Pilot authentication uses verified Access identities and maps them to the 
     };
     assert.equal((await command(ownerToken, 'project.create', project)).status, 200);
 
+    const module = { moduleId: 'joyful-responsible-abundance' };
+    const game = { gameId: 'cooperative-board-game', title: 'Team game test', playedOn: '2024-01-01' };
+    const idea = { title: 'Skill swap test', description: 'Pair members for a practical skill exchange.' };
+    assert.equal((await command(uninvitedToken, 'training.complete', module)).status, 401);
+    assert.equal((await command(ownerToken, 'training.complete', module)).status, 200);
+    assert.equal((await command(aliasToken, 'team-game.record', game)).status, 200);
+    assert.equal((await command(ownerToken, 'gamify.idea.propose', idea)).status, 200);
+
     const reloaded = await (await call('/api/bootstrap', aliasToken)).json();
     assert.equal(reloaded.constitutions[0].title, draft.title);
     assert.equal(reloaded.constitutions[0].createdBy, organiser.id);
@@ -166,5 +175,19 @@ test('Pilot authentication uses verified Access identities and maps them to the 
     assert.equal(reloaded.projects[0].title, project.title);
     assert.equal(reloaded.projects[0].groupId, groupId);
     assert.equal(reloaded.projects[0].ownerId, organiser.id);
+    assert.deepEqual(reloaded.myLearning, [module.moduleId]);
+    assert.deepEqual(reloaded.myGamePlays, [{ id: snapshot.gamePlays[0].id, ...game }]);
+    assert.deepEqual(reloaded.gamifyIdeas, [{ id: snapshot.gamifyIdeas[0].id, ...idea, createdAt: snapshot.gamifyIdeas[0].createdAt, mine: true }]);
+    assert.deepEqual(reloaded.contributions, []);
+    const exportResponse = await call('/api/export', ownerToken);
+    assert.equal(exportResponse.headers.get('cache-control'), 'no-store');
+    const exported = await exportResponse.json();
+    assert.deepEqual(exported.myLearning, reloaded.myLearning);
+    assert.deepEqual(exported.myGamePlays, reloaded.myGamePlays);
+    assert.deepEqual(exported.gamifyIdeas, reloaded.gamifyIdeas);
+    for (const path of ['/api/public', '/api/gamify']) {
+      const projection = await (await call(path, ownerToken)).text();
+      for (const privateValue of [module.moduleId, game.title, idea.title]) assert.equal(projection.includes(privateValue), false);
+    }
   });
 });

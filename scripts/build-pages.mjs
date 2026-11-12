@@ -6,7 +6,7 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
 const publicFiles = [
   'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs',
-  'constitution.mjs', 'gamify.mjs', 'gamify.css', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'onboarding.mjs',
+  'constitution.mjs', 'gamify.mjs', 'gamify.css', 'member-participation.mjs', 'team-games-index.mjs', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'onboarding.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
   'electorate-finance.mjs', 'electorate-finance.css', 'electorate-budget.mjs', 'electorate-merch.mjs', 'electorate-referendum.mjs',
   'membership-quick.mjs', 'merch-quick.mjs', 'donation-simulator.mjs',

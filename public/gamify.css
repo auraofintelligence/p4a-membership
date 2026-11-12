@@ -7,3 +7,122 @@
 @media(max-width:520px){.gamify-heading-actions{margin-top:14px;width:100%;flex-direction:column;align-items:stretch}.gamify-heading-actions .button{width:100%}.gamify-intro-actions{gap:5px 16px}}
 
 @media(min-width:1201px){.gamify-filters>.button{margin-top:23px}}
+
+.participation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-bottom: 1.25rem;
+}
+.participation-tabs .button,
+.member-participation .button,
+.participation-history .button,
+.participation-ideas .button,
+.team-games-index .button {
+  min-height: 44px;
+  font-size: .95rem;
+}
+.participation-tabs [aria-current="page"] {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: white;
+}
+.member-participation, .participation-history, .participation-ideas, .team-games-index {
+  margin-bottom: 1.25rem;
+}
+.member-participation > p, .participation-history > p, .participation-ideas p,
+.team-games-index p {
+  color: var(--muted);
+  line-height: 1.65;
+  margin: .45rem 0;
+}
+.participation-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
+  gap: .7rem;
+  margin: 1rem 0;
+}
+.participation-metrics a {
+  display: grid;
+  align-content: start;
+  gap: .4rem;
+  padding: .9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7f2fb;
+  color: var(--purple);
+  text-decoration: none;
+}
+.participation-metrics a:hover span { text-decoration: underline; }
+.participation-metrics .civic-icon { width: 30px; height: 30px; }
+.participation-metrics strong { font-size: 1.65rem; line-height: 1.2; }
+.participation-milestones {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+  padding: 0;
+  margin: .65rem 0 1rem;
+}
+.participation-milestones li {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border-radius: 8px;
+  padding: .4rem .65rem;
+  background: #eaf5ef;
+  color: #245c43;
+}
+.participation-milestones svg { width: 1.1rem; height: 1.1rem; }
+.participation-ideas .section-heading, .team-games-index .section-heading {
+  gap: .75rem 1rem;
+  flex-wrap: wrap;
+}
+.participation-list { list-style: none; padding: 0; margin: .75rem 0 0; }
+.participation-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: .5rem 1rem;
+  padding: .9rem 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.participation-list > li > div { flex: 1 1 15rem; min-width: 0; }
+.participation-idea-description { white-space: pre-wrap; }
+.team-games-host { margin: .9rem 0; }
+.team-games-index summary, .participation-history summary {
+  min-height: 44px;
+  padding-block: .55rem;
+  color: var(--purple);
+  font-weight: 650;
+  cursor: pointer;
+}
+.team-games-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem 1rem;
+  margin: 1rem 0;
+}
+.team-games-controls .field { flex: 1 1 12rem; min-width: 0; font-size: 1rem; }
+.team-games-controls select { min-height: 44px; font-size: 1rem; }
+.team-games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr));
+  gap: .9rem;
+  align-items: start;
+}
+.team-game-card { min-width: 0; }
+.team-game-card[hidden] { display: none; }
+.team-game-card h3 { margin-top: .65rem; }
+.team-game-meta { display: flex; flex-wrap: wrap; gap: .4rem; }
+.team-game-meta span {
+  padding: .28rem .55rem;
+  border-radius: 6px;
+  background: #f3eaf9;
+  color: #462469;
+  font-size: .875rem;
+}
+.team-game-instructions { margin-bottom: .6rem; }

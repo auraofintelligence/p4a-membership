@@ -59,7 +59,7 @@ export function homeDoors(icon, pilot = false) {
     <a class="home-door onboarding-door" href="#onboarding">${icon('onboarding')}<div><h2>Membership onboarding</h2><p>See how applications, civic induction and independent review fit together.</p><span class="door-action">Explore the membership path →</span></div></a>
     <a class="home-door gamify-door" href="#gamify">
       ${icon('gamify')}
-      <div><span class="eyebrow">Recognise what we contribute</span><h2>Gamify Democracy</h2><p>See the funding and freely given time behind shared work. Explore two leaderboards, verified receipts and your recognition choices.</p><span class="door-action">Explore contribution leaderboards →</span></div>
+      <div><h2>Gamify Democracy</h2><p>Find team games for induction and beyond, see your participation and suggest new ways to practise Joyful Responsible Abundance.</p><span class="door-action">Open Gamify Democracy →</span></div>
     </a>
     <a class="home-door constitution-door" href="#constitution">
       ${icon('constitution')}
