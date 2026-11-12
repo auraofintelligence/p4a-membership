@@ -295,7 +295,7 @@ function render() {
     });
   }
   if (route === 'merch') mountMerchQuick($('#main'), { e });
-  if (route === 'hours') mountDonationSimulator($('#main'));
+  if (route === 'hours') mountDonationSimulator($('#main'), { e });
 }
 function focusPage() {
   const target = $('#main :is(.civic-training-page, .onboarding-page, .electorate-finance) h1') || $('#main');

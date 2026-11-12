@@ -5,8 +5,8 @@ import { federalFinanceDistricts } from '../public/finance-federal-data.mjs';
 import { stateFinanceEnrolments } from '../public/finance-state-enrolments.mjs';
 import { stateFinanceDemographics } from '../public/finance-state-demographics.mjs';
 import { membershipProjection } from '../public/membership-quick.mjs';
-import { calculateMonthlyMerch } from '../public/merch-quick.mjs';
-import { calculateDonationPlan, calculateDonationScenario } from '../public/donation-simulator.mjs';
+import { calculateMerchBands } from '../public/merch-quick.mjs';
+import { calculateBequests, calculateDonationPlan, calculateDonationScenario } from '../public/donation-simulator.mjs';
 
 test('federal membership quick projection counts one payment stream at each stage', () => {
   const result = membershipProjection(3, 1000, 75);
@@ -20,15 +20,19 @@ test('federal membership quick projection counts one payment stream at each stag
   assert.equal(membershipProjection(1, 100, 0).annualNet, 784000);
 });
 
-test('merch adds monthly product profit within each option and preserves blank versus zero', () => {
-  const result = calculateMonthlyMerch([
-    { units: 10, profits: ['4.21', '', '0'] },
-    { units: 10000, profits: ['0.99', '7.50', '-0.01'] },
-    { units: 10001, profits: ['2', '2', '2'] },
+test('merch bands use either the band volume or the sum of product volumes', () => {
+  const result = calculateMerchBands([
+    { units: 10, profit: '4.21', products: [{ units: 999 }] },
+    { units: 10000, profit: '0.99' },
+    { units: 1000, profit: '7.50', useProducts: true, products: [{ units: 25 }, { units: 75 }] },
+    { units: 0, profit: '0' },
+    { units: 10001, profit: '' },
   ]);
-  assert.equal(result.totalUnits, 10010);
-  assert.deepEqual(result.monthly, [[4210, null, 0], [990000, 7500000, null], [null, null, null]]);
-  assert.deepEqual(result.totals, [{ cents: 994210, included: 2 }, { cents: 7500000, included: 1 }, { cents: 0, included: 1 }]);
+  assert.equal(result.totalUnits, 10110);
+  assert.equal(result.totalCents, 1069210);
+  assert.equal(result.included, 4);
+  assert.deepEqual(result.bands.map(band => band.monthlyCents), [4210, 990000, 75000, 0, null]);
+  assert.equal(result.bands[2].productUnits, 100);
 });
 
 test('donation scenarios separate the first round from the 12-month total', () => {
@@ -69,6 +73,69 @@ test('donation plans preserve zero and exclude missing or invalid schedules', ()
   assert.equal(plan.groups.monthly.annualCents, 0);
   assert.equal(plan.firstReceiptCents, 820);
   assert.equal(plan.annualCents, 820);
+});
+
+test('larger one-off and annual gifts add to the matching schedule once per year', () => {
+  const plan = calculateDonationPlan({
+    once: { donors: 100, amount: 25 },
+    monthly: { donors: 10, amount: 15 },
+    quarterly: { donors: 5, amount: 40 },
+    annual: { donors: 2, amount: 50 },
+  }, {
+    once: [{ donors: 1, amount: 1000 }, { donors: 2, amount: 5000 }, { donors: 1, amount: '12345.67' }],
+    annual: [{ donors: 3, amount: 25000 }],
+  });
+
+  assert.equal(plan.complete, true);
+  assert.equal(plan.firstReceiptCents, 10129567);
+  assert.equal(plan.annualCents, 10354567);
+  assert.deepEqual(plan.groups.once, {
+    donors: 100, amountCents: 2500, contributions: 1, firstReceiptCents: 2584567, annualCents: 2584567,
+  });
+  assert.equal(plan.groups.annual.firstReceiptCents, 7510000);
+  assert.equal(plan.groups.annual.annualCents, 7510000);
+  assert.deepEqual(plan.largerGifts.once.map(gift => gift.annualCents), [100000, 1000000, 1234567]);
+  assert.equal(plan.largerGifts.annual[0].annualCents, 7500000);
+});
+
+test('an incomplete larger gift keeps valid gifts and explicit zero donors in the plan', () => {
+  const plan = calculateDonationPlan({
+    once: { donors: 1, amount: 25 },
+    monthly: { donors: 1, amount: 25 },
+    quarterly: { donors: 0, amount: 25 },
+    annual: { donors: 0, amount: 25 },
+  }, {
+    once: [{ donors: 1, amount: '' }, { donors: 0, amount: 10000 }],
+    annual: [{ donors: 1, amount: 5000 }],
+  });
+
+  assert.equal(plan.complete, false);
+  assert.equal(plan.largerGifts.once[0], null);
+  assert.equal(plan.largerGifts.once[1].annualCents, 0);
+  assert.equal(plan.groups.once.annualCents, 2500);
+  assert.equal(plan.firstReceiptCents, 505000);
+  assert.equal(plan.annualCents, 532500);
+});
+
+test('bequests total separately from scheduled donations and exclude incomplete entries', () => {
+  const bequests = calculateBequests([
+    { donors: 1, amount: 100000 },
+    { donors: 2, amount: '50000.25' },
+    { donors: 0, amount: 25000 },
+    { donors: 1, amount: '' },
+  ]);
+  const donations = calculateDonationPlan({
+    once: { donors: 0, amount: 25 },
+    monthly: { donors: 1, amount: 25 },
+    quarterly: { donors: 0, amount: 25 },
+    annual: { donors: 0, amount: 25 },
+  });
+
+  assert.equal(bequests.complete, false);
+  assert.equal(bequests.totalCents, 20000050);
+  assert.deepEqual(bequests.gifts.map(gift => gift?.firstReceiptCents ?? null), [10000000, 10000050, 0, null]);
+  assert.equal(donations.firstReceiptCents, 2500);
+  assert.equal(donations.annualCents, 30000);
 });
 
 test('a zero-cash plan cannot spend hoped-for grants or later sales', () => {
