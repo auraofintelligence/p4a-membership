@@ -6,12 +6,14 @@ import {trialView, handleTrialAction, trialAuditRecord} from './constitution-tri
 import {gamifyView, loadGamify, handleGamifyClick, handleGamifySubmit, handleGamifyChange} from './gamify.mjs';
 import {jraSource, jraValues} from './jra-values.mjs';
 import {onboardingView} from './onboarding.mjs';
+import {membershipQuickView, mountMembershipQuick} from './membership-quick.mjs';
+import {merchQuickView, mountMerchQuick} from './merch-quick.mjs';
 const $ = (s, root = document) => root.querySelector(s);
 const e = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths = {arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',out:'M14 3h7v7 M21 3 10 14 M10 3H3v18h18v-7',check:'M5 12l4 4L19 6'};
 const icon = key => civicIcon(key) || (paths[key] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[key]}"/></svg>` : '');
 const themes = {'everyday-life':'Everyday life','missing-middle':'Missing Middle','verse-box':'Verse Box','civic-evidence':'Civic evidence','local-care':'Local care'};
-const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['finance','Electorate finance'],['hours','Contributions'],['gamify','Gamify Democracy']];
+const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['finance','Electorate finance'],['merch','Merch'],['hours','Contributions'],['gamify','Gamify Democracy']];
 const accountabilityRoutes = [['transparency','Open transparency'],['resources','Connected ideas'],['constitution','Constitution workbench'],['profile','Your membership']];
 const resources = [
   {icon:'abundance',name:'Joyful Responsible Abundance',label:'Purpose & perspective',description:'Explore how truth, responsibility and shared capacity can widen people’s opportunities as AI advances.',url:jraSource},
@@ -171,6 +173,7 @@ function field(label,name,value='',options={}){return `<label class="field ${opt
 function render() {
   rememberScrollPositions(document);
   const [route = 'home', id] = (location.hash.slice(1) || 'home').split('/');
+  const financeTab = route === 'finance' && ['detail', 'fees', 'merch', 'referendum'].includes(id) ? (id === 'detail' ? 'budgets' : id) : null;
   const pilot = isPilot();
   const civicTools = hasCivicTools();
   const trainingActor = state.actor?.id || 'local-public';
@@ -216,8 +219,9 @@ function render() {
     views.training = () => training?.trainingView(id, trainingActor, { e, heading }) || '<div class="panel"><p role="status">Opening civic training…</p></div>';
   }
   if (route === 'finance') {
-    views.finance = () => electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening electorate finance…</p></div>';
+    views.finance = () => financeTab ? (electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening detailed budgets…</p></div>') : membershipQuickView({ e, heading });
   }
+  if (route === 'merch') views.merch = () => merchQuickView({ e, heading });
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
   const trainingTitle = route === 'training' ? $('#main .civic-training-page h1')?.textContent : null;
   if (trainingTitle && trainingTitle !== currentLabel) document.title = `${trainingTitle} · Civic training · P4A`;
@@ -270,14 +274,17 @@ function render() {
     }
   }
   if (route === 'finance') {
-    if (electorateFinance) electorateFinance.mountElectorateFinance($('#main'), { e });
+    const requestedRoute = location.hash;
+    if (!financeTab) mountMembershipQuick($('#main'), { e });
+    else if (electorateFinance) electorateFinance.mountElectorateFinance($('#main'), { e }, financeTab);
     else import('./electorate-finance.mjs').then(module => {
       electorateFinance = module;
-      if (location.hash === '#finance') render();
+      if (location.hash === requestedRoute) render();
     }).catch(() => {
-      if (location.hash === '#finance') $('#main').innerHTML = '<div class="panel"><h1>Electorate finance</h1><p>The calculators could not open. Reload the workspace to try again.</p></div>';
+      if (location.hash === requestedRoute) $('#main').innerHTML = '<div class="panel"><h1>Electorate finance</h1><p>The detailed budgets could not open. Reload the workspace to try again.</p></div>';
     });
   }
+  if (route === 'merch') mountMerchQuick($('#main'));
 }
 function focusPage() {
   const target = $('#main :is(.civic-training-page, .onboarding-page, .electorate-finance) h1') || $('#main');

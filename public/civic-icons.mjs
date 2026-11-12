@@ -6,10 +6,10 @@ export const iconNames = Object.freeze([
   'missing-middle', 'verse-box', 'legal', 'bills',
   'gamify', 'campaigns', 'readiness', 'training', 'onboarding',
   'relevance', 'committees', 'twins', 'redlands', 'scan', 'genesis',
+  'finance', 'merch',
 ]);
 
 export function civicIcon(name) {
-  if (name === 'finance') return '<span class="finance-icon" aria-hidden="true">🧮</span>';
   if (!iconNames.includes(name)) return '';
   return `<span class="civic-icon civic-icon-${name}" aria-hidden="true"></span>`;
 }
@@ -18,5 +18,5 @@ export const compactLabels = Object.freeze({
   home: 'Home', projects: 'Projects', priority: 'Priorities', people: 'People',
   groups: 'Groups', nodes: 'Local nodes', hours: 'Contribution', gamify: 'Gamify',
   transparency: 'Transparency', resources: 'Ideas & tools',
-  constitution: 'Constitution', profile: 'Membership', campaigns: 'Campaigns', readiness: 'Readiness', finance: 'Finance', training: 'Training', onboarding: 'Onboarding',
+  constitution: 'Constitution', profile: 'Membership', campaigns: 'Campaigns', readiness: 'Readiness', finance: 'Finance', merch: 'Merch', training: 'Training', onboarding: 'Onboarding',
 });

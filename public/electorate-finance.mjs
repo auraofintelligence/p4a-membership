@@ -7,6 +7,7 @@ import { electionEstimate } from './electoral-funding.mjs';
 import { calculateElectorateBudget, cashCents, monthDate, planningMonths, operatingRequests, campaignRequests, priceForWork, projectMembership, peopleCount } from './electorate-budget.mjs';
 import { merchView, mountMerch } from './electorate-merch.mjs';
 import { referendumView, mountReferendum } from './electorate-referendum.mjs';
+import { membershipPrices } from './membership-quick.mjs';
 
 const stateNames = { NSW: 'New South Wales', VIC: 'Victoria', QLD: 'Queensland', WA: 'Western Australia', SA: 'South Australia', TAS: 'Tasmania', ACT: 'Australian Capital Territory', NT: 'Northern Territory' };
 const nameKey = ({ jurisdiction, name }) => `${jurisdiction}:${name.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -25,7 +26,7 @@ const districtLabel = row => `${row.name} · ${row.jurisdiction}`;
 
 const tabs = [ ['budgets', 'Electorate budgets'], ['fees', 'Membership fees'], ['merch', 'Merch and markets'], ['referendum', '2031 referendum'] ];
 const districts = new Map();
-const fees = {};
+const fees = { applicationFee: membershipPrices.application, annualPrice: membershipPrices.standard, concessionPrice: membershipPrices.concession, processingRate: membershipPrices.processing };
 const intakeCosts = {};
 const viewState = { level: 'federal', area: 'all', districtId: '', month: 0, tab: 'budgets' };
 const blankMonths = () => Array.from({ length: planningMonths }, () => ({}));
@@ -156,7 +157,7 @@ function feeMarkup(e) {
 }
 
 export function electorateFinanceView({ heading }) {
-  return `<div class="electorate-finance">${heading('Campaign Command Centre', 'Electorate finance', 'Start at A$0. Plan cash, people and seat targets for each electorate through 2031.', '<a class="button secondary" href="#campaigns">Campaign Command Centre</a>')}
+  return `<div class="electorate-finance">${heading('Campaign Command Centre', 'Detailed electorate finance', 'Start at A$0. Plan cash, people and seat targets for each electorate through 2031.', '<a class="button secondary" href="#finance">Quick membership calculator</a>')}
     <nav class="finance-tabs" aria-label="Finance calculators"></nav><div data-finance-content></div></div>`;
 }
 
@@ -229,9 +230,10 @@ function portfolioMarkup(rows, e) {
     <p><strong>2031 objective</strong> Win multiple seats at each election, win government federally in 2031 and pass a constitutional referendum that year. <button class="finance-text-button" type="button" data-finance-tab="referendum">Explore the referendum numbers</button></p>`;
 }
 
-export function mountElectorateFinance(root, { e }) {
+export function mountElectorateFinance(root, { e }, initialTab) {
   const wrapper = root.querySelector('.electorate-finance');
   if (!wrapper) return;
+  if (initialTab) viewState.tab = initialTab;
   const display = wrapper.querySelector('[data-finance-content]');
   const selected = () => districtIndex.get(viewState.districtId);
   const selectedPlan = () => planFor(selected().id);
@@ -276,6 +278,7 @@ export function mountElectorateFinance(root, { e }) {
     wrapper.querySelector('.finance-tabs').innerHTML = tabs.map(([key, label]) => `<button type="button" data-finance-tab="${key}" aria-pressed="${viewState.tab === key}">${e(label)}</button>`).join('');
     if (viewState.tab === 'fees') display.innerHTML = feeMarkup(e);
     else if (viewState.tab === 'merch') {
+      if (!selected()) viewState.districtId = viewDistricts()[0].id;
       display.innerHTML = `<p class="finance-context">Budget scenario destination · ${e(districtLabel(selected()))} · ${e(months.format(monthDate(viewState.month)))}</p>${merchView(e)}`;
       mountMerch(display, { onApply: (quote, channel) => {
         const payout = Math.round(quote.cash + quote.upfront);

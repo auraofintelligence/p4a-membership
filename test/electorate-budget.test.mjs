@@ -4,6 +4,27 @@ import { calculateElectorateBudget, priceForWork, projectMembership, referendumV
 import { federalFinanceDistricts } from '../public/finance-federal-data.mjs';
 import { stateFinanceEnrolments } from '../public/finance-state-enrolments.mjs';
 import { stateFinanceDemographics } from '../public/finance-state-demographics.mjs';
+import { membershipProjection } from '../public/membership-quick.mjs';
+import { calculateQuickMerch } from '../public/merch-quick.mjs';
+
+test('federal membership quick projection counts one payment stream at each stage', () => {
+  const result = membershipProjection(3, 1000, 75);
+  assert.equal(result.members, 3000);
+  assert.equal(result.standardMembers, 2250);
+  assert.equal(result.concessionMembers, 750);
+  assert.equal(result.applicationNet, 1470000);
+  assert.equal(result.quarterNet, 8085000);
+  assert.equal(result.annualNet, 32340000);
+  assert.equal(membershipProjection(0, 10000, 100).annualNet, 0);
+  assert.equal(membershipProjection(1, 100, 0).annualNet, 784000);
+});
+
+test('merch compares whole runs at the same cent-rounded selling price', () => {
+  assert.equal(calculateQuickMerch('', 25), null);
+  const result = calculateQuickMerch('4.21', 25);
+  assert.equal(result.priceCents, 526);
+  assert.deepEqual(result.batches.map(({ quantity, contribution }) => [quantity, contribution]), [[10, 1050], [100, 10500], [1000, 105000]]);
+});
 
 test('a zero-cash plan cannot spend hoped-for grants or later sales', () => {
   const rows = calculateElectorateBudget([

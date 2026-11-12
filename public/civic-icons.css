@@ -31,6 +31,44 @@
 .civic-icon-training { background-image: url('/artwork/civic-training.png'); background-size: contain; background-position: center; }
 .civic-icon-genesis { background-image: url('/artwork/aura-genesis-geode.png'); background-size: contain; background-position: center; }
 
+:is(.civic-icon-finance, .civic-icon-merch) { position: relative; background: none; }
+:is(.civic-icon-finance, .civic-icon-merch)::before,
+:is(.civic-icon-finance, .civic-icon-merch)::after { content: ''; position: absolute; }
+.civic-icon-finance::before {
+  inset: 6% 17%;
+  border: 2px solid #c5a0ec;
+  border-radius: 18% / 13%;
+  background:
+    linear-gradient(160deg, #c2ffeb, #6edaca) center 15% / 75% 23% no-repeat,
+    linear-gradient(145deg, #8d57c0, #513078);
+  box-shadow: 0 2px 0 #170c2c66;
+}
+.civic-icon-finance::after {
+  inset: 48% 30% 19%;
+  background:
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left top / 28% 31% no-repeat,
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center top / 28% 31% no-repeat,
+    radial-gradient(ellipse, #ffda77 56%, transparent 62%) right top / 28% 31% no-repeat,
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left center / 28% 31% no-repeat,
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center / 28% 31% no-repeat,
+    radial-gradient(ellipse, #ffda77 56%, transparent 62%) right bottom / 28% 62% no-repeat,
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left bottom / 28% 31% no-repeat,
+    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center bottom / 28% 31% no-repeat;
+}
+.civic-icon-merch::before {
+  inset: 7% 31% 52%;
+  border: 3px solid #f8d476;
+  border-radius: 50% 50% 20% 20%;
+}
+.civic-icon-merch::after {
+  inset: 30% 11% 8%;
+  clip-path: polygon(10% 0, 90% 0, 100% 92%, 93% 100%, 7% 100%, 0 92%);
+  background:
+    radial-gradient(circle, #ffe398 48%, transparent 54%) 46% 58% / 34% 46% no-repeat,
+    linear-gradient(90deg, transparent 75%, #693398 76%),
+    linear-gradient(145deg, #e3bcff 19%, #b778e3 20%, #9254ca 74%, #7d40ad);
+}
+
 :is(.civic-icon-relevance, .civic-icon-committees, .civic-icon-twins,
     .civic-icon-redlands, .civic-icon-scan) {
   background-image: url('/artwork/connected-ideas-icons.png');
