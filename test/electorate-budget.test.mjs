@@ -61,6 +61,26 @@ test('donation plans total four independent giving schedules', () => {
   );
 });
 
+test('monthly and quarterly schedules combine independent gift amounts', () => {
+  const plan = calculateDonationPlan({
+    once: { donors: 0, amount: 25 },
+    monthly: { donors: 80, amount: 10 },
+    quarterly: { donors: 12, amount: 25 },
+    annual: { donors: 0, amount: 25 },
+  }, {
+    monthly: [{ donors: 20, amount: 50 }],
+    quarterly: [{ donors: 3, amount: '17.45' }],
+  });
+
+  assert.equal(plan.complete, true);
+  assert.equal(plan.groups.monthly.firstReceiptCents, 180000);
+  assert.equal(plan.groups.monthly.annualCents, 2160000);
+  assert.equal(plan.groups.quarterly.firstReceiptCents, 35235);
+  assert.equal(plan.groups.quarterly.annualCents, 140940);
+  assert.equal(plan.firstReceiptCents, 215235);
+  assert.equal(plan.annualCents, 2300940);
+});
+
 test('donation plans preserve zero and exclude missing or invalid schedules', () => {
   const plan = calculateDonationPlan({
     monthly: { donors: 0, amount: 25 },
