@@ -3,15 +3,17 @@ const maxBands = 10;
 const presets = [0, 10, 100, 1000, 10000];
 const money = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' });
 const number = new Intl.NumberFormat('en-AU');
-let nextBandId = 6;
 let nextProductId = 2;
-const bands = [2, 5, 10, 15, 25].map((profit, index) => ({
+const bundleProfits = [50, 100, 200];
+const bands = [2, 5, 10, 15, 25, ...bundleProfits].map((profit, index) => ({
   id: index + 1,
   profit: String(profit),
+  bundle: bundleProfits.includes(profit),
   units: profit === 5 ? 100 : 0,
   useProducts: false,
   products: profit === 5 ? [{ id: 1, name: 'Purple anti-splash, anti-corruption lavender-scented piss mat', units: 100 }] : [],
 }));
+let nextBandId = bands.length + 1;
 
 const formatMoney = cents => cents == null ? '—' : money.format(cents / 100);
 const validUnits = (units, minimum = 0) => Number.isInteger(units) && (units === 0 || units >= minimum) && units <= maxUnits;
@@ -49,7 +51,7 @@ function bandEditor(band, e) {
   const { id, useProducts } = band;
   return `<section class="panel merch-band" data-merch-band="${id}" aria-labelledby="merch-band-${id}">
     <div class="merch-band-heading">
-      <h3 id="merch-band-${id}" data-band-heading>Band</h3>
+      <h3 id="merch-band-${id}" data-band-heading>${band.bundle ? 'Bundle band' : 'Band'}</h3>
       <button type="button" class="button secondary" data-band-remove>Remove band</button>
     </div>
     <div class="merch-band-controls">
@@ -107,8 +109,9 @@ export function mountMerchQuick(root, { e }) {
     bands.forEach((band, index) => {
       const card = list.children[index];
       const { units, productUnits, monthlyCents } = result.bands[index];
-      card.querySelector('[data-band-heading]').textContent = `Band ${index + 1}`;
-      card.querySelector('[data-band-remove]').setAttribute('aria-label', `Remove band ${index + 1}`);
+      const label = `${band.bundle ? 'Bundle band' : 'Band'} ${index + 1}`;
+      card.querySelector('[data-band-heading]').textContent = label;
+      card.querySelector('[data-band-remove]').setAttribute('aria-label', `Remove ${label.toLowerCase()}`);
       card.querySelector('[data-band-result]').textContent = formatMoney(monthlyCents);
       card.querySelector('[data-band-sales]').textContent = `${number.format(units)} items${band.useProducts ? ' from products' : ' per month'}`;
       card.querySelector('[data-band-product-count]').textContent = band.products.length ? `(${number.format(band.products.length)})` : '';
