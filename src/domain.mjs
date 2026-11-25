@@ -1,4 +1,4 @@
-import { starterClauses, sourceUrl as constitutionSourceUrl } from './constitution-seed.mjs';
+import { starterClauses, formationTopics, projectConstitution, sourceUrl as constitutionSourceUrl } from './constitution-seed.mjs';
 import { AppError } from './errors.mjs';
 import { executeGamifyCommand, financialProjection } from './gamify.mjs';
 import { executeOnboardingCommand, onboardingProjection, requireOnboardingDemo } from './onboarding.mjs';
@@ -273,6 +273,22 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
       next.constitutions.push(createConstitution({ title: data.title, scope: data.scope, actorId: actor.id, at }));
       summary = 'Created a constitution working draft; no rules were adopted.'; break;
     }
+    case 'constitution.structure': {
+      requireOrganiser(actor);
+      const constitution = find(next.constitutions,data.constitutionId,'Constitution draft');
+      const topic=formationTopics.find(item=>item.id===data.topicId);
+      if(!topic)fail('Choose a valid formation topic.');
+      const structure=constitution.formationStructure??={version:0,mappings:[],history:[]};
+      if(data.structureVersion!==structure.version)fail('The formation checklist changed. Refresh before saving.',409);
+      const clauseId=data.clauseId===null?null:find(constitution.clauses,data.clauseId,'Clause').id;
+      const sourceNote=text(data.sourceNote,'Source or drafting rationale',1000,true);
+      const previous=structure.mappings.find(item=>item.topicId===topic.id)||null;
+      structure.history.push({version:structure.version,topicId:topic.id,previous:structuredClone(previous),actorId:actor.id,at});
+      structure.mappings=structure.mappings.filter(item=>item.topicId!==topic.id);
+      structure.mappings.push({topicId:topic.id,clauseId,sourceNote,updatedBy:actor.id,updatedAt:at});
+      structure.version++;
+      summary='Mapped a formation topic to working wording; no rule or permission was adopted.';break;
+    }
     case 'constitution.propose': {
       const constitution = find(next.constitutions, data.constitutionId, 'Constitution draft');
       const adding = data.clauseId === null;
@@ -298,6 +314,10 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
       const status = choose(data.status, ['accepted', 'declined'], 'draft review outcome');
       const reason = text(data.reason, 'Review reason', 3000, true);
       if (status === 'accepted') {
+        const snapshots=constitution.workingVersions??=[];
+        if(!snapshots.some(v=>v.version===constitution.version)){
+          snapshots.push({version:constitution.version,title:constitution.title,scope:constitution.scope,sourceUrl:constitution.sourceUrl,clauses:constitution.clauses.map(({id,heading,body,version,sourceUrl})=>({id,heading,body,version,sourceUrl})),savedAt:at,supersededBy:actor.id,proposalId:proposal.id});
+        }
         if (proposal.kind === 'add') {
           if (constitution.clauses.some(clause => clause.id === proposal.clauseId)) fail('This proposed clause already exists in the draft.', 409);
           constitution.clauses.push({ id: proposal.clauseId, heading: proposal.heading, body: proposal.body, version: 1, history: [], sourceUrl: constitution.sourceUrl });
@@ -348,7 +368,7 @@ export function projectState(state, actor, mode = 'live', workspace = false) {
   base.decisions = base.public.decisions;
   if (!actor) { base.projects = base.public.projects; return base; }
   const organiser = actor.role === 'organiser';
-  base.constitutions = structuredClone(state.constitutions);
+  base.constitutions = state.constitutions.map(projectConstitution);
   base.people = state.people.filter(person => organiser || person.id === actor.id || person.directoryConsent === true).map(person => {
     if (organiser || person.id === actor.id) {
       const { authSubject, role, influences, ...profile } = person;
