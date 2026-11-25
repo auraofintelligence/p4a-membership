@@ -1,6 +1,6 @@
 # P4A membership: onboarding, committee, constitution and permissions matrix
 
-**Purpose:** bridge the three core P4A sites and two related public entry points into a clear onboarding journey and develop a real role-based membership and committee workspace using proven PLFC clubhouse patterns. Retain P4A's existing civic learning, group/project collaboration, Gamify Democracy, constitution drafts and private pilot. This is a development and acceptance specification, not authority to activate enrolment, appoint officers or adopt rules.
+**Purpose:** connect the three core P4A sites, two local entry points and two distinct regional/nation-led research resources into a clear onboarding journey and develop a real role-based membership and committee workspace using proven PLFC clubhouse patterns. Retain P4A's existing civic learning, group/project collaboration, Gamify Democracy, constitution drafts and private pilot. This is a development and acceptance specification, not authority to activate enrolment, appoint officers or adopt rules.
 
 Reviewed 25 November 2026. Reference snapshots: [P4A membership](https://github.com/auraofintelligence/p4a-membership/tree/c013132fdbe9c5d2f81295203b2cfa60d34a2d47), [civic workbench](https://github.com/auraofintelligence/p4a-xyz-cinema/tree/d7d1ab52a9831ebc9c1158f0e26fe8531434e979), [committees and inquiries](https://github.com/auraofintelligence/p4a-xyz-committees-inquiries/tree/eec6a96860050869fbea3e9d840481ba64d6b5b9), [PLFC clubhouse](https://github.com/auraofintelligence/PLFC-members-club/tree/f5424be998cd3cb9b9e7e02817bb69be18e99e54), and [Sandy parity lessons](https://github.com/auraofintelligence/Sandy-Sports-Club/blob/9359d2f21d05161cc0dd4d250fb6b8d03d9ac3dd/studio/PLFC-PARITY.md). No authenticated live audit or inspection of private records was performed.
 
@@ -16,7 +16,7 @@ Reviewed 25 November 2026. Reference snapshots: [P4A membership](https://github.
 
 ## Proposed public journey
 
-Five connected public sites, each with its own purpose and an optional route to the same membership guide:
+Seven connected public sites, each with its own purpose. Australian personal membership is only one optional pathway; regional cooperation and nation-controlled onboarding are separate.
 
 | Site | Role in the connected journey |
 | --- | --- |
@@ -24,11 +24,16 @@ Five connected public sites, each with its own purpose and an optional route to 
 | [Committees and inquiries](https://auraofintelligence.github.io/p4a-xyz-committees-inquiries/) | Official opportunities and responsible-body navigation; participation does not require membership |
 | [Redlands Civic Lab](https://auraofintelligence.github.io/redlands-mayoral-campaign/) | Local civic simulation, project research, public questions and collaboration; the repository name retains its earlier mayoral exploration, not an active candidacy |
 | [Strange But True](https://auraofintelligence.github.io/strange-but-true/) | Independent business, creative and community-project doorway on Minjerribah, including the existing Local nodes example |
+| [P4A Oceania](https://auraofintelligence.github.io/p4a-oceania-cinema/) | Regional research and locally adapted civic possibilities; no automatic Australian political affiliation |
+| [Native Nations of the World](https://auraofintelligence.github.io/p4a-native-nations-cinema/) | Nation-controlled self-description, optional independent adaptation, Indigenous data sovereignty and refusal; never a membership funnel |
 | [People & possibility](https://auraofintelligence.github.io/p4a-membership/) | Canonical membership guide, public learning, fictional preview and future approved applicant/member workspaces |
 
 ```text
 P4A civic workbench          Committees and inquiries
 Redlands Civic Lab          Strange But True
+                  |
+P4A Oceania: optional Australian resource reference
+Native Nations: separate nation-led onboarding, no funnel
                   |
       Membership & participation (public guide)
              |                     |
@@ -46,6 +51,8 @@ Redlands Civic Lab          Strange But True
 ```
 
 Canonical initial guide: [membership guide](https://auraofintelligence.github.io/p4a-membership/apply/). Existing [application preview](https://auraofintelligence.github.io/p4a-membership/apply/application.html) is intentionally non-submitting. The exact live applicant endpoint remains unset until a verified deployment and owner approval exist. The first link release may point to the guide without opening real membership intake.
+
+Oceania's regional pathways preserve each polity's law, culture and authority. Native Nations' existing [onboarding room](https://auraofintelligence.github.io/p4a-native-nations-cinema/pages/onboard.html) and [agent localisation prompt](https://github.com/auraofintelligence/p4a-native-nations-cinema/blob/main/ONBOARD_WITH_AN_AGENT.md) remain independent and explicitly not a political membership funnel. Cross-link the public resources where appropriate; do not steer nations or peoples into Australian membership, prefill applications, infer eligibility, or transfer community information. Refusal and independent adaptation remain first-class outcomes.
 
 Redlands Civic Lab already documents an Explore P4A page linking the public membership preview. P4A membership's Local nodes source already links to Redlands Civic Lab and Strange But True. Strange But True's Community Ledger links to the main P4A site. Extend these existing contextual routes instead of creating duplicate directories. Verify actual published links and distinguish a general preview link from a direct onboarding-guide link.
 
@@ -76,7 +83,7 @@ Implement permissions as server-side action + resource + scope + actor checks, w
 
 P0 = release-blocking foundation, P1 = core functional development, P2 = deeper or externally dependent work. Gap = no comparable complete workflow found; Partial = useful code/design exists but essential work or acceptance remains; Substantial = significant existing functional implementation still needs integration/acceptance; Blocked = identified structural dependency; Hold = deliberate policy/activation hold. Accepted requires row-specific and common evidence; no row claimed accepted in this baseline. The priorities and role names are proposed, not owner-approved governance rules.
 
-**51 acceptance units:** 17 P0, 31 P1, 3 P2. 1 blocked, 22 gaps, 25 partial, 2 substantial, 1 hold; 0 accepted. Not a percent-complete measure.
+**53 acceptance units:** 17 P0, 33 P1, 3 P2. 1 blocked, 22 gaps, 27 partial, 2 substantial, 1 hold; 0 accepted. Not a percent-complete measure.
 
 ## Master functional matrix
 
@@ -86,15 +93,18 @@ P0 = release-blocking foundation, P1 = core functional development, P2 = deeper 
 | --- | --- | --- | --- | --- | --- |
 | ON-01 | P0 | Gap | Main P4A homepage and shared navigation have no membership entry in inspected index/nav sources. | Add one canonical, plainly labelled 'Membership & participation' doorway to the existing guide, with contextual links from ground game and participation paths. Use canonical shared navigation, not thousands of incidental page rewrites. | On published p4a.xyz, desktop/mobile/keyboard navigation reaches the guide; current six doors/five Index themes, election content and site budget remain intact. |
 | ON-02 | P0 | Gap | Committees/inquiries shared navigation has no membership link in inspected source. | Add a neutral optional doorway to civic learning and membership guide from participation help and shared navigation. Official submission links remain primary; membership never required for public participation. | Reach guide from an inquiry and council page; official submission link, jurisdiction filter, archives and status remain unchanged. No personal data passed. |
-| ON-03 | P0 | Partial | Membership has internal #onboarding and Pages /apply/ guide/application preview; external live intake URL not verified. | Use one canonical public guide as cross-site destination. Explain free exploration, learning, nonmember involvement, membership application, private review and actual current availability. Link back to the four public entry sites with accurate role labels. Publish live application button only after intake approval. | Each route reaches correct destination; preview clearly disabled for real submissions; closed status and next step shown when live intake unavailable; no invented endpoint. |
+| ON-03 | P0 | Partial | Membership has internal #onboarding and Pages /apply/ guide/application preview; external live intake URL not verified. | Use one canonical public guide as cross-site destination. Explain free exploration, learning, nonmember involvement, membership application, private review and actual current availability. Link back to the six related public sites with accurate role labels and distinct onboarding purposes. Publish live application button only after intake approval. | Each route reaches correct destination; preview clearly disabled for real submissions; closed status and next step shown when live intake unavailable; no invented endpoint. |
 | ON-04 | P0 | Partial | application-intake.mjs, application store/review and separate Worker template exist; deployment and real D1 binding unverified. | Reconcile actual hosting before provisioning. Keep applicant intake separate from membership state; use explicit source/operator, HTTPS, privacy and consent, rate limits, safe receipt and reviewer queue. No real collection before gate. | Fictional form end-to-end with isolated database, retry/duplicate and storage failure, receipt only after durable save, private review, no leak or activation; verify actual deployment separately. |
 | ON-05 | P1 | Gap | Public browser demo supports fictional personas; real applicant sign-in and own status not complete. | Applicant portal with distinct verified account, private case status, requests for clarification, correction, withdrawal and receipt. No sign-in requirement for public content. Account recovery separated from KYC. | Two fictional applicants cannot read each other's cases; recover one account, submit correction, withdraw, verify status and audit from independent session. |
 | ON-06 | P1 | Partial | onboarding.mjs implements demo induction, review and withdrawal, live commands deliberately unavailable. | Implement real staged workflow: interest or application, identity/eligibility check, civic induction, independent review, decision, appeal and optional registration-support evidence. Distinct contact and publication consent. | Applicant completes sample case; reviewer requests correction, second authorised actor decides; reject self-review, duplicate and stale decisions; export audit without raw evidence. |
 | ON-07 | P1 | Partial | profile, learning, games and influence features exist in domain/preview. | Carry only applicant-approved details into own member profile after admission; personal Aura/L0 stays private; no transfer of game/reflection material without permission. Preserve separate anonymous public learning. | Verify profile import only allowed fields; withdraw contact/publication consent independently; no automatic sharing or eligibility score. |
-| ON-08 | P1 | Gap | Existing public sites, preview and private runtime lack a verified unified status/link contract. | Maintain canonical link registry with guide, demo, live intake (nullable until verified), status and return links; include the two related entry sites in the reviewed link registry; further sites such as Gamify Democracy require separate authorisation. | Link tests across all five connected sites including base paths/hash routes, mobile and closed service state; no tracking or cross-site identity leakage. |
+| ON-08 | P1 | Gap | Existing public sites, preview and private runtime lack a verified unified status/link contract. | Maintain canonical link registry with guide, demo, live intake (nullable until verified), status and return links; include local, regional and nation-led related sites with distinct link purposes in the reviewed registry; further sites such as Gamify Democracy require separate authorisation. | Link tests across all seven connected sites including base paths/hash routes, mobile and closed service state; no tracking or cross-site identity leakage. |
 
 | ON-09 | P0 | Partial | Redlands Civic Lab README documents an Explore P4A page and public membership preview link; membership Local nodes already links back. Direct guide link and live behavior not verified. | Preserve the current Redlands Civic Lab identity and earlier election history. Add or confirm a neutral optional direct membership-guide link within its existing Explore P4A pathway; keep civic research, licensing, collaboration and non-candidacy wording distinct. | Inspect published Explore P4A route and test guide/return links, mobile and keyboard access; no active candidacy or private command-centre link, applicant transfer or real enrolment implied. |
 | ON-10 | P0 | Partial | Strange But True Community Ledger links to P4A; membership Local nodes already links back. Direct onboarding-guide route not established in inspected ledger. | Add a contextual optional membership-guide link alongside the existing P4A project connection. Preserve commercial enquiries, local services, Community Ledger, paid work and C-Hours as separate from prospective membership. | Visitor can reach public guide and return to independent business/project information; service forms, checkout, data and licence remain unchanged; no purchase or service implies membership. |
+
+| ON-11 | P1 | Partial | Oceania cinema already links the Australian civic workbench and has its own regional research rooms. Direct membership-guide link not verified. | Provide a clearly optional Australian civic learning and membership information reference in the existing P4A family links, with reciprocal Oceania link from membership resources. Preserve each place's laws, status, culture and local authority. No regional enrolment, inferred eligibility or Australian party affiliation. | Check published related-resource links and distinct scope wording; an overseas visitor can explore the regional site without joining anything. No personal data passed. |
+| ON-12 | P1 | Partial | Native Nations cinema has an independent nation-controlled onboarding room and agent localisation prompt explicitly not a membership funnel. | Preserve the nation-led entry, adaptation, refusal and removal pathways. Connect to P4A membership only as a clearly separate optional Australian public resource where appropriate and authorised; never insert a political membership CTA into nation onboarding. No forms, tracking, CRM connection, inferred consent, representative claims or transfer of Indigenous knowledge. | Verify self-onboarding remains independent and usable without accounts or tracking; confirm no change to refusal, consent, source or cultural authority commitments. Any optional resource link is separate and accurately labelled. |
 
 ### Identity, permissions and Webmaster
 
@@ -159,7 +169,7 @@ P0 = release-blocking foundation, P1 = core functional development, P2 = deeper 
 
 ## Delivery sequence
 
-1. **Gate A: public bridge (ON-01 to ON-03, ON-08 to ON-10, DEL-01).** Add reviewed links to the existing public guide, confirm reciprocal paths and explicit preview status across all five sites. Do not open actual intake. Make scoped changes in canonical navigation; preserve the main site's byte budget and existing publishing rules.
+1. **Gate A: public bridge (ON-01 to ON-03, ON-08 to ON-12, DEL-01).** Add reviewed links to the existing public guide, confirm reciprocal paths and explicit preview status across all seven sites, keeping nation-led onboarding independent. Do not open actual intake. Make scoped changes in canonical navigation; preserve the main site's byte budget and existing publishing rules.
 2. **Gate B: identity and access foundation (ID-01 to ID-08, MEM-01, DEL-02).** Preserve current organiser and records. Build real Webmaster, scoped permission service, office reservations and isolated view-only demo. Prove effective-role previews and negative-route tests before expanding access.
 3. **Gate C: committee and constitution integration (GOV-01 onward, CON-01 onward).** Build complete desks around actual office duties and connected tasks, meeting, decisions and documents; extend existing constitution editor and fictional trial, not a second builder with duplicated data.
 4. **Gate D: real onboarding pathway (ON-04 onward, ID-09/10, MEM-02/06).** Implement isolated real-intake rehearsal, distinct applicant identity, consent, independent review, appeal and controlled admission. Confirm operator, approved rules, identity assurance, permissions and live acceptance before inviting real applicants.
@@ -172,7 +182,7 @@ P0 = release-blocking foundation, P1 = core functional development, P2 = deeper 
 - **Permission:** signed-out, cross-scope, other-person, wrong-role, revoked, demo and direct-route tests; no sensitive data in public, preview or general exports. Review decisions independent of author where required.
 - **Usability:** phone/desktop, keyboard, focus, visible error and clear draft/rehearsal/live status. No reliance on hidden menu items for security.
 - **Evidence:** cite exact implementation/test files, automated result, isolated browser/role scenario, actual deployment verification and limitations. Distinguish local synthetic acceptance from live activation; never claim either without evidence.
-- **Consent and authority:** explicit owner approval for actual external links beyond the five named sites, real data collection, outgoing invitations, official decisions, service activation or financial actions. No user data copied from PLFC or Sandy.
+- **Consent and authority:** explicit owner approval for actual external links beyond the seven named sites, real data collection, outgoing invitations, official decisions, service activation or financial actions. No user data copied from PLFC or Sandy.
 
 ## Evidence register and maintenance
 
@@ -195,4 +205,4 @@ Remaining blockers and activation status:
 Status changes:
 ```
 
-Baseline limitations: source review only; no independent public link crawl, private Cloudflare sign-in, deployed application verification, source migration, legal assessment, new account creation, invitation, payment or data access. The suggested sequence and committee role structure require confirmation before actual governance or production activation.
+Baseline limitations: source review only; no independent public link crawl, private Cloudflare sign-in, deployed application verification, source migration, legal assessment, new account creation, invitation, payment or data access. Oceania and Native Nations source rooms and README updates were reviewed in the 25 November follow-up; no live links were independently retested. The suggested sequence and committee role structure require confirmation before actual governance or production activation.
