@@ -27,7 +27,30 @@ const templates={
   special:['Opening, attendance and conflicts','Notified purpose','Specific business for discussion','Follow-ups and close'],
   informal:['Welcome and listening','Ideas and practical questions','Suggestions and next steps'],
 };
+// Planning prompts only. No statutory deadline, notice rule or election rule
+// is inferred from PLFC or treated as an adopted P4A constitution.
+const planningTemplates={
+  formation:[
+    {key:'purpose',title:'Prepare the proposed purpose and scope'},
+    {key:'rules',title:'Prepare the constitution working draft and review questions'},
+    {key:'offices',title:'Prepare the prospective office and authority register'},
+    {key:'agenda',title:'Prepare the draft agenda and meeting material'},
+    {key:'attendance',title:'Prepare attendance and evidence checks'},
+  ],
+  agm:[
+    {key:'papers',title:'Prepare draft reports and working papers'},
+    {key:'notice',title:'Prepare notice wording for separate approval; do not send'},
+    {key:'nominations',title:'Prepare proposed nominations process; do not invite'},
+    {key:'candidates',title:'Prepare the proposed candidate and vacancy record'},
+    {key:'attendance',title:'Prepare attendance and quorum evidence checks'},
+    {key:'followup',title:'Review follow-up and applicable reporting requirements'},
+  ],
+};
 const rehearsalMode=mode=>mode==='governance-rehearsal';
+function offsetDate(date,offset){
+  const parsed=Date.parse(day(date)+'T00:00:00Z')+offset*86400000;
+  return new Date(parsed).toISOString().slice(0,10);
+}
 const fresh=()=>({version:1,committees:[],meetings:[],actions:[],notices:[],audit:[],receipts:[]});
 export function governanceRegister(state){
   if(!Object.hasOwn(state,'governance'))return fresh();
@@ -70,6 +93,29 @@ function notice(g,c,{kind,sourceId,title,ownerId=null},actor,at){
   if(prior){Object.assign(prior,{title,ownerId,version:prior.version+1,updatedAt:at,updatedBy:actor.id,retracted:false});return prior;}
   const row={id:crypto.randomUUID(),committeeId:c.id,kind,sourceId,title,ownerId,version:1,reads:[],reviews:[],retracted:false,createdAt:at,updatedAt:at,updatedBy:actor.id};g.notices.push(row);return row;
 }
+function updatePlanDates(state,g,c,m,actor,at){
+  if(!m.plan)return;
+  for(const job of m.plan.jobs){
+    const a=byId(g.actions,job.actionId);
+    if(!a||a.meetingId!==m.id||a.planKey!==job.key)fail('The linked planning duty is unavailable.',503);
+    if(taskDone(state,a)||a.cancelled)continue;
+    const dueDate=offsetDate(m.date,job.offsetDays);
+    if(a.dueDate===dueDate)continue;
+    a.history.push({action:'plan.reschedule',actorId:actor.id,at,previousDueDate:a.dueDate,previousAcknowledgedAt:a.acknowledgedAt});
+    a.dueDate=dueDate;a.acknowledgedAt=null;
+    notice(g,c,{kind:'task',sourceId:a.id,title:a.title,ownerId:a.ownerId},actor,at);
+  }
+}
+function cancelPlanDuties(state,g,c,m,actor,at){
+  for(const job of m.plan?.jobs||[]){
+    const a=byId(g.actions,job.actionId);
+    if(!a||a.meetingId!==m.id||a.planKey!==job.key)fail('The linked planning duty is unavailable.',503);
+    if(taskDone(state,a))continue;
+    a.cancelled=true;a.history.push({action:'plan.cancel',actorId:actor.id,at});
+    const n=g.notices.find(n=>n.kind==='task'&&n.sourceId===a.id);
+    if(n){n.retracted=true;n.version++;n.updatedAt=at;n.updatedBy=actor.id;}
+  }
+}
 function noticeVisible(s,n,actor,c,now){
   return perm(s,actor,'committee.notice.read',c,now)&&(!n.ownerId||n.ownerId===actor.id||perm(s,actor,'committee.task.assign',c,now));
 }
@@ -78,7 +124,7 @@ function noticeView(s,g,n,actor){
   return {id:n.id,kind:n.kind,sourceId:n.sourceId,title:n.title,version:n.version,ownerId:n.ownerId,retracted:n.retracted,updatedAt:n.updatedAt,
     unread:!n.retracted&&n.updatedBy!==actor.id&&!n.reads.some(r=>r.actorId===actor.id&&r.version===n.version),
     reviewed:n.reviews.some(r=>r.actorId===actor.id&&r.version===n.version),
-    resolved:n.retracted||(action?taskDone(s,action):false),dueDate:action?.dueDate||null};
+    resolved:n.retracted||(action?taskDone(s,action)||action.cancelled===true:false),dueDate:action?.dueDate||null};
 }
 export function committeeDirectory(state,actor,now=new Date()){
   if(actor?.access!=='scoped')return {committees:[],proposalGroups:[]};
@@ -106,6 +152,7 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
   for(const action of ['committee.meeting.manage','committee.attendance','committee.motion.write','committee.minutes.write','committee.minutes.review','committee.task.assign','committee.task.own','committee.notice.read','committee.notice.write'])base.permissions[action]=perm(state,actor,action,c,now);
   base.committee={...base.committee,offices:structuredClone(c.offices),createdBy:c.createdBy,createdAt:c.createdAt};
   base.officePeople=officePeople(state,c,now);
+  base.planningTemplates=structuredClone(planningTemplates);
   base.meetings=g.meetings.filter(m=>m.committeeId===c.id).map(m=>{
     const view=structuredClone(m);
     for(const item of view.agenda)for(const motion of item.motions){
@@ -114,7 +161,11 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
     }
     return {...view,quorum:rehearsalMode(mode)||mode==='showcase'?quorum(state,c,m,now):{status:'not-established',present:0,required:null}};
   });
-  base.actions=g.actions.filter(a=>a.committeeId===c.id&&visibleAction(state,a,actor,c,now)).map(a=>({...structuredClone(a),done:taskDone(state,a)}));
+  base.actions=g.actions.filter(a=>a.committeeId===c.id&&visibleAction(state,a,actor,c,now)).map(a=>{
+    const view=structuredClone(a);
+    if(view.projectId){const p=byId(state.projects,view.projectId);if(!p||!can(state,actor,'project.view','group',p.groupId,now))view.projectId=null;}
+    return {...view,done:taskDone(state,a)};
+  });
   base.notices=g.notices.filter(n=>n.committeeId===c.id&&noticeVisible(state,n,actor,c,now)).map(n=>noticeView(state,g,n,actor));
   base.projects=state.projects.filter(p=>p.groupId===c.groupId&&can(state,actor,'project.view','group',p.groupId,now)).map(({id,title})=>({id,title}));
   base.constitutions=state.constitutions.filter(d=>can(state,actor,'constitution.view','constitution',d.id,now)).map(({id,title,version})=>({id,title,version}));
@@ -160,7 +211,7 @@ function scopeDraft(state,actor,draftId,now){
   return d;
 }
 const meetingOps={
-  'meeting.schedule':'committee.meeting.manage','meeting.reschedule':'committee.meeting.manage','meeting.cancel':'committee.meeting.manage','meeting.open':'committee.meeting.manage','meeting.close':'committee.meeting.manage',
+  'meeting.plan':'committee.task.assign','meeting.schedule':'committee.meeting.manage','meeting.reschedule':'committee.meeting.manage','meeting.cancel':'committee.meeting.manage','meeting.open':'committee.meeting.manage','meeting.close':'committee.meeting.manage',
   'agenda.add':'committee.meeting.manage','agenda.edit':'committee.meeting.manage','meeting.attendance':'committee.attendance',
   'motion.propose':'committee.motion.write','motion.amend':'committee.motion.write',
   'motion.open-ballot':'committee.attendance','motion.vote':'committee.vote.rehearsal','motion.tally':'committee.attendance','motion.defer':'committee.attendance',
@@ -208,14 +259,51 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
     g.meetings.push(m);notice(g,c,{kind:'meeting',sourceId:m.id,title:'Proposed meeting: '+m.title},actor,at);
   }else if(type.startsWith('meeting.')||type.startsWith('agenda.')||type.startsWith('motion.')||type.startsWith('minutes.')){
     const m=targetMeeting(g,c,data.meetingId);targetId=m.id;
-    if(type==='meeting.reschedule'){
+    if(type==='meeting.plan'){
+      requirePerm(next,actor,'committee.meeting.manage',c,now);
+      if(m.status!=='scheduled'||!planningTemplates[m.kind])conflict('Plan only an unopened formation or annual working meeting.');
+      const template=planningTemplates[m.kind],basis=txt(data.basis,'the proposed planning basis and source reference',1000),version=m.plan?.version||0;
+      if(data.version!==version)conflict('The planning basis changed; refresh before saving.');
+      if(!Array.isArray(data.jobs)||data.jobs.length!==template.length||!unique(data.jobs.map(j=>j?.key))||!template.every(job=>data.jobs.some(j=>j?.key===job.key)))invalid('Supply one owner and chosen relative date for every planning job.');
+      const people=officePeople(next,c,now).map(p=>p.id),jobs=[];
+      for(const item of template){
+        const input=data.jobs.find(j=>j.key===item.key);
+        if(!people.includes(input.ownerId)||!Number.isInteger(input.offsetDays)||input.offsetDays< -365||input.offsetDays>365)invalid('Choose a current office participant and an integer date offset within one year for every job.');
+        const previous=m.plan?.jobs.find(j=>j.key===item.key);
+        const a=previous?byId(g.actions,previous.actionId):null;
+        if(previous&&(!a||a.planKey!==item.key||a.meetingId!==m.id))fail('The linked planning duty is unavailable.',503);
+        if(a&&taskDone(next,a)){
+          if(a.ownerId!==input.ownerId||previous.offsetDays!==input.offsetDays)conflict('Retain the original owner and date rule for completed work.');
+          jobs.push(previous);continue;
+        }
+        const dueDate=offsetDate(m.date,input.offsetDays);
+        if(a){
+          if(a.ownerId!==input.ownerId||a.dueDate!==dueDate){
+            a.history.push({action:'plan.revise',actorId:actor.id,at,previousOwnerId:a.ownerId,previousDueDate:a.dueDate,previousAcknowledgedAt:a.acknowledgedAt});
+            a.ownerId=input.ownerId;a.dueDate=dueDate;a.acknowledgedAt=null;
+            notice(g,c,{kind:'task',sourceId:a.id,title:a.title,ownerId:a.ownerId},actor,at);
+          }
+          jobs.push({key:item.key,offsetDays:input.offsetDays,actionId:a.id});
+        }else{
+          const newId=crypto.randomUUID(),record={id:newId,committeeId:c.id,meetingId:m.id,motionId:null,projectId:null,planKey:item.key,ownerId:input.ownerId,title:item.title,details:'Working checklist only. The basis and dates are proposed, not legal or adopted requirements.',dueDate,createdBy:actor.id,createdAt:at,acknowledgedAt:null,history:[],basis:'proposed-planning',done:false};
+          g.actions.push(record);notice(g,c,{kind:'task',sourceId:newId,title:record.title,ownerId:record.ownerId},actor,at);
+          jobs.push({key:item.key,offsetDays:input.offsetDays,actionId:newId});
+        }
+      }
+      const history=m.plan?.history||[];
+      if(m.plan)history.push({version:m.plan.version,basis:m.plan.basis,jobs:structuredClone(m.plan.jobs),actorId:m.plan.updatedBy,at:m.plan.updatedAt});
+      m.plan={version:version+1,basis,jobs,history,updatedBy:actor.id,updatedAt:at};
+      stamp(m,actor,at,type,{planVersion:m.plan.version});
+    }else if(type==='meeting.reschedule'){
       if(m.status!=='scheduled')conflict('Only an unopened meeting can be rescheduled.');
       const previous=meetingSummary(m);m.date=day(data.date);m.time=time(data.time);m.location=txt(data.location,'proposed location',180);
       stamp(m,actor,at,type,{previous,reason:txt(data.reason,'reason',500)});
       notice(g,c,{kind:'meeting',sourceId:m.id,title:'Rescheduled proposed meeting: '+m.title},actor,at);
+      updatePlanDates(next,g,c,m,actor,at);
     }else if(type==='meeting.cancel'){
       if(m.status!=='scheduled')conflict('Close an opened meeting rather than cancelling its history.');
       m.status='cancelled';stamp(m,actor,at,type,{reason:txt(data.reason,'reason',500)});
+      cancelPlanDuties(next,g,c,m,actor,at);
       const n=g.notices.find(n=>n.kind==='meeting'&&n.sourceId===m.id);if(n){n.retracted=true;n.version++;n.updatedAt=at;n.updatedBy=actor.id;}
     }else if(type==='meeting.open'){
       if(m.status!=='scheduled'||dateTime(m)>now.getTime())conflict('Only an unopened meeting whose scheduled time has arrived may open.');
@@ -280,12 +368,12 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
       stamp(m,actor,at,type);
     }else if(type==='minutes.review'){
       if(m.status!=='closed'||m.minutes.status!=='draft'||!m.minutes.text||data.version!==m.minutes.version)conflict('Close the meeting and review the current saved minutes.');
-      if(m.minutes.editedBy===actor.id)fail('An independent reviewer must review the minutes.');
+      if(m.minutes.editedBy===actor.id||m.minutes.history.some(h=>h.editedBy===actor.id))fail('An independent reviewer must review the minutes.');
       Object.assign(m.minutes,{status:'reviewed',reviewedBy:actor.id,reviewedAt:at,reviewReason:txt(data.reason,'review reason',1000)});
       stamp(m,actor,at,type);
     }else if(type==='minutes.release'){
       if(m.minutes.status!=='reviewed'||m.minutes.released||data.version!==m.minutes.version)conflict('Only the reviewed working version can have a fictional member excerpt.');
-      if(m.minutes.editedBy===actor.id)fail('An independent reviewer must release the fictional excerpt.');
+      if(m.minutes.editedBy===actor.id||m.minutes.history.some(h=>h.editedBy===actor.id))fail('An independent reviewer must release the fictional excerpt.');
       m.minutes.released={active:true,version:m.minutes.version,text:txt(data.text,'separate member-safe excerpt',8000),at,actorId:actor.id};
       stamp(m,actor,at,type);
     }else if(type==='minutes.withdraw-release'){
@@ -313,7 +401,8 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
     g.actions.push(a);notice(g,c,{kind:'task',sourceId:a.id,title,ownerId:a.ownerId},actor,at);
   }else if(type==='duty.acknowledge'||type==='duty.complete'){
     const a=byId(g.actions,data.actionId);if(!a||a.committeeId!==c.id||!ownAction(next,a,actor,c,now))fail();
-    if(taskDone(next,a))conflict('This duty is already complete.');
+    if(taskDone(next,a)||a.cancelled)conflict('This duty is complete or cancelled.');
+    if(a.projectId){const p=scopeProject(next,actor,c,a.projectId,now);if(!p.participantIds.includes(actor.id))fail('Current linked project participation is required.');}
     if(type==='duty.acknowledge'){
       if(a.acknowledgedAt)conflict('This duty has already been acknowledged.');
       a.acknowledgedAt=at;
