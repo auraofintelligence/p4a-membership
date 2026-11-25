@@ -51,7 +51,7 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
     if (url.pathname === '/api/export' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
     if (url.pathname === '/api/access/preview') {
       if (request.method !== 'GET') return json({error:'The fictional role preview is read-only.'},403);
-      return json(realWebmasterPreview(state,actor,url.searchParams.get('role') || 'webmaster'));
+      return json(realWebmasterPreview(state,actor,url.searchParams.get('role') || 'webmaster',url.searchParams));
     }
     if (url.pathname === '/api/access' && request.method === 'GET') return json(accessOverview(state, actor));
     if (url.pathname === '/api/access' && request.method === 'POST') {
