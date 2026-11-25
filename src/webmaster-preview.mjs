@@ -3,6 +3,7 @@ import { createConstitution, publicProjection, gamifyProjection } from './domain
 import { AppError } from './errors.mjs';
 import { accessOverview, can, scopedIdentity } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
+import { committeeProjection } from './committee-governance.mjs';
 
 const fixtureIssuer = 'https://fictional-showcase.cloudflareaccess.com';
 export const previewRoles = Object.freeze(['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant']);
@@ -23,6 +24,12 @@ export function createShowcaseState() {
   state.projects.push({...structuredClone(state.projects[0]),id:'project-other',groupId:'group-2',title:'Fictional other-scope project',ownerId:'person-3',participantIds:['person-3'],tasks:[],comments:[],public:false});
   state.financialContributions.push({id:'receipt-example',personId:'person-1',createdBy:'person-1',projectId:'project-1',amountCents:1000,currency:'AUD',category:'project-funding',date:'2026-11-06',reference:'FICTIONAL-RECEIPT-ONLY',description:'Fictional receipt awaiting independent review.',status:'pending',publicConsent:false,namedConsent:false,refunds:[],history:[]});
   state.financialContributions.push({...structuredClone(state.financialContributions[0]),id:'receipt-other',personId:'person-3',createdBy:'person-3',projectId:'project-other',reference:'FICTIONAL-OTHER-SCOPE-ONLY'});
+  const seats=['chair','deputy','secretary','assistant-secretary','treasurer','committee'];
+  const committee=(id,name,groupId)=>({id,name,kind:'local',status:'proposed',groupId,offices:seats.map(role=>({role,status:'vacant',personId:null,term:null,authorityRef:null})),createdBy:'fixture-secretary',createdAt:date,rehearsalRule:{quorum:3,reference:'fictional-only-rule-v1'}});
+  state.governance={version:1,committees:[committee('committee-1','Fictional neighbourhood committee','group-1'),committee('committee-2','Fictional independent committee','group-2')],meetings:[],actions:[],notices:[],audit:[],receipts:[]};
+  const cm=state.governance.committees[0];
+  cm.offices=seats.map(role=>({role,status:'fictional',personId:'fixture-'+role,term:{startsAt:'2020-01-01T00:00:00.000Z',endsAt:'2100-01-01T00:00:00.000Z'},authorityRef:'fictional-fixture-only'}));
+  state.governance.meetings.push({id:'fixture-meeting',committeeId:cm.id,title:'Fictional committee planning meeting',kind:'formation',date:'2026-11-24',time:'10:00',location:'Example room',status:'scheduled',version:1,agenda:[{id:'fixture-agenda',title:'Constitution and shared project discussion',notes:'Fictional agenda only.',motions:[]}],attendance:{present:[],apologies:[],recused:[],conflicts:''},minutes:{status:'draft',text:'',version:0,history:[]},createdBy:'fixture-secretary',createdAt:date,history:[]});
   const access = state.accessControl = {version:1,accounts:[],grants:[],reservations:[],audit:[],receipts:[]};
   const grant = (role,kind,id,permissions) => access.grants.push({
     id:'grant-'+role+'-'+id, accountId:'account-'+role, role, scope:{kind,id}, permissions:[...permissions],
@@ -37,7 +44,11 @@ export function createShowcaseState() {
     else {
       state.groups[0].memberIds.push(id);
       if (role !== 'treasurer') state.projects[0].participantIds.push(id);
-      grant(role,'group','group-1',groupPermissions[role]);
+      grant(role,'group','group-1',['chair','secretary'].includes(role)?[...groupPermissions[role],'committee.propose']:groupPermissions[role]);
+      const committeeRead=['committee.view','committee.task.own','committee.notice.read','committee.motion.write'];
+      const vote=[...committeeRead,'committee.vote.rehearsal'];
+      const committeePermissions=role==='member'?['committee.minutes.released']:role==='reviewer'?[...committeeRead,'committee.minutes.review']:role==='chair'?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.review']:['secretary','assistant-secretary'].includes(role)?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write']:vote;
+      grant(role,'committee','committee-1',committeePermissions);
       if (role !== 'treasurer') grant(role,'constitution','constitution-1',['secretary','reviewer'].includes(role) ? [...draftRead,'constitution.review'] : draftRead);
       if (role !== 'member') access.reservations.push({id:'reservation-'+role,role,scope:{kind:'group',id:'group-1'},status:'reserved',createdBy:'fixture-webmaster',createdAt:date});
     }
@@ -65,6 +76,7 @@ export function fixtureView(role, params) {
   const view = params.get('view');
   if (!view || view === 'workspace') return fixtureProjection(role);
   const state = createShowcaseState();
+  if (view === 'committee') return {...committeeProjection(state,fixtureActor(state,role),params.get('id'),new Date(),'showcase'),readOnly:true};
   if (view === 'public') return {...publicProjection(state,'showcase'),sampleData:true};
   if (view === 'gamify') return {...gamifyProjection(state,{period:params.get('period') ?? 'all',groupId:params.get('groupId') ?? '',projectId:params.get('projectId') ?? ''},'showcase'),sampleData:true};
   throw new AppError('This preview route is not available.',403);
