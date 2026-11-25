@@ -77,6 +77,7 @@ export function fixtureView(role, params) {
   const view = params.get('view');
   if (!view || view === 'workspace') return fixtureProjection(role);
   const state = createShowcaseState();
+  if (view === 'access') { if(role!=='webmaster')throw new AppError('Choose the Webmaster perspective.',403); return fixtureOverview(); }
   if (view === 'committee-document') return {...committeeDocument(state,fixtureActor(state,role),params.get('committee'),params.get('id'),Number(params.get('version')),new Date(),'showcase'),readOnly:true};
   if (view === 'committee') return {...committeeProjection(state,fixtureActor(state,role),params.get('id'),new Date(),'showcase'),readOnly:true};
   if (view === 'public') return {...publicProjection(state,'showcase'),sampleData:true};
