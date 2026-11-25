@@ -104,7 +104,28 @@ function grantsFor(state, actor, now = new Date()) {
     return active(parent,now.getTime()) && registry.accounts.some(row=>row.id===parent.accountId&&row.status==='active');
   }) : [];
 }
+// The existing private pilot owner keeps their verified sign-in and real identity.
+const pilotOwners = new WeakSet();
+export function markVerifiedPilotOwner(state, actor) {
+  if(actor?.id==='pilot-organiser'&&actor.role==='organiser'&&legacyPersonAllowed(state,actor.id))pilotOwners.add(actor);
+  return actor;
+}
+export function isPilotOwner(state,actor){
+  return Boolean(actor&&pilotOwners.has(actor)&&actor.id==='pilot-organiser'&&actor.role==='organiser'&&legacyPersonAllowed(state,actor.id));
+}
+const ownerWorking = new Set([...committeeSecretary.filter(p=>p!=='committee.vote.rehearsal'),
+  'committee.finance.view','committee.finance.write','committee.minutes.released','committee.library.released','committee.edition.released']);
+function ownerPermission(state,actor,action,kind,id){
+  if(!isPilotOwner(state,actor)||!validScope(state,{kind,id}))return false;
+  if(kind==='system')return grantRules.webmaster.system.includes(action);
+  if(kind==='group')return ['group.view','project.view','committee.propose'].includes(action);
+  if(kind==='constitution')return ['constitution.view','constitution.structure'].includes(action);
+  if(kind==='committee')return ownerWorking.has(action);
+  return false;
+}
+const emptyRegister=()=>({version:1,accounts:[],grants:[],reservations:[],audit:[],receipts:[]});
 export function can(state, actor, action, kind, id, now = new Date()) {
+  if(ownerPermission(state,actor,action,kind,id))return true;
   return grantsFor(state, actor, now).some(grant => grant.scope.kind === kind && grant.scope.id === id && grant.permissions.includes(action));
 }
 const ownCommands = new Set(['profile.update','profile.influence.add','profile.influence.update','profile.influence.remove','training.complete','team-game.record','team-game.remove','membership.withdraw']);
@@ -194,13 +215,15 @@ export function effectiveAccess(state, actor, now = new Date()) {
 }
 export function accessOverview(state, actor, now = new Date()) {
   if (!can(state,actor,'access.view','system','p4a',now)) fail();
-  const registry = accessRegistry(state);
+  const registry = accessRegistry(state)||emptyRegister();
+  const owner=isPilotOwner(state,actor);
   // Metadata only; never expose sign-in subjects, credentials or raw records.
   return {
     revision: state.revision,
-    currentAccountId: actor.accountId,
+    currentAccountId: owner?'existing-pilot-owner':actor.accountId,
+    existingOwner:owner,
     capabilities: { reserve:can(state,actor,'access.reserve','system','p4a',now), revoke:can(state,actor,'access.revoke','system','p4a',now) },
-    accounts: registry.accounts.map(({id,personId,status}) => ({id,personId,status})),
+    accounts: [...(owner?[{id:'existing-pilot-owner',personId:actor.id,status:'active',existingOwner:true}]:[]),...registry.accounts.map(({id,personId,status}) => ({id,personId,status}))],
     grants: registry.grants.map(({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom}) => ({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom})),
     reservations: registry.reservations.map(({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt}) => ({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt})),
     audit: registry.audit.slice(-100).map(({id,actorId,type,targetId,at,reason}) => ({id,actorId,type,targetId,at,reason})),
@@ -213,7 +236,7 @@ export function changeAccess(state, actor, command, now = new Date()) {
   const permission = ['access.reserve','access.cancel-reservation'].includes(type) ? 'access.reserve' : ['access.revoke-grant','access.disable-account'].includes(type) ? 'access.revoke' : null;
   if (!permission || !can(state,actor,permission,'system','p4a',now)) fail();
   if (!key(command.id) || !data || typeof data !== 'object' || Array.isArray(data) || typeof data.reason !== 'string' || !data.reason.trim() || data.reason.length > 500) fail('A command ID and reason are required.',400);
-  const registry = accessRegistry(state);
+  const registry = accessRegistry(state)||emptyRegister();
   const fingerprint = JSON.stringify({type,data});
   const previous = registry.receipts.find(row => row.id === command.id);
   if (previous) {
@@ -221,7 +244,7 @@ export function changeAccess(state, actor, command, now = new Date()) {
     return {state,result:{ok:true,revision:state.revision,replayed:true}};
   }
   if (command.revision !== state.revision) fail('Refresh the access register before changing it.',409);
-  const next = structuredClone(state), access = next.accessControl, at = now.toISOString();
+  const next = structuredClone(state), access = next.accessControl??=emptyRegister(), at = now.toISOString();
   let targetId;
   if (type === 'access.reserve') {
     const {role,scope} = data;
