@@ -2,8 +2,7 @@ import { accessTokenFromRequest, verifyAccessToken } from './auth.mjs';
 import { AppError } from './errors.mjs';
 import { json, securityHeaders } from './http.mjs';
 import { fixtureOverview, fixtureProjection, fixtureView } from './webmaster-preview.mjs';
-import { createShowcaseState } from './webmaster-preview.mjs';
-import { publicProjection, gamifyProjection } from './domain.mjs';
+
 
 const headers = {'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'};
 function configured(env,origin) {
@@ -31,8 +30,8 @@ export default {
       if (path === '/api/access' && request.method === 'GET') return json(fixtureOverview(),200,headers);
       if (path === '/api/access/preview' && request.method === 'GET') return json(fixtureView(url.searchParams.get('role') || 'webmaster',url.searchParams),200,headers);
       if (path === '/api/bootstrap' && request.method === 'GET') return json(fixtureProjection('webmaster'),200,headers);
-      if (path === '/api/public' && request.method === 'GET') return json(publicProjection(createShowcaseState(),'showcase'),200,headers);
-      if (path === '/api/gamify' && request.method === 'GET') return json(gamifyProjection(createShowcaseState(),{period:url.searchParams.get('period') ?? 'all',groupId:url.searchParams.get('groupId') ?? '',projectId:url.searchParams.get('projectId') ?? ''},'showcase'),200,headers);
+      if (path === '/api/public' && request.method === 'GET') return json(fixtureView('webmaster',new URLSearchParams({view:'public'})),200,headers);
+      if (path === '/api/gamify' && request.method === 'GET') return json(fixtureView('webmaster',new URLSearchParams({...Object.fromEntries(url.searchParams),view:'gamify'})),200,headers);
       if (path.startsWith('/api/')) return json({error:'This route is unavailable in the demonstration.'},403,headers);
       if (!env.ASSETS) return json({error:'The demonstration interface is unavailable.'},503,headers);
       const destination = path === '/' ? new Request(new URL('/webmaster.html',url),request) : request;
