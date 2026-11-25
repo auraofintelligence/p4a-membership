@@ -1,5 +1,5 @@
 import { AppError } from './errors.mjs';
-import { accessRegistry, can, effectiveAccess } from './scoped-access.mjs';
+import { accessRegistry, can, effectiveAccess, isPilotOwner } from './scoped-access.mjs';
 import { operationRegister, operationPermissions, operationViewPermissions, operationsProjection, applyCommitteeOperation, libraryDocument } from './committee-operations.mjs';
 import { communicationsRegister, communicationPermissions, communicationViewPermissions, communicationsProjection, applyCommunication } from './committee-communications.mjs';
 
@@ -77,7 +77,7 @@ function eligibleActors(state,c,action,now){
     return [{id:person.id,name:person.name,roles:[...new Set(effectiveAccess(state,actor,now).filter(g=>g.scope.kind==='committee'&&g.scope.id===c.id&&g.permissions.includes(action)).map(g=>g.role))]}];
   });
 }
-const officePeople=(s,c,now)=>eligibleActors(s,c,'committee.task.own',now);
+const officePeople=(s,c,now,actor)=>[...eligibleActors(s,c,'committee.task.own',now),...(isPilotOwner(s,actor)?[{id:actor.id,name:actor.name,roles:['workspace owner']}]:[])];
 const voterIds=(s,c,now)=>eligibleActors(s,c,'committee.vote.rehearsal',now).map(a=>a.id);
 const actualTask=(s,a)=>a.projectId?byId(byId(s.projects,a.projectId)?.tasks||[],a.id):null;
 const taskDone=(s,a)=>a.projectId?actualTask(s,a)?.done===true:a.done===true;
@@ -137,14 +137,14 @@ function noticeView(s,g,n,actor){
     resolved:n.retracted||(action?taskDone(s,action)||action.cancelled===true:handover?['cancelled','executed-fictional'].includes(handover.status):false),dueDate:action?.dueDate||null};
 }
 export function committeeDirectory(state,actor,now=new Date()){
-  if(actor?.access!=='scoped')return {committees:[],proposalGroups:[]};
+  if(actor?.access!=='scoped'&&!isPilotOwner(state,actor))return {committees:[],proposalGroups:[]};
   const g=governanceRegister(state);
   const proposalGroups=state.groups.filter(group=>can(state,actor,'committee.propose','group',group.id,now)).map(({id,name})=>({id,name}));
   const committees=g.committees.filter(c=>isWorking(state,actor,c,now)||perm(state,actor,'committee.minutes.released',c,now)||perm(state,actor,'committee.library.released',c,now)||perm(state,actor,'committee.edition.released',c,now)||(c.status==='proposed'&&c.createdBy===actor.id&&proposalGroups.some(group=>group.id===c.groupId))).map(c=>({id:c.id,name:c.name,kind:c.kind,status:c.status,working:isWorking(state,actor,c,now)}));
   return {committees,proposalGroups};
 }
 export function committeeProjection(state,actor,committeeId,now=new Date(),mode='live'){
-  if(actor?.access!=='scoped')fail();
+  if(actor?.access!=='scoped'&&!isPilotOwner(state,actor))fail();
   const directory=committeeDirectory(state,actor,now),g=governanceRegister(state);
   if(!committeeId)return {revision:state.revision,...directory,formalDecisionsEnabled:false,fictional:mode==='showcase'||rehearsalMode(mode)};
   const c=byId(g.committees,committeeId);
@@ -163,7 +163,7 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
   }
   for(const action of ['committee.meeting.manage','committee.attendance','committee.motion.write','committee.minutes.write','committee.minutes.review','committee.task.assign','committee.task.own','committee.notice.read','committee.notice.write',...operationViewPermissions,...communicationViewPermissions])base.permissions[action]=perm(state,actor,action,c,now);
   base.committee={...base.committee,offices:c.offices.map(o=>({...structuredClone(o),effectiveStatus:o.term&&Date.parse(o.term.endsAt)<=now.getTime()?'expired':o.status})),createdBy:c.createdBy,createdAt:c.createdAt};
-  base.officePeople=officePeople(state,c,now);
+  base.officePeople=officePeople(state,c,now,actor);
   base.planningTemplates=structuredClone(planningTemplates);
   base.meetings=g.meetings.filter(m=>m.committeeId===c.id).map(m=>{
     const view=structuredClone(m);
@@ -186,7 +186,7 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
 // Canonical collaboration task metadata is private to its assigned committee.
 // Existing project views never expose a committee-linked task to another scope.
 export function committeeDocument(state,actor,committeeId,docId,version,now=new Date(),mode='live'){
-  if(actor?.access!=='scoped'||!Number.isSafeInteger(version)||version<1)fail('Document unavailable.',404);
+  if((actor?.access!=='scoped'&&!isPilotOwner(state,actor))||!Number.isSafeInteger(version)||version<1)fail('Document unavailable.',404);
   const g=governanceRegister(state),c=byId(g.committees,committeeId);
   if(!c||!isWorking(state,actor,c,now))fail('Document unavailable.',404);
   return libraryDocument(state,g,c,actor,docId,version,now,mode);
@@ -198,7 +198,7 @@ export function filterCommitteeTasks(state,actor,projects,now=new Date()){
     const a=g.actions.find(a=>a.projectId===p.id&&a.id===t.id);
     if(!a)return true;
     const c=byId(g.committees,a.committeeId);
-    return actor?.access==='scoped'&&c&&isWorking(state,actor,c,now)&&visibleAction(state,a,actor,c,now);
+    return (actor?.access==='scoped'||isPilotOwner(state,actor))&&c&&isWorking(state,actor,c,now)&&visibleAction(state,a,actor,c,now);
   }).map(t=>{
     const a=g.actions.find(a=>a.projectId===p.id&&a.id===t.id);
     return a?{...t,committeeId:a.committeeId,committeeAction:true}:t;
@@ -240,7 +240,7 @@ const meetingOps={
 // All writes use the existing snapshot CAS. This register is additive; no
 // separate project manager, no external communication or political activation.
 export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode='live'}={}){
-  if(actor?.access!=='scoped'||['demo','showcase'].includes(mode))fail();
+  if((actor?.access!=='scoped'&&!isPilotOwner(state,actor))||['demo','showcase'].includes(mode)||(isPilotOwner(state,actor)&&mode!=='pilot'))fail();
   const g0=governanceRegister(state),type=command?.type,data=command?.data;
   if(!id(command?.id)||!data||typeof data!=='object'||Array.isArray(data))invalid('Send a command ID and valid details.');
   let c0,permission;
@@ -287,7 +287,7 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
       const template=planningTemplates[m.kind],basis=txt(data.basis,'the proposed planning basis and source reference',1000),version=m.plan?.version||0;
       if(data.version!==version)conflict('The planning basis changed; refresh before saving.');
       if(!Array.isArray(data.jobs)||data.jobs.length!==template.length||!unique(data.jobs.map(j=>j?.key))||!template.every(job=>data.jobs.some(j=>j?.key===job.key)))invalid('Supply one owner and chosen relative date for every planning job.');
-      const people=officePeople(next,c,now).map(p=>p.id),jobs=[];
+      const people=officePeople(next,c,now,actor).map(p=>p.id),jobs=[];
       for(const item of template){
         const input=data.jobs.find(j=>j.key===item.key);
         if(!people.includes(input.ownerId)||!Number.isInteger(input.offsetDays)||input.offsetDays< -365||input.offsetDays>365)invalid('Choose a current office participant and an integer date offset within one year for every job.');
@@ -342,7 +342,7 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
       const previous={title:item.title,notes:item.notes};
       item.title=txt(data.title,'agenda heading',180);item.notes=txt(data.notes??'','notes',2000,false);stamp(m,actor,at,type,{itemId:item.id,previous});targetId=item.id;
     }else if(type==='meeting.attendance'){
-      openMeeting(m);const eligible=officePeople(next,c,now).map(p=>p.id);
+      openMeeting(m);const eligible=officePeople(next,c,now,actor).map(p=>p.id);
       for(const field of ['present','apologies','recused'])if(!Array.isArray(data[field])||!unique(data[field])||data[field].some(i=>!eligible.includes(i)))invalid('Choose distinct currently authorised office participants.');
       if(data.present.some(i=>data.apologies.includes(i))||data.recused.some(i=>!data.present.includes(i)))invalid('Attendance, apologies and recusals must agree.');
       const previous=structuredClone(m.attendance);m.attendance={present:[...data.present],apologies:[...data.apologies],recused:[...data.recused],conflicts:txt(data.conflicts??'','conflicts',1000,false)};
@@ -409,15 +409,15 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
   }else if(type==='duty.assign'){
     const m=data.meetingId?targetMeeting(g,c,data.meetingId):null;
     if(m&&!['open','closed'].includes(m.status))conflict('Record the meeting proceedings before assigning follow-ups.');
-    if(!officePeople(next,c,now).some(p=>p.id===data.ownerId))fail('Choose a currently authorised office task owner.');
+    if(!officePeople(next,c,now,actor).some(p=>p.id===data.ownerId))fail('Choose a currently authorised office task owner.');
     const motion=data.motionId&&m?targetMotion(m,data.motionId):null;
     if(data.motionId&&!motion)invalid('Choose a motion from this meeting.');
     if(motion&&rehearsalMode(mode)&&(motion.ballot?.status!=='tallied'||motion.ballot.outcome!=='carried'))conflict('Only a carried fictional rehearsal motion can create a decision-linked follow-up.');
     const p=data.projectId?scopeProject(next,actor,c,data.projectId,now):null;
     if(motion?.projectId&&p?.id!==motion.projectId)invalid('The action must follow the motion project.');
     if(p){
-      const ownerAccount=accessRegistry(next).accounts.find(row=>row.personId===data.ownerId&&row.status==='active');
-      const ownerActor={id:data.ownerId,accountId:ownerAccount?.id,access:'scoped',role:'member'};
+      const ownerAccount=accessRegistry(next)?.accounts.find(row=>row.personId===data.ownerId&&row.status==='active');
+      const ownerActor=isPilotOwner(next,actor)&&data.ownerId===actor.id?actor:{id:data.ownerId,accountId:ownerAccount?.id,access:'scoped',role:'member'};
       if(!p.participantIds.includes(data.ownerId)||!can(next,ownerActor,'project.view','group',p.groupId,now))fail('The duty owner must already participate in the authorised linked project.');
     }
     const title=txt(data.title,'duty title',200),dueDate=data.dueDate?day(data.dueDate):null;
