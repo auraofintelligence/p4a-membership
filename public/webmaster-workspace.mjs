@@ -34,7 +34,7 @@ function row(title,meta,extra=''){
 function overview(data,icon,ro){
   const countActive=data.accounts.filter(x=>x.status==='active').length;
   return '<div class="home-doors">'+countCard('Accounts',countActive,'people',icon,'#webmaster/accounts')+countCard('Access grants',data.grants.length,'transparency',icon,'#webmaster/permissions')+countCard('Office reservations',data.reservations.filter(x=>x.status==='reserved').length,'committees',icon,'#webmaster/offices')+countCard('Recent changes',data.audit.length,'readiness',icon,'#webmaster/audit')+'</div>'+
-    '<div class="home-doors">'+toolLink('#committee','Organising committee','Open meetings, duties, documents and other working tools.','committees',icon)+toolLink('#constitution','Constitution','Open and shape the working drafts.','constitution',icon)+toolLink('#webmaster/views','Try a role','Explore example views without changing your identity.','training',icon)+'</div>'+
+    '<div class="home-doors">'+(!ro&&data.existingOwner?toolLink('#committee','Organising committee','Open meetings, duties, documents and other working tools.','committees',icon)+toolLink('#constitution','Constitution','Open and shape the working drafts.','constitution',icon):'')+toolLink('#webmaster/views','Try a role','Explore example views without changing your identity.','training',icon)+'</div>'+
     card('Your access','<p>'+(ro?'You are looking at fictional examples.':data.existingOwner?'You are signed in with your existing private owner account. Your normal working tools and technical administration are available here.':'You can manage technical access within your current permissions.')+'</p><p>Office appointments and membership admission remain separate from system access.</p>');
 }
 function accounts(data,ro){
