@@ -3,7 +3,7 @@ import { createConstitution, publicProjection, gamifyProjection } from './domain
 import { AppError } from './errors.mjs';
 import { accessOverview, can, scopedIdentity } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
-import { committeeProjection } from './committee-governance.mjs';
+import { committeeProjection, committeeDocument } from './committee-governance.mjs';
 
 const fixtureIssuer = 'https://fictional-showcase.cloudflareaccess.com';
 export const previewRoles = Object.freeze(['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant']);
@@ -45,14 +45,15 @@ export function createShowcaseState() {
       state.groups[0].memberIds.push(id);
       if (role !== 'treasurer') state.projects[0].participantIds.push(id);
       grant(role,'group','group-1',['chair','secretary'].includes(role)?[...groupPermissions[role],'committee.propose']:groupPermissions[role]);
-      const committeeRead=['committee.view','committee.task.own','committee.notice.read','committee.motion.write'];
+      const committeeRead=['committee.view','committee.task.own','committee.notice.read','committee.motion.write','committee.library.view'];
       const vote=[...committeeRead,'committee.vote.rehearsal'];
-      const committeePermissions=role==='member'?['committee.minutes.released']:role==='reviewer'?[...committeeRead,'committee.minutes.review']:role==='chair'?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.review']:['secretary','assistant-secretary'].includes(role)?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write']:vote;
+      const committeePermissions=role==='member'?['committee.minutes.released','committee.library.released']:role==='reviewer'?[...committeeRead,'committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review']:role==='chair'?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review']:['secretary','assistant-secretary'].includes(role)?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write','committee.office.plan','committee.library.write']:role==='treasurer'?[...vote,'committee.finance.view','committee.finance.write']:vote;
       grant(role,'committee','committee-1',committeePermissions);
       if (role !== 'treasurer') grant(role,'constitution','constitution-1',['secretary','reviewer'].includes(role) ? [...draftRead,'constitution.review'] : draftRead);
       if (role !== 'member') access.reservations.push({id:'reservation-'+role,role,scope:{kind:'group',id:'group-1'},status:'reserved',createdBy:'fixture-webmaster',createdAt:date});
     }
   }
+  state.governance.operations={handovers:[],budgets:[],expenses:[],reconciliations:[],documents:[{id:'fictional-paper',committeeId:'committee-1',title:'Fictional planning paper',kind:'working-paper',classification:'working',version:1,status:'draft',createdBy:'fixture-secretary',createdAt:date,updatedBy:'fixture-secretary',updatedAt:date,access:[],history:[],versions:[{version:1,body:'Fictional example of a working committee document. No actual records are used.',sourceDate:'2026-11-07',sourceNote:'Synthetic fixture only',actorId:'fixture-secretary',at:date}]}]};
   return state;
 }
 export function fixtureActor(state, role) {
@@ -76,6 +77,7 @@ export function fixtureView(role, params) {
   const view = params.get('view');
   if (!view || view === 'workspace') return fixtureProjection(role);
   const state = createShowcaseState();
+  if (view === 'committee-document') return {...committeeDocument(state,fixtureActor(state,role),params.get('committee'),params.get('id'),Number(params.get('version')),new Date(),'showcase'),readOnly:true};
   if (view === 'committee') return {...committeeProjection(state,fixtureActor(state,role),params.get('id'),new Date(),'showcase'),readOnly:true};
   if (view === 'public') return {...publicProjection(state,'showcase'),sampleData:true};
   if (view === 'gamify') return {...gamifyProjection(state,{period:params.get('period') ?? 'all',groupId:params.get('groupId') ?? '',projectId:params.get('projectId') ?? ''},'showcase'),sampleData:true};
