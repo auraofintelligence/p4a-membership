@@ -185,3 +185,48 @@ test('actual HTTP routes enforce scope, CAS, same-origin, read-only preview and 
   const preview=await (await call('webmaster','/api/access/preview?role=secretary&view=committee&id=committee-1')).json();
   assert.equal(preview.readOnly,true);assert.equal(preview.fictional,true);assert.equal(preview.meetings.some(m=>m.title===schedule.title),false);
 });
+
+test('AGM planning uses selected date basis, creates duties once and reschedules only outstanding work',()=>{
+  let s=createShowcaseState();
+  const created=apply(s,'secretary','meeting.schedule',{...schedule,kind:'agm',date:'2027-01-09'});
+  s=created.state;const mid=created.result.id;
+  const template=view(s,'secretary').planningTemplates.agm;
+  const jobs=template.map((job,index)=>({key:job.key,ownerId:'fixture-deputy',offsetDays:index===0?-21:index===1?-14:index===5?20:0}));
+  assert.equal(s.governance.actions.length,0);
+  assert.throws(()=>apply(s,'secretary','meeting.plan',{meetingId:mid,version:0,basis:'',jobs}),e=>e.status===400);
+  assert.throws(()=>apply(s,'secretary','meeting.plan',{meetingId:mid,version:0,basis:'Fictional chosen basis',jobs:jobs.slice(1)}),e=>e.status===400);
+  const cmd=command(s,'meeting.plan',{meetingId:mid,version:0,basis:'Fictional selected offsets; no legal deadline',jobs},'agm-plan-retry-001');
+  const actor=fixtureActor(s,'secretary');
+  s=executeCommitteeCommand(s,actor,cmd,when).state;
+  assert.equal(executeCommitteeCommand(s,actor,cmd,when).result.replayed,true);
+  assert.equal(s.governance.actions.length,template.length);
+  const first=s.governance.actions.find(a=>a.planKey==='papers'),second=s.governance.actions.find(a=>a.planKey==='notice');
+  assert.equal(first.dueDate,'2026-12-19');assert.equal(second.dueDate,'2026-12-26');
+  assert.equal(s.governance.actions.find(a=>a.planKey==='followup').dueDate,'2027-01-29');
+  s=apply(s,'deputy','duty.acknowledge',{actionId:first.id}).state;
+  s=apply(s,'deputy','duty.complete',{actionId:first.id}).state;
+  s=apply(s,'deputy','duty.acknowledge',{actionId:second.id}).state;
+  s=apply(s,'secretary','meeting.reschedule',{meetingId:mid,date:'2027-02-09',time:'10:00',location:'Example room',reason:'New proposed date'}).state;
+  const retained=s.governance.actions.find(a=>a.id===first.id),updated=s.governance.actions.find(a=>a.id===second.id);
+  assert.equal(retained.dueDate,'2026-12-19');assert.equal(retained.done,true);
+  assert.equal(updated.dueDate,'2027-01-26');assert.equal(updated.acknowledgedAt,null);
+  assert.equal(updated.history.at(-1).previousDueDate,'2026-12-26');
+  assert.equal(s.governance.actions.length,template.length);
+  assert.equal(s.governance.notices.find(n=>n.sourceId===second.id).version,2);
+  assert.throws(()=>apply(s,'secretary','meeting.plan',{meetingId:mid,version:1,basis:'Changed basis',jobs:jobs.map(j=>j.key==='papers'?{...j,offsetDays:-20}:j)}),conflict);
+  s=apply(s,'secretary','meeting.cancel',{meetingId:mid,reason:'Proposal withdrawn'}).state;
+  assert.equal(s.governance.actions.find(a=>a.id===first.id).done,true);
+  assert.equal(s.governance.actions.find(a=>a.id===second.id).cancelled,true);
+  assert.equal(view(s,'deputy').notices.find(n=>n.sourceId===second.id).resolved,true);
+  assert.throws(()=>apply(s,'deputy','duty.acknowledge',{actionId:second.id}),conflict);
+});
+test('revoking group access stops linked duty completion and hides its project link',()=>{
+  let {s,mid}=opened(createShowcaseState());
+  const r=apply(s,'secretary','duty.assign',{meetingId:mid,ownerId:'fixture-deputy',title:'Linked follow-up',projectId:'project-1'});
+  s=r.state;const aid=r.result.id;
+  s=apply(s,'deputy','duty.acknowledge',{actionId:aid}).state;
+  s.accessControl.grants.find(g=>g.id==='grant-deputy-group-1').status='revoked';
+  assert.equal(view(s,'deputy').actions.find(a=>a.id===aid).projectId,null);
+  assert.throws(()=>apply(s,'deputy','duty.complete',{actionId:aid}),denied);
+  assert.equal(s.projects[0].tasks.find(t=>t.id===aid).done,false);
+});
