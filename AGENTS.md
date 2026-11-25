@@ -1,6 +1,6 @@
 # Working on P4A membership
 
-Read README.md, docs/BUILD-STATUS.md and the current user instructions first. Preserve existing work and data. This is a separate membership/CRM application; do not migrate the public repositories or interfere with the committees chat.
+Read README.md, docs/BUILD-STATUS.md and the current user instructions first. For external onboarding links, committee workspaces, constitution integration, role permissions, Webmaster and demonstration access, follow [the master onboarding and governance matrix](docs/ONBOARDING-GOVERNANCE-MATRIX.md). Update its row evidence with implementation changes; it extends rather than overrides the existing build contract and owner requirements. Preserve existing work and data. This is a separate membership/CRM application; do not migrate the public repositories or interfere with the committees chat.
 
 P4A means P4A the Purple Party for Australia. It is a movement in formation, with no adopted constitution or party registration. The constitution workbench edits discussion drafts; merging never means legal adoption. Keep public information, Household Bill Check and Legal Engine freely accessible. Choose balanced development stages that support the wider civic vision.
 
