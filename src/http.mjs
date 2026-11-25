@@ -1,4 +1,6 @@
-import { AppError, executeCommand, projectState, publicProjection, gamifyProjection } from './domain.mjs';
+import { AppError, executeCommand, normaliseState, publicProjection, gamifyProjection } from './domain.mjs';
+import { authorisedDomainActor, accessOverview, changeAccess } from './scoped-access.mjs';
+import { authorisedProjection } from './scoped-projection.mjs';
 
 export const securityHeaders = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
@@ -39,19 +41,28 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
       return demoSession(await readBody(request));
     }
     if (!['GET', 'POST'].includes(request.method)) return json({ error: 'Method not allowed.' }, 405);
-    const state = await store.read();
+    const state = normaliseState(await store.read());
     if (url.pathname === '/api/gamify' && request.method === 'GET') return json(gamifyProjection(state, { period: url.searchParams.get('period') ?? 'all', groupId: url.searchParams.get('groupId') ?? '', projectId: url.searchParams.get('projectId') ?? '' }, mode));
     if (url.pathname === '/api/public' && request.method === 'GET') return json(publicProjection(state, mode));
     const actor = await getActor(request, state);
-    if (url.pathname === '/api/bootstrap' && request.method === 'GET') return json(projectState(state, actor, mode, workspace));
+    if (url.pathname === '/api/bootstrap' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace));
     if (!actor) return json({ error: 'Sign in before opening private workspace records.' }, 401);
-    if (url.pathname === '/api/export' && request.method === 'GET') return json(projectState(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
+    if (url.pathname === '/api/export' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
+    if (url.pathname === '/api/access' && request.method === 'GET') return json(accessOverview(state, actor));
+    if (url.pathname === '/api/access' && request.method === 'POST') {
+      if (mode === 'demo' || mode === 'showcase') throw new AppError('Technical access changes are unavailable in this demonstration.', 403);
+      const outcome = changeAccess(state, actor, await readBody(request));
+      if (!outcome.result.replayed && !(await store.compareAndSwap(state.revision, outcome.state))) return json({ error: 'The workspace changed. Refresh and try again.' }, 409);
+      return json(outcome.result);
+    }
     if (url.pathname === '/api/commands' && request.method === 'POST') {
       const command = await readBody(request);
       if (mode !== 'demo' && ['membership.apply', 'membership.review'].includes(command?.type)) {
         throw new AppError('Membership admission is not available until the required checks are in place.', 403);
       }
-      const outcome = executeCommand(state, actor, command, new Date(), { mode });
+      const now = new Date();
+      const effective = authorisedDomainActor(state, actor, command, now);
+      const outcome = executeCommand(state, effective, command, now, { mode });
       if (!outcome.result.replayed && !(await store.compareAndSwap(state.revision, outcome.state))) return json({ error: 'The workspace changed. Refresh and try again.' }, 409);
       return json(outcome.result);
     }
