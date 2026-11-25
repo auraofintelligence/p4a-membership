@@ -1,7 +1,7 @@
 import { projectState, publicProjection } from './domain.mjs';
 import { projectConstitution } from './constitution-seed.mjs';
 import { financialProjection } from './gamify.mjs';
-import { scopedCollections, effectiveAccess } from './scoped-access.mjs';
+import { scopedCollections, effectiveAccess, isPilotOwner } from './scoped-access.mjs';
 import { committeeDirectory, filterCommitteeTasks } from './committee-governance.mjs';
 
 // Use existing UI contract, but never feed a scoped actor the legacy broad
@@ -10,6 +10,7 @@ export function authorisedProjection(state, actor, mode, workspace, now = new Da
   if (actor?.access !== 'scoped') {
     const result=projectState(state,actor,mode,workspace);
     if(actor)result.projects=filterCommitteeTasks(state,actor,result.projects,now);
+    if(isPilotOwner(state,actor)){result.ownerTools=true;result.committeeDirectory=committeeDirectory(state,actor,now);}
     return result;
   }
   const visible = scopedCollections(state,actor,now);
