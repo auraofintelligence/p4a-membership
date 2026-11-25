@@ -1,6 +1,7 @@
 import {rememberScrollPositions, restoreScrollPositions, focusSelectedClause} from './scroll-memory.mjs';
 import {civicIcon, compactLabels} from './civic-icons.mjs';
 import {workspaceEntry,perspectivePath} from './workspace-navigation.mjs';
+import {workspaceHome, toolsDirectory, mountToolsDirectory, committeeHomeSummary} from './centre-overview.mjs';
 import {homeDoors, campaignsView, campaignReplicationPrompt, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {trialView, handleTrialAction, trialAuditRecord} from './constitution-trial.mjs';
@@ -72,6 +73,7 @@ function rememberCommitteeContext(){
 }
 const previewActions = new Set(['constitution-clause','gamify-method','gamify-kind','gamify-reset','gamify-retry','resources','close-dialog']);
 const readOnly = () => Boolean(rolePreview || state.readOnly);
+const activePerspective = () => rolePreview || (state.readOnly && state.fictional ? state.previewRole || 'webmaster' : null);
 function restrictPreview() {
   if(!readOnly())return;
   document.querySelectorAll('[data-action], form[data-form] button[type=submit], [data-task]').forEach(el=>{
@@ -82,7 +84,7 @@ function routeAllowed(key) {
   if(key==='webmaster')return webmasterTools()&&(!rolePreview||rolePreview==='webmaster');
   if(key==='committee')return ownerTools()||scoped()&&Boolean(state.committeeDirectory?.committees?.length||state.committeeDirectory?.proposalGroups?.length);
   if(!scoped())return true;
-  if(['home','profile','onboarding','resources','transparency','nodes'].includes(key))return true;
+  if(['home','tools','profile','onboarding','resources','transparency','nodes','campaigns','readiness','finance','merch'].includes(key))return true;
   if(key==='training')return !scopedPermission('application.own','person');
   if(key==='constitution')return scopedPermission('constitution.view','constitution');
   if(['projects','project','priority'].includes(key))return scopedPermission('project.view','group');
@@ -102,6 +104,20 @@ const safeUrl = value => {try {const u=new URL(value);return u.protocol==='https
 const sourceLink = value => safeUrl(value) ? `<a class="source-link" href="${e(safeUrl(value))}" target="_blank" rel="noopener noreferrer">Read the supporting source ↗</a>` : '';
 const actionButton = (label, action, id='', classes='secondary', extra='') => `<button class="button ${classes}" data-action="${action}" data-id="${e(id)}" ${extra}>${e(label)}</button>`;
 const canEdit = p => isOrganiser() || (p.ownerId === state.actor?.id && (!scoped() || scopedPermission('project.priority','group',p.groupId))) || Boolean(state.access?.grants?.some(g=>g.role==='chair'&&g.scope.kind==='group'&&g.scope.id===p.groupId&&g.permissions.includes('project.priority')));
+
+function centreOptions(){
+  const context=committeeContext();
+  const permissions={finance:['committee.finance.view'],library:['committee.library.view'],editions:['committee.edition.contribute','committee.edition.edit','committee.edition.review'],partnerships:['committee.partnership.propose','committee.partnership.review']};
+  return {canOpen:routeAllowed,civicTools:hasCivicTools(),previewRole:activePerspective(),perspectiveUrl,committeeId:context?.id,committeeAllows:tab=>{
+    if(tab==='overview')return true;
+    if(!context?.working)return false;
+    return ownerTools()||['meetings','duties','offices','notices'].includes(tab)||permissions[tab]?.some(p=>scopedPermission(p,'committee',context.id));
+  }};
+}
+function loadDeskStyles(name){
+  if(document.querySelector('link[data-desk-style="'+name+'"]'))return;
+  const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('./'+name+'-workspace.css',import.meta.url).href;style.dataset.deskStyle=name;document.head.append(style);
+}
 
 let readiness;
 let readinessTimer;
@@ -147,7 +163,9 @@ function jraQuestions(showExamples = false) {
   return `<dl class="jra-questions">${jraValues.map(({title, question, example}) => `<div><dt>${e(title)}</dt><dd>${e(question)}${showExamples ? `<p>${e(example)}</p>` : ''}</dd></div>`).join('')}</dl>`;
 }
 
-function home(){const verified=state.contributions.filter(c=>c.status==='verified').reduce((n,c)=>n+Number(c.hours),0);const mine=state.projects.filter(p=>p.participantIds?.includes(state.actor?.id));return `${heading('People & possibility',state.actor?`Good to have you here, ${state.actor.name.split(' ')[0]}.`:'A movement grows through its people.','Find a way to contribute and work with others on issues that matter to you.',state.actor?projectStartAction():actionButton('Explore the public work','resources','','secondary'))}
+function home(){
+  if(state.actor)return workspaceHome({state,canOpen:key=>routeAllowed(key)&&(key!=='training'||hasCivicTools()),previewRole:activePerspective(),perspectiveUrl,committee:committeeContext(),projectCard,icon,dateText,startAction:readOnly()?'':projectStartAction(),purpose:`<p>Truth, trust and a fair go for all. Make room for friendship, learning and useful work, and share what we learn so others can build on it.</p>${jraQuestions(true)}<a class="button quiet" href="${e(jraSource)}" target="_blank" rel="noopener noreferrer">Explore Joyful Responsible Abundance ↗</a>`});
+  const verified=state.contributions.filter(c=>c.status==='verified').reduce((n,c)=>n+Number(c.hours),0);const mine=state.projects.filter(p=>p.participantIds?.includes(state.actor?.id));return `${heading('People & possibility',state.actor?`Good to have you here, ${state.actor.name.split(' ')[0]}.`:'A movement grows through its people.','Find a way to contribute and work with others on issues that matter to you.',state.actor?projectStartAction():actionButton('Explore the public work','resources','','secondary'))}
 <section class="hero"><div><h2>Truth, trust and a fair go for all</h2><p>Rise above the fray. Check what we say, treat people fairly and share what we learn so others can build on it.</p><div class="button-row">${state.actor?'<a class="button" href="#projects">Find a project '+icon('arrow')+'</a>':state.mode==='demo'?actionButton('Open the member demo','demo-member','',''):'<a class="button" href="#resources">Explore the connected ideas</a>'}<a class="button quiet" href="#priority">What matters now ↗</a></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"><div class="orbit-center">People.<br>Place.<br>Possibility.</div><span class="orbit-label">Joy</span><span class="orbit-label">Responsibility</span><span class="orbit-label">Abundance</span></div></div></section>
 <section class="panel jra-home" aria-labelledby="jra-home-title"><div class="jra-heading">${icon('abundance')}<h2 id="jra-home-title">Joyful Responsible Abundance</h2></div><p>As AI advances and the possibility of superintelligence comes into view, take time to know ourselves and remember why we want to do better. Make room for friendships and families to thrive, and build alliances with people who bring different strengths.</p><p>A rising tide can lift all ships when people share in what we build. Ask these questions, act together and improve what we can, day by day.</p>${jraQuestions(true)}<div class="button-row"><a class="button secondary" href="${e(jraSource)}" target="_blank" rel="noopener noreferrer">Explore Joyful Responsible Abundance ↗</a>${isPilot() ? '<a class="button quiet" href="#training/joyful-responsible-abundance">Try the values lesson →</a>' : ''}</div></section>
 ${(routeAllowed('committee')||routeAllowed('webmaster'))?`<div class="home-doors">${routeAllowed('committee')?`<a class="home-door" href="#committee">${icon('committees')}<div><h2>Organising committee</h2><p>Meetings, duties, documents and shared work.</p><span class="door-action">Open your committees →</span></div></a>`:''}${routeAllowed('webmaster')?`<a class="home-door" href="#webmaster">${icon('transparency')}<div><h2>Webmaster</h2><p>Manage access or explore the centre from another role.</p><span class="door-action">Open Webmaster →</span></div></a>`:''}</div>`:''}
@@ -188,14 +206,13 @@ function peopleRows(list) {
 }
 function groups(){return `${heading('People → Place → Possibility','Find a circle. Build something together.','Working groups connect people around a place or purpose. They are distinct from formal party branches.', isPilot() && isOrganiser() ? actionButton('Create a working group','new-group','','') : '')}<div class="projects-grid">${state.groups.map(g=>`<section class="panel group-card"><div class="section-heading"><span class="avatar">${icon('groups')}</span>${tag(g.level||'local')}</div><h2 class="subheading">${e(g.name)}</h2><p>${e(g.description)}</p><div class="meta-row"><span>Place</span><strong>${e(g.place)}</strong></div><div class="meta-row"><span>Working projects</span><strong>${state.projects.filter(p=>p.groupId===g.id).length}</strong></div>${state.actor&&(!scoped()||scopedPermission(g.memberIds?.includes(state.actor.id)?'group.leave':'group.join','group',g.id))?actionButton(g.memberIds?.includes(state.actor.id)?'Leave working group':'Join working group',g.memberIds?.includes(state.actor.id)?'leave-group':'join-group',g.id,'secondary'):''}</section>`).join('')||(isPilot()?`<div class="panel"><h2>No working groups yet</h2><p class="muted">${isOrganiser()?'Create a group to organise your first project.':'An organiser can create the first group.'}</p></div>`:'<div class="panel"><p class="muted">Groups will appear here as the movement develops.</p></div>')}</div>`;}
 function hours() {
-  const simulator = donationSimulatorView(e);
-  if (!state.actor) return `${heading('People & possibility','Contributions','Explore donation scenarios and ways to give your time.')}${simulator}${requireMember()}`;
+  if (!state.actor) return `${heading('People & possibility','Contributions','Find ways to give your time and support shared work.')}<p class="button-row"><a class="button secondary" href="#hours/calculator">Explore the giving calculator</a></p>${requireMember()}`;
   const pilot = isPilot()&&!scoped();
   const canReview = !pilot&&(isOrganiser()||scopedPermission('contribution.review','group'));
   const reviewReceipt = c => c.personId!==state.actor.id&&c.createdBy!==state.actor.id&&(isOrganiser()||scopedPermission('contribution.review','group',project(c.projectId)?.groupId));
   const verified = state.contributions.filter(c => c.status === 'verified').reduce((n, c) => n + Number(c.hours), 0);
   return `${heading('What was given freely','Make contribution visible.',pilot?'View voluntary contribution receipts. Capture will open when Aura-assisted intake is ready.':'Record useful work, keep the context and have another person verify the receipt.',pilot||scoped()&&!scopedPermission('contribution.log','group')?'':actionButton('Record a contribution','log-hours','',''))}
-    ${simulator}<div class="section-heading"><h2>Voluntary time</h2></div>
+    <div class="section-heading"><h2>Voluntary time</h2><a href="#hours/calculator">Giving calculator →</a></div>
     <div class="stats"><div class="stat"><div class="stat-top">Verified hours${icon('hours')}</div><strong>${verified}</strong><small>Counted once · No money conversion</small></div><div class="stat"><div class="stat-top">Awaiting verification</div><strong>${state.contributions.filter(c=>c.status==='pending').length}</strong><small>Independent review required</small></div></div><div class="table-wrap" data-scroll-key="contributions-table"><table><thead><tr><th>Contribution</th><th>Date / hours</th><th>Receipt status</th>${canReview?'<th>Review</th>':''}</tr></thead><tbody>${state.contributions.map(c=>`<tr><td><strong>${e(c.description)}</strong><br><small class="muted">${e(person(c.personId)?.name||'Contributor')} · ${e(project(c.projectId)?.title||'Shared project')}</small></td><td>${dateText(c.date)}<br><strong>${e(c.hours)} hours</strong></td><td>${tag(c.status,statusTone(c.status))}<br><small class="muted">${c.publicConsent?(pilot?'Shared within the workspace':'Aggregate publication allowed'):'Kept private'}</small></td>${canReview?`<td>${c.status==='pending'&&reviewReceipt(c)?`<div class="button-row">${actionButton('Verify','verify-hours',c.id,'secondary small')}${actionButton('Reject','reject-hours',c.id,'secondary small')}</div>`:'<small class="muted">'+(c.personId===state.actor.id?'Another organiser must review':'Reviewed')+'</small>'}</td>`:''}</tr>`).join('')||`<tr><td colspan="${pilot?3:4}" class="empty">${pilot?'No contribution receipts yet.':'Your first contribution can start with a shared project.'}</td></tr>`}</tbody></table></div><div class="callout">Paid work, financial support, voluntary time and outcomes have separate records. A verified hour does not create a financial entitlement or extra political rights.</div>`;
 }
 function transparency() {
@@ -261,7 +278,9 @@ function profile() {
 }
 function field(label,name,value='',options={}){return `<label class="field ${options.full?'full':''}">${e(label)}<input name="${e(name)}" value="${e(value)}" type="${options.type||'text'}" ${options.required?'required':''} ${options.max?`max="${options.max}"`:''} maxlength="${options.length||(name==='name'?100:200)}"></label>`;}
 
+let renderSequence=0;
 function render() {
+  const sequence=++renderSequence;
   rememberScrollPositions(document);
   const [route = 'home', id] = (location.hash.slice(1) || 'home').split('/');
   const compareFinance = route === 'finance' && id === 'compare';
@@ -271,33 +290,32 @@ function render() {
   const civicTools = hasCivicTools();
   const trainingActor = state.actor?.id || 'local-public';
   $('.shell').classList.toggle('private-workspace', privateShell());
+  $('.shell').classList.add('centre-shell');
   const availableWorkspaceRoutes = workspaceRoutes.filter(([key]) => routeAllowed(key) && (civicTools || (key !== 'readiness' && key !== 'training')));
   const pilotLabels = { profile: 'Your profile', transparency: 'Restricted transparency' };
-  const current = [...availableWorkspaceRoutes, ...accountabilityRoutes,['webmaster','Webmaster']].find(r => r[0] === route) || ['home', 'Your workspace'];
+  const current = [...availableWorkspaceRoutes, ...accountabilityRoutes,['webmaster','Webmaster'],['tools','All tools']].find(r => r[0] === route) || ['home', 'Your workspace'];
   const auraPage = route === 'resources' && id === 'aura';
   const currentProfile = route === 'people' && state.actor ? memberProfile(id) : null;
   const currentLabel = currentProfile?.name || (auraPage ? auraResource.name : (pilot ? pilotLabels[current[0]] || current[1] : current[1]));
   document.title = `${currentLabel} · P4A`;
+  const primaryRoutes=[['home','Home'],['committee','My committees'],['projects','Shared projects'],['tools','All tools']];
+  const personalRoutes=[['groups','Working groups'],['training','Civic training'],['profile','Your profile']];
+  const pinned=new Set([...primaryRoutes,...personalRoutes,['webmaster','Webmaster']].map(([key])=>key));
   const navLink = ([key, label]) => {
     const text = pilot ? pilotLabels[key] || label : label;
-    const active = route === key || (route === 'project' && key === 'projects');
-    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${route === key ? 'aria-current="page"' : ''} aria-label="${text}" title="${text}">${icon(key==='committee'?'committees':key==='webmaster'?'transparency':key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
+    const active = route === key || (route === 'project' && key === 'projects') || (key==='tools'&&!pinned.has(route)&&route!=='project');
+    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${active ? 'aria-current="'+(route===key?'page':'location')+'"' : ''} aria-label="${text}" title="${text}">${icon(key==='committee'?'committees':key==='webmaster'?'transparency':key==='tools'?'resources':key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
   };
-  const roleLabel = ownerTools()?'Webmaster · workspace owner':scoped() ? [...new Set(state.access?.grants?.map(g=>g.role)||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
+  const roleLabel = ownerTools()?'Webmaster · workspace owner':rolePreview?roleName(rolePreview)+' example':scoped() ? [...new Set(state.access?.grants?.map(g=>roleName(g.role))||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
   const context=committeeContext();
-  const committeeNav=routeAllowed('committee')?[
-    ['overview','Committee overview','committees'],['meetings','Meetings','readiness'],['duties','My duties','projects'],['offices','Office holders','people'],['notices','Inbox','onboarding'],['finance','Treasurer','finance'],['library','Documents','resources'],['editions','Newsletters','campaigns'],['partnerships','Partnerships','groups']
-  ].filter(([tab])=>ownerTools()||['overview','meetings','duties','offices','notices'].includes(tab)||state.access?.grants?.some(g=>g.scope.kind==='committee'&&g.scope.id===context?.id&&g.permissions.some(p=>({finance:['committee.finance.view'],library:['committee.library.view'],editions:['committee.edition.contribute','committee.edition.edit','committee.edition.review'],partnerships:['committee.partnership.propose','committee.partnership.review']})[tab]?.includes(p)))):[];
-  const committeeNavLinks=context?.working?committeeNav.map(([tab,label,image])=>`<a class="nav-link ${route==='committee'&&(location.hash.split('/')[2]||'overview')===tab?'active':''}" href="${committeeLink(tab)}">${icon(image)}<span class="nav-full-label">${label}</span><span class="nav-short-label">${label}</span></a>`).join(''):'';
   $('#sidebar').innerHTML = `<a class="brand" href="#home" aria-label="P4A membership centre"><span class="brand-mark">P4A</span><span><strong>Membership centre</strong><small>People &amp; possibility</small></span></a>
-    ${privateShell()?'<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Menu</button>':''}<nav id="workspace-links" aria-label="Workspace pages">
-    <div class="nav-label">Take part</div>${availableWorkspaceRoutes.filter(([key])=>key!=='committee').map(navLink).join('')}
-    ${routeAllowed('committee')?`<div class="nav-label">Organising committee</div>${navLink(['committee','My committees'])}${committeeNavLinks}`:''}
-    <div class="nav-label">Shared tools</div>${accountabilityRoutes.filter(([key])=>routeAllowed(key)).map(navLink).join('')}
+    <button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Menu</button><nav id="workspace-links" aria-label="Workspace pages">
+    ${primaryRoutes.filter(([key])=>routeAllowed(key)).map(navLink).join('')}
+    <div class="nav-label">Your participation</div>${personalRoutes.filter(([key])=>routeAllowed(key)&&(key!=='training'||civicTools)).map(navLink).join('')}
     ${routeAllowed('webmaster')?`<div class="nav-label">Manage the centre</div>${navLink(['webmaster','Webmaster'])}`:''}</nav>
-    <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong><br><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
+    <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
     <div class="identity"><span class="avatar">${e(initials(state.actor?.name || 'Public'))}</span><div>${e(state.actor?.name || 'Public visitor')}<small>${e(roleLabel)}</small></div></div></div>`;
-  let accountControl = `<span class="muted"><span class="status-dot"></span>${state.actor ? 'Signed in' : 'Public view'}</span>`;
+  let accountControl = `<span class="centre-account-status"><span class="status-dot"></span>${readOnly()?'Example view':state.actor ? 'Signed in' : 'Public view'}</span>`;
   if (state.mode === 'demo') {
     accountControl = `<label class="sr-only" for="demo-role">Review perspective</label><select id="demo-role"><option value="public" ${!state.actor ? 'selected' : ''}>Public view</option><option value="member" ${state.actor?.role === 'member' ? 'selected' : ''}>Member demo</option><option value="organiser" ${isOrganiser() ? 'selected' : ''}>Organiser demo</option></select>`;
   } else if (pilot) {
@@ -305,14 +323,15 @@ function render() {
   }
   const perspectiveControl=webmasterTools()||rolePreview?`<label class="perspective-control"><span>View as</span><select id="workspace-perspective" aria-label="Choose a view"><option value="actual" ${!rolePreview?'selected':''}>My workspace</option>${perspectives.map(r=>`<option value="${r}" ${r===rolePreview?'selected':''}>${roleName(r)} (demo)</option>`).join('')}</select></label>`:'';
   const contextControl=(state.committeeDirectory?.committees||[]).length&&routeAllowed('committee')?`<label class="perspective-control"><span>Committee</span><select id="workspace-context" aria-label="Choose a committee"><option value="" ${!context?'selected':''}>All committees</option>${state.committeeDirectory.committees.map(c=>`<option value="${e(c.id)}" ${context?.id===c.id?'selected':''}>${e(c.name)}</option>`).join('')}</select></label>`:'';
-  $('#topbar').innerHTML = `<div class="breadcrumb"><span>${pilot ? 'Private workspace' : 'P4A workspace'}</span><span>/</span><strong>${e(currentLabel)}</strong></div><div class="top-actions"><a class="public-link source-link" href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Public website ↗</a>${perspectiveControl}${contextControl}${accountControl}</div>`;
+  const switcher=perspectiveControl||contextControl?`<details class="centre-switcher"><summary>${rolePreview?e(roleName(rolePreview))+' example':'Workspace options'}</summary><div class="centre-switcher-panel">${contextControl}${perspectiveControl}${perspectiveControl?'<p>Example roles use fictional records and cannot change the workspace.</p>':''}</div></details>`:'';
+  $('#topbar').innerHTML = `<div class="breadcrumb"><span>${pilot ? 'Private workspace' : 'P4A'}</span><span>/</span><strong>${e(currentLabel)}</strong></div><div class="top-actions"><a class="public-link source-link" href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Public website ↗</a>${switcher}${accountControl}</div>`;
   const banner = $('#demo-banner');
   banner.hidden = state.mode !== 'demo' && !pilot && !readOnly();
   banner.classList.toggle('pilot-banner', pilot);
   banner.innerHTML = readOnly() ? '<strong>DEMO · '+e(roleName(rolePreview||'webmaster'))+'</strong> Example records only. <a href="'+(pageQuery.get('view')==='fictional'?'/index.html#webmaster':'/webmaster.html')+'">Back to Webmaster</a>.' : pilot
     ? '<strong>YOUR PRIVATE WORKSPACE</strong> Your groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
-  const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups, hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
+  const views = { tools:()=>toolsDirectory(centreOptions(),{icon}), onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups, hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
   const isApplicationsPage = route === 'onboarding' && id === 'applications' && civicTools && isOrganiser() && (!pilot||state.applicationsAvailable===true);
   if (isApplicationsPage) {
     views.onboarding = () => applicationReview?.applicationReviewView({ heading }) || '<p role="status">Opening the applications register…</p>';
@@ -329,14 +348,17 @@ function render() {
     else views.finance = () => financeTab ? (electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening detailed budgets…</p></div>') : membershipQuickView({ e, heading });
   }
   if (route === 'merch') views.merch = () => merchQuickView({ e, heading });
+  if (route === 'hours' && id === 'calculator') views.hours = () => `${heading('Planning & calculators','Giving calculator','Explore donation schedules and potential bequests. These are planning assumptions.')}<a class="back-link" href="#hours">← Voluntary contributions</a>${donationSimulatorView(e)}`;
   if(!routeAllowed(route)){ $('#main').innerHTML=heading('Scoped access','View unavailable','Your current access grants do not include this view.'); return; }
   if(route==='webmaster'){
+    loadDeskStyles('webmaster');
     const mount=$('#main'),requested=location.hash;
     mount.innerHTML='<div class="panel"><p role="status">Opening Webmaster...</p></div>';
     import('./webmaster-workspace.mjs').then(m=>m.mountWebmaster(mount,{api,readOnly:readOnly(),route:requested,perspectiveUrl,icon,onSaved:async()=>{await load();render();}})).catch(err=>{if(location.hash===requested)mount.innerHTML='<div class="panel"><h1>Webmaster</h1><p role="alert">'+e(err.message)+'</p></div>';});
     return;
   }
   if(route==='committee'){
+    loadDeskStyles('committee');
     const requestedRoute=location.hash.slice(1),mount=$('#main');
     mount.innerHTML='<div class="panel"><p role="status">Opening your authorised committee desk...</p></div>';
     import('./committee-workspace.mjs').then(module=>module.mountCommittee(mount,{
@@ -352,6 +374,14 @@ function render() {
   }
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
   restrictPreview();
+  if(route==='tools')mountToolsDirectory($('#main'));
+  if(route==='home'&&state.actor&&context&&routeAllowed('committee')){
+    api('/api/committee?id='+encodeURIComponent(context.id)).then(data=>{
+      const panel=$('[data-home-committee]');
+      if(sequence!==renderSequence||!panel||panel.dataset.homeCommittee!==context.id)return;
+      panel.innerHTML=committeeHomeSummary(data,{actor:state.actor,dateText});
+    }).catch(()=>{const panel=$('[data-home-committee]');if(sequence===renderSequence&&panel)panel.innerHTML='<p class="muted">The committee overview could not open.</p><a href="'+committeeLink('overview')+'">Open your committee</a>';});
+  }
   const trainingTitle = route === 'training' ? $('#main .civic-training-page h1')?.textContent : null;
   if (trainingTitle && trainingTitle !== currentLabel) document.title = `${trainingTitle} · Civic training · P4A`;
   restoreScrollPositions(document);
@@ -628,5 +658,15 @@ document.addEventListener('input', event => {
 });
 document.addEventListener('input',event=>{if(event.target.id==='project-search')filterProjects();if(event.target.id==='people-search'){$('#people-results').innerHTML=peopleRows(peopleDirectory().filter(p=>`${p.name} ${p.place || ''} ${p.skills || ''} ${p.interests || ''}`.toLowerCase().includes(event.target.value.toLowerCase())));}});
 window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);focusPage();});
+document.addEventListener('click',event=>{
+  const switcher=$('.centre-switcher[open]');if(switcher&&!switcher.contains(event.target))switcher.open=false;
+  if(event.target.closest('#workspace-links a'))$('#workspace-menu')?.setAttribute('aria-expanded','false');
+});
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const switcher=$('.centre-switcher[open]');
+  if(switcher){switcher.open=false;switcher.querySelector('summary').focus();return;}
+  const menu=$('#workspace-menu[aria-expanded="true"]');if(menu){menu.setAttribute('aria-expanded','false');menu.focus();}
+});
 $('#dialog').addEventListener('click',event=>{if(event.target===$('#dialog')){const r=$('#dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();}});
 try{await load();render();}catch(err){$('#main').innerHTML=`<div class="panel"><h1>The workspace could not open.</h1><p class="muted subheading">${e(err.message)}</p><button class="button" id="retry">Try again</button></div>`;$('#retry').onclick=()=>location.reload();}

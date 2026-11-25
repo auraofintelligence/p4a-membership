@@ -6,7 +6,7 @@ import { publicOnboardingNavigation } from './public-onboarding-links.mjs';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
 const publicFiles = [
-  'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs', 'workspace-navigation.mjs',
+  'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs', 'workspace-navigation.mjs', 'centre-overview.mjs', 'centre-layout.css',
   'constitution.mjs', 'gamify.mjs', 'gamify.css', 'member-participation.mjs', 'team-games-index.mjs', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'aura-overview.mjs', 'onboarding.mjs',
   'team-games-classics.mjs', 'team-games-sports.mjs', 'profile-influences.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
