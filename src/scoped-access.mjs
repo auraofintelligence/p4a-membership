@@ -10,18 +10,18 @@ const groupBase = ['group.view','group.join','group.leave','project.view','proje
 const groupOffice = ['group.view','project.view','project.create','project.join','task.add','task.toggle','comment.add'];
 const constitutionBase = ['constitution.view','constitution.propose','constitution.comment','constitution.withdraw'];
 // Committee scopes are explicit, never inherited from group membership.
-const committeeRead = ['committee.view','committee.task.own','committee.notice.read','committee.motion.write'];
+const committeeRead = ['committee.view','committee.task.own','committee.notice.read','committee.motion.write','committee.library.view'];
 const committeeVote = [...committeeRead,'committee.vote.rehearsal'];
-const committeeSecretary = [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write'];
+const committeeSecretary = [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write','committee.office.plan','committee.library.write'];
 const grantRules = Object.freeze({
-  member: { group: groupBase, constitution: constitutionBase, committee: ['committee.minutes.released'] },
+  member: { group: groupBase, constitution: constitutionBase, committee: ['committee.minutes.released','committee.library.released'] },
   committee: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
-  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate','committee.propose'], constitution: [...constitutionBase,'scope.delegate'], committee: [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.review','scope.delegate'] },
+  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate','committee.propose'], constitution: [...constitutionBase,'scope.delegate'], committee: [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.review','scope.delegate','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review'] },
   deputy: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
   secretary: { group: [...groupOffice,'scope.delegate','committee.propose'], constitution: [...constitutionBase,'constitution.review','scope.delegate'], committee: [...committeeSecretary,'scope.delegate'] },
   'assistant-secretary': { group: groupOffice, constitution: constitutionBase, committee: committeeSecretary },
-  treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'], committee: committeeVote },
-  reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'], committee: [...committeeRead,'committee.minutes.review'] },
+  treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'], committee: [...committeeVote,'committee.finance.view','committee.finance.write'] },
+  reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'], committee: [...committeeRead,'committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review'] },
   applicant: { person: ['application.own'] },
   webmaster: { system: ['access.view','access.reserve','access.revoke'] },
 });
