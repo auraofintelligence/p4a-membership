@@ -16,9 +16,9 @@ const committeeSecretary = [...committeeVote,'committee.meeting.manage','committ
 const grantRules = Object.freeze({
   member: { group: groupBase, constitution: constitutionBase, committee: ['committee.minutes.released','committee.library.released'] },
   committee: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
-  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate','committee.propose'], constitution: [...constitutionBase,'scope.delegate'], committee: [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.review','scope.delegate','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review'] },
+  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate','committee.propose'], constitution: [...constitutionBase,'scope.delegate','constitution.structure'], committee: [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.review','scope.delegate','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review'] },
   deputy: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
-  secretary: { group: [...groupOffice,'scope.delegate','committee.propose'], constitution: [...constitutionBase,'constitution.review','scope.delegate'], committee: [...committeeSecretary,'scope.delegate'] },
+  secretary: { group: [...groupOffice,'scope.delegate','committee.propose'], constitution: [...constitutionBase,'constitution.review','scope.delegate','constitution.structure'], committee: [...committeeSecretary,'scope.delegate'] },
   'assistant-secretary': { group: groupOffice, constitution: constitutionBase, committee: committeeSecretary },
   treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'], committee: [...committeeVote,'committee.finance.view','committee.finance.write'] },
   reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'], committee: [...committeeRead,'committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review'] },
@@ -109,7 +109,7 @@ export function can(state, actor, action, kind, id, now = new Date()) {
 }
 const ownCommands = new Set(['profile.update','profile.influence.add','profile.influence.update','profile.influence.remove','training.complete','team-game.record','team-game.remove','membership.withdraw']);
 const projectCommands = new Set(['project.join','project.priority','project.status','task.add','task.toggle','comment.add','contribution.log']);
-const draftCommands = new Set(['constitution.propose','constitution.comment','constitution.withdraw','constitution.review']);
+const draftCommands = new Set(['constitution.propose','constitution.comment','constitution.withdraw','constitution.review','constitution.structure']);
 const receiptCommands = new Set(['contribution.review','contribution.revoke','contribution.sharing','contribution.correct','financial.review','financial.refund','financial.revoke','financial.sharing','financial.correct']);
 const groupScope = (state, projectId) => state.projects.find(row => row.id === projectId)?.groupId;
 
@@ -146,7 +146,7 @@ export function authorisedDomainActor(state, actor, command, now = new Date()) {
   if (draftCommands.has(type)) {
     const id = data.constitutionId;
     if (!state.constitutions.some(row => row.id === id) || !has('constitution.view','constitution',id) || !has(type,'constitution',id)) fail();
-    return type === 'constitution.review' ? elevated : member;
+    return ['constitution.review','constitution.structure'].includes(type) ? elevated : member;
   }
   if (type === 'financial.log') {
     const id = groupScope(state,data.projectId);
