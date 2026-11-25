@@ -133,7 +133,9 @@ export function authorisedDomainActor(state, actor, command, now = new Date()) {
   if (projectCommands.has(type)) {
     const id = groupScope(state,data.projectId);
     if (!group(type,id,true)) fail();
-    // Existing domain ownership and participation checks remain in force.
+    // An explicitly granted chair may manage a project in that exact group.
+    // Other participants keep the existing domain ownership and participation checks.
+    if (['project.priority','project.status'].includes(type) && grantsFor(state,actor,now).some(g=>g.role==='chair'&&g.scope.kind==='group'&&g.scope.id===id&&g.permissions.includes(type))) return elevated;
     return member;
   }
   if (draftCommands.has(type)) {
