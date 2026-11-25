@@ -1,7 +1,7 @@
 import { createDemoState } from './seed.mjs';
 import { createConstitution } from './domain.mjs';
 import { AppError } from './errors.mjs';
-import { accessOverview, authorisedDomainActor, can, scopedIdentity } from './scoped-access.mjs';
+import { accessOverview, can, scopedIdentity } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
 
 const fixtureIssuer = 'https://fictional-showcase.cloudflareaccess.com';
@@ -31,7 +31,7 @@ export function createShowcaseState() {
   for (const role of previewRoles) {
     const id = 'fixture-'+role;
     state.people.push({id,name:'Fictional '+role,email:role+'@example.invalid',place:'Example neighbourhood',skills:'',interests:'',directoryConsent:false,contactConsent:false,role:'member'});
-    access.accounts.push({id:'account-'+role,personId:id,subject:'subject-'+role,issuer:fixtureIssuer,status:'active'});
+    access.accounts.push({id:'account-'+role,personId:id,identities:[{subject:'subject-'+role,issuer:fixtureIssuer}],status:'active'});
     if (role === 'webmaster') grant(role,'system','p4a',['access.view','access.reserve','access.revoke']);
     else if (role === 'applicant') grant(role,'person',id,['application.own']);
     else {
