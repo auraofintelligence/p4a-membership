@@ -1,5 +1,7 @@
 import { accessTokenFromRequest, verifyAccessToken } from './auth.mjs';
 
+import { scopedIdentity, legacyPersonAllowed } from './scoped-access.mjs';
+
 const organiserId = 'pilot-organiser';
 
 function normalisedEmail(value) {
@@ -20,16 +22,29 @@ function parseAllowlist(value) {
   }
 }
 
-export async function getPilotIdentity(request, env) {
+export async function verifiedPilotClaims(request, env) {
+  const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
+  return claims?.type === 'app' ? claims : null;
+}
+export function legacyPilotIdentity(claims, env) {
   const organisers = parseAllowlist(env.PILOT_ORGANISER_EMAILS);
   if (!organisers?.size) return null;
 
-  const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
   if (claims?.type !== 'app') return null;
   if (!organisers.has(normalisedEmail(claims.email))) return null;
   return { role: 'organiser', subject: claims.sub };
 }
 
+export async function getPilotIdentity(request, env) {
+  return legacyPilotIdentity(await verifiedPilotClaims(request, env), env);
+}
+export function resolvePilotActor(state, claims, env) {
+  if (!claims) return null;
+  const scoped = scopedIdentity(state, claims);
+  if (scoped.managed) return env.PILOT_SCOPED_ACCESS === 'enabled' ? scoped.actor : null;
+  const legacy = legacyPilotIdentity(claims, env);
+  return legacy && legacyPersonAllowed(state, organiserId) ? pilotActorForRole(legacy.role,state) : null;
+}
 export async function getPilotRole(request, env) {
   return (await getPilotIdentity(request, env))?.role ?? null;
 }
@@ -44,5 +59,5 @@ export function pilotActorForRole(role, state) {
 }
 
 export async function authenticatePilot(request, env, state) {
-  return pilotActorForRole(await getPilotRole(request, env), state);
+  return resolvePilotActor(state, await verifiedPilotClaims(request, env), env);
 }
