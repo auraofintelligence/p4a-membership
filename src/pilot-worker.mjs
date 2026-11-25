@@ -38,6 +38,7 @@ export default {
           getActor: async (_request, state) => resolvePilotActor(state,claims,env),
           mode: 'pilot',
           workspace: false,
+          applicationsAvailable:typeof env.APPLICATIONS?.prepare==='function',
         });
         const secured = new Response(response.body, response);
         secured.headers.set('X-Robots-Tag', pilotHeaders['X-Robots-Tag']);
