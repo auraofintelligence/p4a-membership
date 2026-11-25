@@ -159,7 +159,7 @@ export function onboardingView(state, id, { e, heading, icon, civicTools = false
       ${demo && state.actor?.role === 'organiser' ? '<a class="button secondary" href="#onboarding/applications">Open sample applications</a>' : ''}
     </div>`}
     ${demo ? '<p class="callout"><strong>Fictional exercise.</strong> Use the sample profiles and answers. Keep real identity documents, payment details and personal information out of this exercise.</p>' : ''}
-    ${review ? reviewPanel(state, policy, e) : demo ? applicantPanel(state, policy, e) : liveGuidance(pilot, state.actor?.role === 'organiser')}
+    ${review ? reviewPanel(state, policy, e) : demo ? applicantPanel(state, policy, e) : liveGuidance(pilot, state.actor?.role === 'organiser' && state.applicationsAvailable===true)}
     ${review ? '' : `<section class="panel wide-panel onboarding-steps" aria-labelledby="onboarding-steps-heading">
       <div class="section-heading"><h2 id="onboarding-steps-heading">Steps for real membership</h2>${icon('onboarding')}</div>
       <ol>${stages.map(([name, detail]) => `<li><h3>${e(name)}</h3><p>${e(detail)}</p></li>`).join('')}</ol>
