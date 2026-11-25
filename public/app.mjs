@@ -48,7 +48,32 @@ const project = id => state.projects.find(p=>p.id===id);
 const isOrganiser = () => state.actor?.role === 'organiser';
 const scoped = () => state.actor?.access === 'scoped';
 const scopedPermission = (action,kind,id) => Boolean(state.access?.grants?.some(g=>g.permissions.includes(action)&&(!kind||g.scope.kind===kind)&&(!id||g.scope.id===id)));
-const rolePreview = location.pathname.endsWith('/webmaster-role-preview.html') ? new URLSearchParams(location.search).get('role') || 'webmaster' : null;
+const pageQuery=new URLSearchParams(location.search);
+const webmasterEntry=/\/webmaster(?:\.html)?\/?$/.test(location.pathname);
+const previewEntry=/\/webmaster-role-preview(?:\.html)?\/?$/.test(location.pathname);
+const rolePreview=previewEntry||webmasterEntry&&pageQuery.get('view')==='fictional'?(pageQuery.get('role')||'webmaster'):null;
+const perspectives=['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant'];
+const roleName=role=>({webmaster:'Webmaster',chair:'Chair',deputy:'Deputy',secretary:'Secretary','assistant-secretary':'Assistant Secretary',treasurer:'Treasurer',committee:'Committee member',reviewer:'Reviewer',member:'Member',applicant:'Applicant'})[role]||role;
+if(webmasterEntry&&!location.hash)history.replaceState(null,'',location.pathname+location.search+'#webmaster');
+const ownerTools=()=>state.ownerTools===true;
+const webmasterTools=()=>ownerTools()||scopedPermission('access.view','system','p4a');
+const privateShell=()=>isPilot()||Boolean(rolePreview)||state.mode==='showcase';
+function perspectiveUrl(role){
+  if(role==='actual')return '/index.html#home';
+  const target=role==='webmaster'?'webmaster':['chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer'].includes(role)?'committee/committee-1/overview':'home';
+  return '/webmaster-role-preview.html?role='+encodeURIComponent(role)+(ownerTools()||pageQuery.get('view')==='fictional'?'&view=fictional':'')+'#'+target;
+}
+function committeeContext(){
+  const rows=state.committeeDirectory?.committees||[],parts=location.hash.slice(1).split('/');
+  return rows.find(c=>c.id===(parts[0]==='committee'?parts[1]:null))||rows.find(c=>c.id===new URLSearchParams(location.search).get('committee'))||rows[0]||null;
+}
+function committeeLink(tab){const c=committeeContext();return c?'#committee/'+encodeURIComponent(c.id)+'/'+tab:'#committee';}
+function rememberCommitteeContext(){
+  const parts=location.hash.slice(1).split('/');
+  if(parts[0]!=='committee'||!state.committeeDirectory?.committees?.some(c=>c.id===parts[1]))return;
+  const url=new URL(location.href);if(url.searchParams.get('committee')===parts[1])return;
+  url.searchParams.set('committee',parts[1]);history.replaceState(null,'',url.pathname+url.search+url.hash);
+}
 const previewActions = new Set(['constitution-clause','gamify-method','gamify-kind','gamify-reset','gamify-retry','resources','close-dialog']);
 const readOnly = () => Boolean(rolePreview || state.readOnly);
 function restrictPreview() {
@@ -58,7 +83,8 @@ function restrictPreview() {
   });
 }
 function routeAllowed(key) {
-  if(key==='committee')return scoped()&&Boolean(state.committeeDirectory?.committees?.length||state.committeeDirectory?.proposalGroups?.length);
+  if(key==='webmaster')return webmasterTools()&&(!rolePreview||rolePreview==='webmaster');
+  if(key==='committee')return ownerTools()||scoped()&&Boolean(state.committeeDirectory?.committees?.length||state.committeeDirectory?.proposalGroups?.length);
   if(!scoped())return true;
   if(['home','profile','onboarding','resources','transparency','nodes'].includes(key))return true;
   if(key==='training')return !scopedPermission('application.own','person');
@@ -91,7 +117,7 @@ async function api(path, options={}) {
   if(rolePreview){
     if((options.method||'GET')!=='GET'||options.body)throw new Error('This fictional role view is read-only.');
     const requested=new URL(path,location.origin), views={'/api/bootstrap':'workspace','/api/public':'public','/api/gamify':'gamify','/api/committee':'committee','/api/committee/document':'committee-document'};
-    const view=views[requested.pathname];
+    const view=requested.pathname==='/api/access'&&rolePreview==='webmaster'?'access':views[requested.pathname];
     if(!view||requested.origin!==location.origin)throw new Error('This route is unavailable in the fictional role view.');
     const params=new URLSearchParams(requested.search);params.set('role',rolePreview);params.set('view',view);path='/api/access/preview?'+params;
   }
@@ -244,12 +270,13 @@ function render() {
   const compareFinance = route === 'finance' && id === 'compare';
   const financeTab = route === 'finance' && ['detail', 'fees', 'merch', 'referendum'].includes(id) ? (id === 'detail' ? 'budgets' : id) : null;
   const pilot = isPilot();
+  rememberCommitteeContext();
   const civicTools = hasCivicTools();
   const trainingActor = state.actor?.id || 'local-public';
-  $('.shell').classList.toggle('private-workspace', pilot);
+  $('.shell').classList.toggle('private-workspace', privateShell());
   const availableWorkspaceRoutes = workspaceRoutes.filter(([key]) => routeAllowed(key) && (civicTools || (key !== 'readiness' && key !== 'training')));
   const pilotLabels = { profile: 'Your profile', transparency: 'Restricted transparency' };
-  const current = [...availableWorkspaceRoutes, ...accountabilityRoutes].find(r => r[0] === route) || ['home', 'Your workspace'];
+  const current = [...availableWorkspaceRoutes, ...accountabilityRoutes,['webmaster','Webmaster']].find(r => r[0] === route) || ['home', 'Your workspace'];
   const auraPage = route === 'resources' && id === 'aura';
   const currentProfile = route === 'people' && state.actor ? memberProfile(id) : null;
   const currentLabel = currentProfile?.name || (auraPage ? auraResource.name : (pilot ? pilotLabels[current[0]] || current[1] : current[1]));
@@ -257,12 +284,21 @@ function render() {
   const navLink = ([key, label]) => {
     const text = pilot ? pilotLabels[key] || label : label;
     const active = route === key || (route === 'project' && key === 'projects');
-    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${route === key ? 'aria-current="page"' : ''} aria-label="${text}" title="${text}">${icon(key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
+    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${route === key ? 'aria-current="page"' : ''} aria-label="${text}" title="${text}">${icon(key==='committee'?'committees':key==='webmaster'?'transparency':key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
   };
-  const roleLabel = scoped() ? [...new Set(state.access?.grants?.map(g=>g.role)||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
-  $('#sidebar').innerHTML = `<a class="brand" href="#home" aria-label="P4A workspace home"><span class="brand-mark">P4A</span><span><strong>People & possibility</strong><small>A shared civic workspace</small></span></a>
-    ${pilot ? '<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Workspace menu</button>' : ''}<nav id="workspace-links" aria-label="Workspace pages"><div class="nav-label">${pilot ? 'Private workspace' : 'Your movement'}</div>${availableWorkspaceRoutes.map(navLink).join('')}<div class="nav-label">Open & accountable</div>${accountabilityRoutes.filter(([key])=>routeAllowed(key)).map(navLink).join('')}${!readOnly()&&scopedPermission('access.view','system','p4a')?'<a class="nav-link" href="/webmaster.html">Webmaster desk</a>':!readOnly()&&pilot&&state.actor?.id==='pilot-organiser'&&isOrganiser()?'<a class="nav-link" href="/webmaster.html?view=fictional">Fictional Webmaster preview</a>':''}</nav>
-    <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong>Build from people and local groups, with room for the whole vision.<br><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
+  const roleLabel = ownerTools()?'Webmaster · workspace owner':scoped() ? [...new Set(state.access?.grants?.map(g=>g.role)||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
+  const context=committeeContext();
+  const committeeNav=routeAllowed('committee')?[
+    ['overview','Committee overview','committees'],['meetings','Meetings','readiness'],['duties','My duties','projects'],['offices','Office holders','people'],['notices','Inbox','onboarding'],['finance','Treasurer','finance'],['library','Documents','resources'],['editions','Newsletters','campaigns'],['partnerships','Partnerships','groups']
+  ].filter(([tab])=>ownerTools()||['overview','meetings','duties','offices','notices'].includes(tab)||state.access?.grants?.some(g=>g.scope.kind==='committee'&&g.scope.id===context?.id&&g.permissions.some(p=>({finance:['committee.finance.view'],library:['committee.library.view'],editions:['committee.edition.contribute','committee.edition.edit','committee.edition.review'],partnerships:['committee.partnership.propose','committee.partnership.review']})[tab]?.includes(p)))):[];
+  const committeeNavLinks=context?committeeNav.map(([tab,label,image])=>`<a class="nav-link ${route==='committee'&&(location.hash.split('/')[2]||'overview')===tab?'active':''}" href="${committeeLink(tab)}">${icon(image)}<span class="nav-full-label">${label}</span><span class="nav-short-label">${label}</span></a>`).join(''):'';
+  $('#sidebar').innerHTML = `<a class="brand" href="#home" aria-label="P4A membership centre"><span class="brand-mark">P4A</span><span><strong>Membership centre</strong><small>People &amp; possibility</small></span></a>
+    ${privateShell()?'<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Menu</button>':''}<nav id="workspace-links" aria-label="Workspace pages">
+    <div class="nav-label">Take part</div>${availableWorkspaceRoutes.filter(([key])=>key!=='committee').map(navLink).join('')}
+    ${routeAllowed('committee')?`<div class="nav-label">Organising committee</div>${navLink(['committee','My committees'])}${committeeNavLinks}`:''}
+    <div class="nav-label">Shared tools</div>${accountabilityRoutes.filter(([key])=>routeAllowed(key)).map(navLink).join('')}
+    ${routeAllowed('webmaster')?`<div class="nav-label">Manage the centre</div>${navLink(['webmaster','Webmaster'])}`:''}</nav>
+    <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong><br><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
     <div class="identity"><span class="avatar">${e(initials(state.actor?.name || 'Public'))}</span><div>${e(state.actor?.name || 'Public visitor')}<small>${e(roleLabel)}</small></div></div></div>`;
   let accountControl = `<span class="muted"><span class="status-dot"></span>${state.actor ? 'Signed in' : 'Public view'}</span>`;
   if (state.mode === 'demo') {
@@ -270,12 +306,14 @@ function render() {
   } else if (pilot) {
     accountControl = '<a class="button secondary small pilot-signout" href="/cdn-cgi/access/logout">Sign out</a>';
   }
-  $('#topbar').innerHTML = `<div class="breadcrumb"><span>${pilot ? 'Private workspace' : 'P4A workspace'}</span><span>/</span><strong>${e(currentLabel)}</strong></div><div class="top-actions"><a class="public-link source-link" href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Public website ↗</a>${accountControl}</div>`;
+  const perspectiveControl=webmasterTools()||rolePreview?`<label class="perspective-control"><span>View as</span><select id="workspace-perspective" aria-label="Choose a view"><option value="actual" ${!rolePreview?'selected':''}>My workspace</option>${perspectives.map(r=>`<option value="${r}" ${r===rolePreview?'selected':''}>${roleName(r)} (demo)</option>`).join('')}</select></label>`:'';
+  const contextControl=(state.committeeDirectory?.committees||[]).length&&routeAllowed('committee')?`<label class="perspective-control"><span>Committee</span><select id="workspace-context" aria-label="Choose a committee"><option value="">All committees</option>${state.committeeDirectory.committees.map(c=>`<option value="${e(c.id)}" ${context?.id===c.id?'selected':''}>${e(c.name)}</option>`).join('')}</select></label>`:'';
+  $('#topbar').innerHTML = `<div class="breadcrumb"><span>${pilot ? 'Private workspace' : 'P4A workspace'}</span><span>/</span><strong>${e(currentLabel)}</strong></div><div class="top-actions"><a class="public-link source-link" href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Public website ↗</a>${perspectiveControl}${contextControl}${accountControl}</div>`;
   const banner = $('#demo-banner');
   banner.hidden = state.mode !== 'demo' && !pilot && !readOnly();
   banner.classList.toggle('pilot-banner', pilot);
-  banner.innerHTML = readOnly() ? '<strong>FICTIONAL VIEW-ONLY ROLE PREVIEW</strong> Synthetic records only. No real identity is impersonated. <a href="'+(new URLSearchParams(location.search).get('view')==='fictional'?'/webmaster.html?view=fictional':'/webmaster.html')+'">Return to Webmaster desk</a>.' : pilot
-    ? '<strong>PRIVATE WORKSPACE</strong> Access is limited to invited accounts. Your working groups, projects and drafts are saved here.'
+  banner.innerHTML = readOnly() ? '<strong>DEMO · '+e(roleName(rolePreview||'webmaster'))+'</strong> Example records only. <a href="'+(pageQuery.get('view')==='fictional'?'/index.html#webmaster':'/webmaster.html')+'">Back to Webmaster</a>.' : pilot
+    ? '<strong>YOUR PRIVATE WORKSPACE</strong> Your groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
   const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups, hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
   const isApplicationsPage = route === 'onboarding' && id === 'applications' && civicTools && isOrganiser();
@@ -295,6 +333,12 @@ function render() {
   }
   if (route === 'merch') views.merch = () => merchQuickView({ e, heading });
   if(!routeAllowed(route)){ $('#main').innerHTML=heading('Scoped access','View unavailable','Your current access grants do not include this view.'); return; }
+  if(route==='webmaster'){
+    const mount=$('#main'),requested=location.hash;
+    mount.innerHTML='<div class="panel"><p role="status">Opening Webmaster...</p></div>';
+    import('./webmaster-workspace.mjs').then(m=>m.mountWebmaster(mount,{api,readOnly:readOnly(),route:requested,perspectiveUrl,icon,onSaved:async()=>{await load();render();}})).catch(err=>{if(location.hash===requested)mount.innerHTML='<div class="panel"><h1>Webmaster</h1><p role="alert">'+e(err.message)+'</p></div>';});
+    return;
+  }
   if(route==='committee'){
     const requestedRoute=location.hash.slice(1),mount=$('#main');
     mount.innerHTML='<div class="panel"><p role="status">Opening your authorised committee desk...</p></div>';
@@ -577,7 +621,7 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
     else notify(kind==='hours'?'Contribution submitted for independent review.':'Saved. Your workspace is up to date.');
   }catch(err){if(error)error.textContent=err.message;else notify(err.message);}finally{if(submit)submit.disabled=false;}
 });
-document.addEventListener('change',async event=>{try{if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){if(readOnly()){render();return;}const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
+document.addEventListener('change',async event=>{try{if(event.target.id==='workspace-perspective'){location.assign(perspectiveUrl(event.target.value));return;}if(event.target.id==='workspace-context'){location.hash=event.target.value?'committee/'+encodeURIComponent(event.target.value)+'/overview':'committee';return;}if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){if(readOnly()){render();return;}const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
 function filterProjects(){const query=($('#project-search')?.value||'').toLowerCase(),theme=$('#theme-filter')?.value,status=$('#status-filter')?.value;const matches=state.projects.filter(p=>(!theme||p.theme===theme)&&(!status||p.status===status)&&`${p.title} ${p.summary} ${group(p.groupId)?.name}`.toLowerCase().includes(query));$('#project-results').innerHTML=matches.map(projectCard).join('')||'<div class="empty">No projects match. Try another word or pathway.</div>';}
 document.addEventListener('input', event => {
   if (!event.target.matches('[data-campaign-field]')) return;
