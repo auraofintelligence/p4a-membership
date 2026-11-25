@@ -1,6 +1,7 @@
 import { AppError, executeCommand, normaliseState, publicProjection, gamifyProjection } from './domain.mjs';
 import { authorisedDomainActor, accessOverview, changeAccess } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
+import { realWebmasterPreview } from './webmaster-preview.mjs';
 
 export const securityHeaders = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
@@ -48,6 +49,10 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
     if (url.pathname === '/api/bootstrap' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace));
     if (!actor) return json({ error: 'Sign in before opening private workspace records.' }, 401);
     if (url.pathname === '/api/export' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
+    if (url.pathname === '/api/access/preview') {
+      if (request.method !== 'GET') return json({error:'The fictional role preview is read-only.'},403);
+      return json(realWebmasterPreview(state,actor,url.searchParams.get('role') || 'webmaster'));
+    }
     if (url.pathname === '/api/access' && request.method === 'GET') return json(accessOverview(state, actor));
     if (url.pathname === '/api/access' && request.method === 'POST') {
       if (mode === 'demo' || mode === 'showcase') throw new AppError('Technical access changes are unavailable in this demonstration.', 403);
