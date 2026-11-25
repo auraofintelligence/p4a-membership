@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPreviewApi } from '../preview/demo-api.mjs';
 import { applicationPreviewHtml, buildPages } from '../scripts/build-pages.mjs';
+import { publicOnboarding } from '../scripts/public-onboarding-links.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const now = () => new Date('2026-11-07T08:00:00Z');
@@ -120,6 +121,21 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
   const applicationCss = await readFile(path.join(built.directory, 'apply/styles.css'), 'utf8');
   assert.equal(landing, guide, 'The landing page serves the guide directly, without a redirect or source-folder alias');
   assert.equal(landing, applicationPreviewHtml(originals[3].toString(), 'guide.html'));
+  assert.equal(publicOnboarding.status, 'closed');
+  assert.equal(publicOnboarding.liveIntake, null);
+  assert.equal(publicOnboarding.guide, 'https://auraofintelligence.github.io/p4a-membership/apply/');
+  assert.equal(new Set(publicOnboarding.returnRoutes.map(route => route.url)).size, 4);
+  for (const route of publicOnboarding.returnRoutes) {
+    const url = new URL(route.url);
+    assert.equal(url.protocol, 'https:');
+    assert.equal(url.search, '');
+    assert.equal(url.hash, '');
+    assert.ok(guide.includes('href="' + route.url + '" rel="noreferrer"'));
+  }
+  assert.match(guide, /Live enrolment is closed/);
+  assert.match(guide, /without joining P4A/);
+  assert.match(guide, /There is no live application link/);
+  assert.match(guide, /Application preview/);
   for (const page of [application, guide]) {
     assert.match(page, /<aside class="notice application-preview-notice" id="application-preview-notice" role="note"><strong>APPLICATION AND GUIDE PREVIEW<\/strong>/);
     assert.match(page, /cannot submit an application or take a payment/);
