@@ -1,0 +1,14 @@
+{
+  "name": "p4a-membership-webmaster-showcase",
+  "main": "src/showcase-worker.mjs",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": { "SHOWCASE_MODE": "isolated" },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "none"
+  }
+}
