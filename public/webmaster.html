@@ -3,37 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2c1646">
   <meta name="robots" content="noindex, nofollow">
   <title>Webmaster desk | P4A</title>
+  <link rel="icon" href="/artwork/p4a-membership-mark.png" type="image/png" sizes="128x128">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/civic-icons.css">
+  <link rel="stylesheet" href="/webmaster.css">
   <script type="module" src="/webmaster.mjs"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <main id="main" tabindex="-1">
-    <div class="panel">
-      <p class="eyebrow">Technical custody</p>
-      <h1>Webmaster desk</h1>
-      <p id="desk-status" role="status" aria-live="polite">Checking authorised access...</p>
-      <p>Technical custody does not establish political authority, membership or office appointments.</p>
-      <div class="button-row"><a class="button secondary" href="/index.html#home">Workspace</a><button type="button" class="button secondary" id="reload">Refresh register</button><a class="button quiet" href="/cdn-cgi/access/logout">Sign out</a></div>
+  <div class="shell private-workspace webmaster-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Webmaster navigation">
+      <a class="brand" href="#overview"><span class="brand-mark">P4A</span><span><strong>Webmaster</strong><small>Technical workspace</small></span></a>
+      <button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Workspace menu</button>
+      <nav id="workspace-links" aria-label="Webmaster desks"></nav>
+      <div class="sidebar-foot"><div class="sidebar-note"><strong>People &amp; possibility</strong><p>Technical custody and accountable access.</p></div></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div class="breadcrumb"><span>Private workspace</span><span>/</span><strong id="current-desk">Webmaster</strong></div><div class="top-actions"><button type="button" class="button secondary small" id="reload">Refresh</button><a class="button secondary small pilot-signout" href="/cdn-cgi/access/logout">Sign out</a></div></header>
+      <div class="demo-banner pilot-banner" id="desk-status" role="status" aria-live="polite">Checking authorised access...</div>
+      <main id="main" tabindex="-1">
+        <div class="page-heading"><div><span class="eyebrow">Technical custody</span><h1 id="page-title">Webmaster desk</h1><p id="page-description">Manage technical access separately from political authority.</p></div></div>
+        <section id="register" hidden aria-label="Technical access register"></section>
+        <section class="panel" id="role-preview" hidden aria-labelledby="preview-title">
+          <div class="section-heading"><h2 id="preview-title">Explore office-holder perspectives</h2></div>
+          <p>Fictional records only. Inspect the actual workspace layout without changing real records or impersonating anyone.</p>
+          <div class="webmaster-role-grid" id="preview-links"></div>
+        </section>
+        <section class="panel" id="reservation-panel" hidden aria-labelledby="reserve-title">
+          <h2 id="reserve-title">Reserve a proposed office</h2>
+          <p>Planning only. No person is appointed, invited or granted access.</p>
+          <form id="reserve-form" class="form-grid subheading">
+            <label class="field">Proposed office<select name="role" required></select></label>
+            <label class="field">Exact scope<select name="scope" required></select></label>
+            <label class="field full">Reason<textarea name="reason" maxlength="500" required></textarea></label>
+            <button type="submit" class="button">Save reservation</button>
+          </form>
+        </section>
+      </main>
+      <footer class="footer"><span>P4A the Purple Party for Australia</span><span>Technical custody does not establish political authority.</span></footer>
     </div>
-    <section class="panel" id="role-preview" hidden aria-labelledby="preview-title">
-      <h2 id="preview-title">Fictional effective-role views</h2>
-      <p>Open the existing workspace using synthetic records only. No actual person is impersonated and no changes can be made. Return here to resume the actual technical desk.</p>
-      <div class="button-row" id="preview-links"></div>
-    </section>
-    <section class="panel" id="reservation-panel" hidden aria-labelledby="reserve-title">
-      <h2 id="reserve-title">Reserve a proposed office</h2>
-      <p>Reservation is a planning record only. It does not appoint a person, create an account, activate a grant or send an invitation.</p>
-      <form id="reserve-form">
-        <label class="field">Proposed office<select name="role" required></select></label>
-        <label class="field">Exact scope<select name="scope" required></select></label>
-        <label class="field">Reason<textarea name="reason" maxlength="500" required></textarea></label>
-        <button type="submit" class="button">Save reservation</button>
-      </form>
-    </section>
-    <section id="register" hidden aria-label="Technical access register"></section>
-  </main>
+  </div>
 </body>
 </html>
