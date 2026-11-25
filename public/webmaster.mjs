@@ -1,11 +1,12 @@
 const $ = selector => document.querySelector(selector);
+const ownerPreview = new URLSearchParams(location.search).get('view') === 'fictional';
 const roles = ['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant'];
 const officeScopes = {webmaster:['system'],chair:['group','constitution','committee'],deputy:['group','constitution','committee'],secretary:['group','constitution','committee'],'assistant-secretary':['group','constitution','committee'],treasurer:['group','committee'],committee:['group','constitution','committee'],reviewer:['group','constitution','committee']};
 let register, pending = new Map(), busy = false;
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
 const status = text => { $('#desk-status').textContent = text; };
 async function api(method = 'GET', data) {
-  const response = await fetch('/api/access',{method,credentials:'same-origin',headers:data ? {'Content-Type':'application/json'}:{},...(data ? {body:JSON.stringify(data)}:{})});
+  const response = await fetch(ownerPreview?'/api/access/showcase':'/api/access',{method,credentials:'same-origin',headers:data ? {'Content-Type':'application/json'}:{},...(data ? {body:JSON.stringify(data)}:{})});
   const result = await response.json();
   if (!response.ok) { const error = new Error(result.error || 'Access request failed.'); error.status = response.status; throw error; }
   return result;
@@ -43,7 +44,7 @@ function render() {
   const demo = register.readOnly === true;
   status(demo ? 'ISOLATED VIEW-ONLY DEMONSTRATION. All records are fictional.' : 'AUTHORISED TECHNICAL WORKSPACE. Revision '+register.revision+'. No appointments or invitations are enabled.');
   $('#role-preview').hidden = false;
-  $('#preview-links').replaceChildren(...roles.map(role=>{ const a=node('a',role.replaceAll('-',' '),'button secondary'); a.href='/webmaster-role-preview.html?role='+encodeURIComponent(role)+'#home'; return a; }));
+  $('#preview-links').replaceChildren(...roles.map(role=>{ const a=node('a',role.replaceAll('-',' '),'button secondary'); a.href='/webmaster-role-preview.html?role='+encodeURIComponent(role)+(ownerPreview?'&view=fictional':'')+'#home'; return a; }));
   $('#reservation-panel').hidden = demo || !register.capabilities?.reserve;
   const roleSelect=$('#reserve-form [name=role]');
   roleSelect.replaceChildren(...Object.keys(officeScopes).map(role=>{const option=node('option',role.replaceAll('-',' '));option.value=role;return option;}));
