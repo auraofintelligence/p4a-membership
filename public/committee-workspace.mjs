@@ -112,7 +112,7 @@ function duties(d,ro,actor,rows=d.actions){
 }
 function notices(d,ro){
   return card('Internal inbox',d.notices.map(n=>'<article class="activity-line"><div><h3>'+esc(n.title)+'</h3><p>'+status(n.resolved?'resolved':n.unread?'unread':'seen')+' · '+(n.reviewed?'Reviewed':'Not reviewed')+' · revision '+n.version+'</p>'+
-    (n.kind==='meeting'?link(d.committee.id,'meeting','Open meeting',n.sourceId):n.kind==='task'?link(d.committee.id,'duties','Open duty list'):'')+
+    (n.kind==='meeting'?link(d.committee.id,'meeting','Open meeting',n.sourceId):n.kind==='task'?link(d.committee.id,'duties','Open duty list'):n.kind==='handover'?link(d.committee.id,'offices','Open office transitions'):'')+
     (!ro&&!n.retracted&&n.unread?form('notice.read','','Mark as read',{noticeId:n.id,version:n.version}):'')+
     (!ro&&!n.retracted&&!n.reviewed?form('notice.review','','Record review',{noticeId:n.id,version:n.version}):'')+'</div></article>').join('')||'<p>No internal notices.</p>')+
     (permitted(d,'committee.notice.write',ro)?card('Post an internal notice',form('notice.post',field('Notice','title','','text',true,240),'Save in-app notice')+'<p>Visible within this committee only. No email, invitation or external message is sent.</p>'):'');
