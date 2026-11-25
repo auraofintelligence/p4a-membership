@@ -170,3 +170,12 @@
   .private-workspace .topbar { height: auto; min-height: 56px; flex-wrap: wrap; padding-block: 8px; }
   .private-workspace .toast { left: 50%; }
 }
+
+/* Shared membership centre controls; reuse the existing illustrated icon set. */
+.perspective-control { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:.8rem; white-space:nowrap; }
+.perspective-control select { max-width:200px; min-height:36px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); padding:5px 8px; }
+.private-workspace .topbar { height:auto; min-height:66px; flex-wrap:wrap; gap:8px; padding-block:10px; }
+.private-workspace .top-actions { flex-wrap:wrap; justify-content:flex-end; }
+.private-workspace #workspace-links .nav-label { margin-top:18px; }
+@media(max-width:800px){.perspective-control select{max-width:140px}.private-workspace .top-actions{justify-content:flex-start}}
+@media(max-width:520px){.perspective-control{white-space:normal}.perspective-control select{max-width:135px}}
