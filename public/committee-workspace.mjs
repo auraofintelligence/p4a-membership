@@ -62,6 +62,25 @@ function dutyForm(d,ro,m=null){
   const motion=m?select('Related motion (optional)','motionId',[option('','General follow-up'),...m.agenda.flatMap(i=>i.motions).map(v=>option(v.id,v.text.slice(0,100)))],false):'';
   return card('Assign a working duty',form('duty.assign',field('Task title','title','', 'text',true,200)+area('Private instructions','details','',1000)+owner+field('Due date','dueDate','','date',false)+project+motion,'Assign duty',m?{meetingId:m.id}:{}));
 }
+function planning(d,m,ro){
+  const template=d.planningTemplates?.[m.kind];
+  if(!template)return '';
+  const plan=m.plan,can=permitted(d,'committee.meeting.manage',ro)&&permitted(d,'committee.task.assign',ro)&&m.status==='scheduled';
+  const summary=plan?'<p>Working plan version '+plan.version+' · '+esc(plan.basis)+'</p>'+plan.jobs.map(j=>{
+    const a=d.actions.find(a=>a.id===j.actionId);
+    return '<p>'+esc(template.find(k=>k.key===j.key)?.title||j.key)+' · '+esc(j.offsetDays)+' days from meeting'+(a?' · '+esc(a.dueDate)+' · '+status(a.cancelled?'cancelled':a.done?'complete':'open'):'')+'</p>';
+  }).join(''):'<p>No planning basis selected yet.</p>';
+  const fields=template.map(job=>{
+    const previous=plan?.jobs.find(j=>j.key===job.key),action=d.actions.find(a=>a.id===previous?.actionId);
+    const owners=[option('','Choose owner'),...d.officePeople.map(p=>option(p.id,p.name,action?.ownerId===p.id))];
+    return '<fieldset><legend>'+esc(job.title)+'</legend>'+select('Owner','owner.'+job.key,owners)+
+      '<label class="field">Chosen days relative to meeting (negative = before)<input type="number" name="offset.'+esc(job.key)+'" min="-365" max="365" step="1" required value="'+esc(previous?.offsetDays??'')+'"></label></fieldset>';
+  }).join('');
+  return card(m.kind==='agm'?'Annual meeting working checklist':'Formation working checklist',
+    '<p>No statutory or adopted deadline is assumed. Record the source or proposed basis for your chosen dates. Draft notices and nominations remain internal.</p>'+summary+
+    (can&&d.officePeople.length?form('meeting.plan',area('Proposed date basis and source reference','basis',plan?.basis||'',1000,true)+fields,'Save checklist and linked duties',{meetingId:m.id,version:plan?.version||0}):'')+
+    (plan?.history?.length?'<details><summary>Earlier planning bases</summary>'+plan.history.map(h=>'<p>Version '+h.version+' · '+esc(h.basis)+' · '+esc(h.actorId)+'</p>').join('')+'</details>':''));
+}
 function meetingPage(d,m,ro,actor){
   if(!m)return card('Meeting unavailable','<p>Choose a meeting in this committee register.</p>');
   const can=permitted(d,'committee.meeting.manage',ro),editable=['scheduled','open'].includes(m.status);
@@ -77,17 +96,17 @@ function meetingPage(d,m,ro,actor){
     motionView(d,m,item,ro,actor)+'</article>').join('');
   return '<a href="'+href(d.committee.id,'meetings')+'">Back to meeting register</a>'+
     card(m.title,'<p>'+dateText(m)+' · '+esc(m.location)+'</p><p>'+status(m.status)+' · '+esc(label(m.kind))+' · revision '+m.version+'</p>'+actions)+
-    attendance(d,m,ro)+card('Agenda and draft motions',agenda+(can&&editable?form('agenda.add',field('New agenda heading','title')+area('Notes','notes'),'Add agenda item',{meetingId:m.id}):''))+
+    planning(d,m,ro)+attendance(d,m,ro)+card('Agenda and draft motions',agenda+(can&&editable?form('agenda.add',field('New agenda heading','title')+area('Notes','notes'),'Add agenda item',{meetingId:m.id}):''))+
     minutes(d,m,ro,actor)+dutyForm(d,ro,m)+card('Meeting follow-ups',duties(d,ro,actor,d.actions.filter(a=>a.meetingId===m.id)))+
     card('Revision history','<details><summary>View recorded changes</summary>'+m.history.map(h=>'<p>Revision '+h.version+' · '+esc(label(h.action))+' · '+esc(name(d,h.actorId))+' · '+esc(h.at)+'</p>').join('')+'</details>');
 }
 function duties(d,ro,actor,rows=d.actions){
   return rows.map(a=>{
     const own=a.ownerId===actor.id&&permitted(d,'committee.task.own',ro);
-    return '<article class="activity-line"><div><h3>'+esc(a.title)+'</h3><p>'+status(a.done?'complete':a.acknowledgedAt?'acknowledged':'assigned')+' · '+esc(name(d,a.ownerId))+' · Due '+esc(a.dueDate||'not set')+'</p><p>'+esc(a.details)+'</p>'+
+    return '<article class="activity-line"><div><h3>'+esc(a.title)+'</h3><p>'+status(a.cancelled?'cancelled':a.done?'complete':a.acknowledgedAt?'acknowledged':'assigned')+' · '+esc(name(d,a.ownerId))+' · Due '+esc(a.dueDate||'not set')+'</p><p>'+esc(a.details)+'</p>'+
       (a.projectId&&d.projects.some(p=>p.id===a.projectId)?'<p><a href="#project/'+esc(a.projectId)+'">Open original project task</a></p>':'')+
       (a.meetingId?'<p>'+link(d.committee.id,'meeting','Source meeting',a.meetingId)+'</p>':'')+
-      (own&&!a.done?form(a.acknowledgedAt?'duty.complete':'duty.acknowledge','',a.acknowledgedAt?'Complete duty':'Acknowledge duty',{actionId:a.id}):'')+
+      (own&&!a.done&&!a.cancelled?form(a.acknowledgedAt?'duty.complete':'duty.acknowledge','',a.acknowledgedAt?'Complete duty':'Acknowledge duty',{actionId:a.id}):'')+
       (a.completedBy?'<p>Completed by '+esc(name(d,a.completedBy))+' · '+esc(a.completedAt)+'</p>':'')+'</div></article>';
   }).join('')||'<p>No duties in your authorised view.</p>';
 }
@@ -105,7 +124,7 @@ function home(d,ro){
     card('Connected work',d.constitutions.map(p=>'<p><a href="#constitution/'+esc(p.id)+'">'+esc(p.title)+'</a> · working version '+p.version+'</p>').join('')+
     d.projects.map(p=>'<p><a href="#project/'+esc(p.id)+'">'+esc(p.title)+'</a></p>').join('')+
     '<p>These are existing workspace records, not copies.</p>')+
-    card('Current desk overview','<p>'+d.meetings.filter(m=>m.status==='scheduled').length+' proposed meetings · '+d.actions.filter(a=>!a.done).length+' open visible duties · '+d.notices.filter(n=>n.unread&&!n.resolved).length+' unread open notices.</p>');
+    card('Current desk overview','<p>'+d.meetings.filter(m=>m.status==='scheduled').length+' proposed meetings · '+d.actions.filter(a=>!a.done&&!a.cancelled).length+' open visible duties · '+d.notices.filter(n=>n.unread&&!n.resolved).length+' unread open notices.</p>');
 }
 function directory(d,ro){
   const entries=d.committees.map(c=>'<article class="panel"><h2><a href="'+href(c.id,'overview')+'">'+esc(c.name)+'</a></h2><p>'+esc(label(c.kind))+' · '+status(c.status)+' · '+(c.working?'Working desk':'Limited view')+'</p></article>').join('');
@@ -141,6 +160,10 @@ const pending=new Map();
 function payload(formEl){
   const fd=new FormData(formEl),d=Object.fromEntries(fd);
   if(formEl.dataset.committeeForm==='meeting.attendance')for(const k of ['present','apologies','recused'])d[k]=fd.getAll(k);
+  if(formEl.dataset.committeeForm==='meeting.plan'){
+    d.jobs=Object.keys(d).filter(k=>k.startsWith('owner.')).map(k=>{const key=k.slice(6);return {key,ownerId:d[k],offsetDays:d['offset.'+key]===''?null:Number(d['offset.'+key])};});
+    for(const k of Object.keys(d))if(k.startsWith('owner.')||k.startsWith('offset.'))delete d[k];
+  }
   if('version'in d)d.version=Number(d.version);
   return d;
 }
