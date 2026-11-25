@@ -9,15 +9,19 @@ const active = (record, at) => record.status === 'active' && instant(record.star
 const groupBase = ['group.view','group.join','group.leave','project.view','project.create','project.join','project.priority','project.status','task.add','task.toggle','comment.add','contribution.log','financial.log'];
 const groupOffice = ['group.view','project.view','project.create','project.join','task.add','task.toggle','comment.add'];
 const constitutionBase = ['constitution.view','constitution.propose','constitution.comment','constitution.withdraw'];
+// Committee scopes are explicit, never inherited from group membership.
+const committeeRead = ['committee.view','committee.task.own','committee.notice.read','committee.motion.write'];
+const committeeVote = [...committeeRead,'committee.vote.rehearsal'];
+const committeeSecretary = [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write'];
 const grantRules = Object.freeze({
-  member: { group: groupBase, constitution: constitutionBase },
-  committee: { group: groupOffice, constitution: constitutionBase },
-  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate'], constitution: [...constitutionBase,'scope.delegate'] },
-  deputy: { group: groupOffice, constitution: constitutionBase },
-  secretary: { group: [...groupOffice,'scope.delegate'], constitution: [...constitutionBase,'constitution.review','scope.delegate'] },
-  'assistant-secretary': { group: groupOffice, constitution: constitutionBase },
-  treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'] },
-  reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'] },
+  member: { group: groupBase, constitution: constitutionBase, committee: ['committee.minutes.released'] },
+  committee: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
+  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate','committee.propose'], constitution: [...constitutionBase,'scope.delegate'], committee: [...committeeVote,'committee.meeting.manage','committee.attendance','committee.minutes.review','scope.delegate'] },
+  deputy: { group: groupOffice, constitution: constitutionBase, committee: committeeVote },
+  secretary: { group: [...groupOffice,'scope.delegate','committee.propose'], constitution: [...constitutionBase,'constitution.review','scope.delegate'], committee: [...committeeSecretary,'scope.delegate'] },
+  'assistant-secretary': { group: groupOffice, constitution: constitutionBase, committee: committeeSecretary },
+  treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'], committee: committeeVote },
+  reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'], committee: [...committeeRead,'committee.minutes.review'] },
   applicant: { person: ['application.own'] },
   webmaster: { system: ['access.view','access.reserve','access.revoke'] },
 });
@@ -34,6 +38,7 @@ function validScope(state, scope) {
     case 'person': return state.people.some(row => row.id === scope.id);
     case 'group': return state.groups.some(row => row.id === scope.id);
     case 'constitution': return state.constitutions.some(row => row.id === scope.id);
+    case 'committee': return Array.isArray(state.governance?.committees) && state.governance.committees.some(row=>row?.id===scope.id);
     default: return false;
   }
 }
@@ -199,7 +204,7 @@ export function accessOverview(state, actor, now = new Date()) {
     grants: registry.grants.map(({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom}) => ({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom})),
     reservations: registry.reservations.map(({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt}) => ({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt})),
     audit: registry.audit.slice(-100).map(({id,actorId,type,targetId,at,reason}) => ({id,actorId,type,targetId,at,reason})),
-    scopes: { groups: state.groups.map(({id,name}) => ({id,name})), constitutions: state.constitutions.map(({id,title}) => ({id,title})), system:[{id:'p4a',name:'Technical workspace'}] },
+    scopes: { groups: state.groups.map(({id,name}) => ({id,name})), constitutions: state.constitutions.map(({id,title}) => ({id,title})), committees: (state.governance?.committees||[]).map(({id,name})=>({id,name})), system:[{id:'p4a',name:'Technical workspace'}] },
     activation: 'Office reservations are not appointments. New account activation and grants require separate authorisation.',
   };
 }
