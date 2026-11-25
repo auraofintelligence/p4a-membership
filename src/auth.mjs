@@ -1,3 +1,5 @@
+import { scopedIdentity, legacyPersonAllowed } from './scoped-access.mjs';
+
 // Optional production adapter. No development identity reaches this verifier.
 const keyCache = new Map();
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -69,9 +71,12 @@ export async function authenticate(request, env, state) {
   try {
     const claims = await verifyAccessToken(accessTokenFromRequest(request), env);
     if (!claims) return null;
+    const scoped = scopedIdentity(state, claims);
+    if (scoped.managed) return scoped.actor;
     const matches = (state.people || []).filter(p => p.authSubject === claims.sub && ['member', 'organiser'].includes(p.role));
     if (matches.length !== 1) return null;
     const person = matches[0];
+    if (!legacyPersonAllowed(state, person.id)) return null;
     return { id: person.id, name: person.name, role: person.role };
   } catch {
     return null;
