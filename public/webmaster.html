@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Webmaster desk | P4A</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/webmaster.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <main id="main" tabindex="-1">
+    <div class="panel">
+      <p class="eyebrow">Technical custody</p>
+      <h1>Webmaster desk</h1>
+      <p id="desk-status" role="status" aria-live="polite">Checking authorised access...</p>
+      <p>Technical custody does not establish political authority, membership or office appointments.</p>
+      <div class="button-row"><a class="button secondary" href="/index.html#home">Workspace</a><button type="button" class="button secondary" id="reload">Refresh register</button><a class="button quiet" href="/cdn-cgi/access/logout">Sign out</a></div>
+    </div>
+    <section class="panel" id="role-preview" hidden aria-labelledby="preview-title">
+      <h2 id="preview-title">Fictional effective-role views</h2>
+      <p>Open the existing workspace using synthetic records only. No actual person is impersonated and no changes can be made. Return here to resume the actual technical desk.</p>
+      <div class="button-row" id="preview-links"></div>
+    </section>
+    <section class="panel" id="reservation-panel" hidden aria-labelledby="reserve-title">
+      <h2 id="reserve-title">Reserve a proposed office</h2>
+      <p>Reservation is a planning record only. It does not appoint a person, create an account, activate a grant or send an invitation.</p>
+      <form id="reserve-form">
+        <label class="field">Proposed office<select name="role" required></select></label>
+        <label class="field">Exact scope<select name="scope" required></select></label>
+        <label class="field">Reason<textarea name="reason" maxlength="500" required></textarea></label>
+        <button type="submit" class="button">Save reservation</button>
+      </form>
+    </section>
+    <section id="register" hidden aria-label="Technical access register"></section>
+  </main>
+</body>
+</html>
