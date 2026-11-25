@@ -49,7 +49,7 @@ export function createShowcaseState() {
       const vote=[...committeeRead,'committee.vote.rehearsal'];
       const committeePermissions=role==='member'?['committee.minutes.released','committee.library.released']:role==='reviewer'?[...committeeRead,'committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review']:role==='chair'?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.review','committee.office.review','committee.finance.view','committee.finance.review','committee.library.review']:['secretary','assistant-secretary'].includes(role)?[...vote,'committee.meeting.manage','committee.attendance','committee.minutes.write','committee.task.assign','committee.notice.write','committee.office.plan','committee.library.write']:role==='treasurer'?[...vote,'committee.finance.view','committee.finance.write']:vote;
       grant(role,'committee','committee-1',committeePermissions);
-      if (role !== 'treasurer') grant(role,'constitution','constitution-1',['secretary','reviewer'].includes(role) ? [...draftRead,'constitution.review'] : draftRead);
+      if (role !== 'treasurer') grant(role,'constitution','constitution-1',role==='secretary'?[...draftRead,'constitution.review','constitution.structure']:role==='reviewer'?[...draftRead,'constitution.review']:role==='chair'?[...draftRead,'constitution.structure']:draftRead);
       if (role !== 'member') access.reservations.push({id:'reservation-'+role,role,scope:{kind:'group',id:'group-1'},status:'reserved',createdBy:'fixture-webmaster',createdAt:date});
     }
   }
