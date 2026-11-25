@@ -38,11 +38,11 @@ function officeGrant(s,c,personId,role,now){
   return effectiveAccess(s,actor,now).find(g=>g.role===role&&g.scope.kind==='committee'&&g.scope.id===c.id&&g.permissions.includes('committee.view'))||null;
 }
 function canReadDoc(s,c,a,doc,now){
-  if(!doc||doc.withdrawn||!perm(s,a,c,'committee.library.view',now))return false;
-  if(doc.classification==='working')return true;
+  if(!doc||!a||doc.withdrawn||!perm(s,a,c,'committee.library.view',now))return false;
+  if(doc.classification==='working'||doc.createdBy===a.id)return true;
   return doc.access.some(r=>r.personId===a.id&&r.status==='active'&&Date.parse(r.expiresAt)>now.getTime());
 }
-function docMeta(d){return {id:d.id,title:d.title,classification:d.classification,kind:d.kind,version:d.version,status:d.status,createdBy:d.createdBy,updatedBy:d.updatedBy,updatedAt:d.updatedAt,versionCount:d.versions.length,reviewedBy:d.reviewedBy||null};}
+function docMeta(d){return {id:d.id,title:d.title,classification:d.classification,kind:d.kind,version:d.version,status:d.status,createdBy:d.createdBy,updatedBy:d.updatedBy,updatedAt:d.updatedAt,versionCount:d.versions.length,contentVersion:d.versions.at(-1).version,versions:d.versions.map(({version,sourceDate,actorId,at})=>({version,sourceDate,actorId,at})),reviewedBy:d.reviewedBy||null};}
 function docSource(s,c,a,d,now){
   if(d.meetingId&&!s.governance.meetings.some(m=>m.id===d.meetingId&&m.committeeId===c.id))fail('Choose a meeting from this committee.');
   if(d.constitutionId&&!can(s,a,'constitution.view','constitution',d.constitutionId,now))fail('Choose an authorised constitution draft.');
@@ -90,13 +90,18 @@ function validateDutyTransfer(s,g,c,from,to,ids,now){
 }
 export function operationsProjection(s,g,c,a,now=new Date(),mode='live'){
   const ops=operationRegister(g),working=perm(s,a,c,'committee.view',now),finance=working&&perm(s,a,c,'committee.finance.view',now);
-  const handovers=working?ops.handovers.filter(r=>r.committeeId===c.id&&(r.fromId===a.id||r.toId===a.id||perm(s,a,c,'committee.office.plan',now)||perm(s,a,c,'committee.office.review',now))).map(r=>structuredClone(r)):[];
+  const handovers=working?ops.handovers.filter(r=>r.committeeId===c.id&&(r.fromId===a.id||r.toId===a.id||perm(s,a,c,'committee.office.plan',now)||perm(s,a,c,'committee.office.review',now))).map(r=>{
+    const copy=structuredClone(r);
+    copy.documentIds=copy.documentIds.filter(id=>canReadDoc(s,c,a,find(ops.documents,id),now));
+    copy.dutyIds=copy.dutyIds.filter(id=>{const task=find(g.actions,id);return task&&(task.ownerId===a.id||perm(s,a,c,'committee.task.assign',now));});
+    return copy;
+  }):[];
   const candidates=working&&perm(s,a,c,'committee.office.plan',now)?(accessRegistry(s)?.accounts||[]).filter(ac=>ac.status==='active').flatMap(ac=>{
     const actor=actorFor(s,ac.personId);if(!actor)return [];
     const roles=effectiveAccess(s,actor,now).filter(gr=>gr.scope.kind==='committee'&&gr.scope.id===c.id&&officeRoles.includes(gr.role)&&gr.permissions.includes('committee.view')).map(gr=>gr.role);
     return roles.length?[{id:actor.id,name:actor.name,roles:[...new Set(roles)]}]:[];
   }):[];
-  const library=ops.documents.filter(r=>r.committeeId===c.id&&canReadDoc(s,c,a,r,now)).map(d=>({...docMeta(d),access:perm(s,a,c,'committee.library.write',now)?d.access.map(({personId,status,expiresAt})=>({personId,status,expiresAt})):undefined}));
+  const library=working?ops.documents.filter(r=>r.committeeId===c.id&&canReadDoc(s,c,a,r,now)).map(d=>({...docMeta(d),access:d.createdBy===a.id&&perm(s,a,c,'committee.library.write',now)?d.access.map(({personId,status,expiresAt})=>({personId,status,expiresAt})):undefined})):[];
   const released=perm(s,a,c,'committee.library.released',now)?ops.documents.filter(d=>d.committeeId===c.id&&d.released?.active&&!d.withdrawn).map(d=>({id:d.id,title:d.title,version:d.released.version,text:d.released.text,fictional:true})): [];
   const visibleIncome=finance?income(s,c).map(({id,date,projectId,amountCents})=>({id,date,projectId,amountCents})):[];
   return {handovers,candidates,library,released,
@@ -142,9 +147,14 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     }else if(type==='office.execute'){
       if(r.status!=='reviewed'||[r.createdBy,r.fromId,r.toId].includes(a.id))fail('An independent authorised reviewer must execute the fictional transition.');
       const motion=sourceMotion(g,c,d.meetingId,d.motionId),seat=c.offices.find(o=>o.role===r.role),successor=officeGrant(s,c,r.toId,r.role,now);
-      if(!seat||seat.personId!==r.fromId||!successor)conflict('The office or successor grant changed.');
+      if(!seat||(seat.personId||null)!==r.fromId||!successor)conflict('The office or successor grant changed.');
       if(motion.officeHandoverId!==r.id||motion.officeHandoverVersion!==r.version)conflict('The reviewed fictional motion must identify the exact handover and version.');
       if(r.termStart>at.slice(0,10)||r.termEnd<at.slice(0,10))conflict('The proposed term is not current.');
+      const successorAccount=actorFor(s,r.toId);
+      const endAt=new Date(r.termEnd+'T23:59:59.000Z').toISOString();
+      const selected=s.accessControl.grants.filter(gr=>gr.accountId===successorAccount.accountId&&gr.role===r.role&&gr.scope.kind==='committee'&&gr.scope.id===c.id&&gr.status==='active');
+      if(selected.some(gr=>gr.delegatedFrom||s.accessControl.grants.some(child=>child.delegatedFrom===gr.id&&child.status==='active'&&child.endsAt>endAt)))conflict('Resolve dependent delegations before the fictional transition.');
+      for(const gr of selected)if(gr.endsAt>endAt)gr.endsAt=endAt;
       const duties=r.fromId?validateDutyTransfer(s,g,c,r.fromId,r.toId,r.dutyIds,now):[];
       if(r.fromId){
         const oldAccount=actorFor(s,r.fromId);
@@ -152,6 +162,7 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
         if(!oldGrants.length)conflict('The outgoing office grant is unavailable.');
         for(const gr of oldGrants)Object.assign(gr,{status:'revoked',revokedBy:a.id,revokedAt:at});
       }
+      for(const docId of r.documentIds){const doc=scopedRow(ops,'documents',docId,c);if(!canReadDoc(s,c,successorAccount,doc,now))fail('Successor document access changed.');}
       for(const task of duties){
         task.history.push({action:'office.handover',actorId:a.id,at,previousOwnerId:task.ownerId,previousAcknowledgedAt:task.acknowledgedAt});
         task.ownerId=r.toId;task.acknowledgedAt=null;
@@ -186,7 +197,8 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     const amountCents=money(d.amountCents);if(!amountCents)invalid('Use a positive recorded expense.');
     const reference=text(d.reference,'external receipt reference',120);
     if(ops.expenses.some(x=>x.id!==d.id&&(x.reference.toLowerCase()===reference.toLowerCase()||x.history.some(h=>h.before?.reference?.toLowerCase()===reference.toLowerCase()))))conflict('This expense reference is already recorded.');
-    const payeeId=d.payeeId||null;if(payeeId&&!find(s.people,payeeId))invalid('Choose an existing participant or leave the payee unspecified.');
+    const payeeId=d.payeeId||null;if(payeeId&&!actorFor(s,payeeId))invalid('Choose an existing scoped participant or leave the payee unspecified.');
+    if(payeeId&&!perm(s,actorFor(s,payeeId),c,'committee.view',now))fail('Choose a participant from this committee.');
     if(d.settled!==true)invalid('Confirm that this records an existing settled expense, not a payment request.');
     const values={date:day(d.date),amountCents,reference,description:text(d.description,'expense evidence description',500),payeeId,status:'pending',updatedBy:a.id,updatedAt:at};
     if(values.date>at.slice(0,10))invalid('Recorded expenses cannot be future-dated.');
@@ -211,17 +223,18 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
   if(type==='reconcile.review'){
     const r=scopedRow(ops,'reconciliations',d.id,c);requireVersion(r,d);
     if(r.status!=='draft'||ownConflict(r,a)||r.sources.received.some(x=>[x.personId,x.createdBy].includes(a.id))||r.sources.expenses.some(x=>[x.createdBy,x.payeeId].includes(a.id)))fail('A reviewer independent of the recorded transactions and reconciliation is required.');
-    if(JSON.stringify(periodRows(s,ops,c,r.start,r.end))!==JSON.stringify(r.sources))conflict('The source receipts or expenses changed. Reconcile the current records.');
+    if(d.outcome==='confirm'&&JSON.stringify(periodRows(s,ops,c,r.start,r.end))!==JSON.stringify(r.sources))conflict('The source receipts or expenses changed. Return this draft and reconcile the current records.');
     if(!['confirm','return'].includes(d.outcome))invalid('Choose a reconciliation review outcome.');
     if(d.outcome==='confirm'&&r.differenceCents!==0)conflict('Resolve the statement difference before confirming reconciliation.');
     r.reviewReason=reviewReason(d);r.status=d.outcome==='confirm'?'reviewed':'returned';r.reviewedBy=a.id;r.reviewedAt=at;stamp(r,a,at,type);return r.id;
   }
   if(type==='library.create'){
     const classification=d.classification,kind=d.kind;
+    check(s,a,c,'committee.library.view',now);
     if(!['working','restricted'].includes(classification)||!['minutes','working-paper','evidence-summary','constitution-note','report'].includes(kind))invalid('Choose document type and classification.');
     const source=docSource(s,c,a,d,now),body=text(d.body,'plain text working document',6000),sourceNote=text(d.sourceNote,'source note',500);
     const r={id:uid(),committeeId:c.id,title:text(d.title,'document title',120),classification,kind,...source,version:1,status:'draft',createdBy:a.id,createdAt:at,updatedBy:a.id,updatedAt:at,access:[],history:[],versions:[{version:1,body,sourceDate:day(d.sourceDate),sourceNote,actorId:a.id,at}]};
-    if(classification==='restricted')r.access.push({personId:a.id,status:'active',expiresAt:new Date(now.getTime()+30*86400000).toISOString(),grantedBy:a.id});
+    // The owner retains access only while their underlying scoped grant remains active.
     ops.documents.push(r);return r.id;
   }
   if(type.startsWith('library.')){
@@ -231,7 +244,7 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
       if(r.createdBy!==a.id)fail('Only the document owner may prepare a revision.');
       r.versions.push({version:r.version+1,body:text(d.body,'plain text working document',6000),sourceDate:day(d.sourceDate),sourceNote:text(d.sourceNote,'source note',500),actorId:a.id,at});
       r.status='draft';r.reviewedBy=null;r.reviewedAt=null;r.reviewReason=null;
-      if(r.released?.active){r.released.active=false;r.released.withdrawnAt=at;}
+      if(r.released?.active){r.released.active=false;r.released.withdrawnAt=at;r.released.withdrawnBy=a.id;}
       r.updatedBy=a.id;r.updatedAt=at;stamp(r,a,at,type);return r.id;
     }
     if(type==='library.access'){
@@ -239,7 +252,7 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
       const personId=d.personId;if(personId===r.createdBy)invalid('The document owner retains responsibility.');
       const target=actorFor(s,personId),prior=r.access.find(x=>x.personId===personId);
       if(d.action==='grant'){
-        if(!target||!perm(s,target,c,'committee.library.view',now))fail('Choose an existing scoped library reader.');
+        if(!target||!perm(s,target,c,'committee.view',now)||!perm(s,target,c,'committee.library.view',now))fail('Choose an existing scoped library reader.');
         const expiresAt=new Date(day(d.expiresOn)+'T23:59:59.000Z').toISOString();
         if(Date.parse(expiresAt)<=now.getTime()||Date.parse(expiresAt)>now.getTime()+366*86400000)invalid('Choose a future access expiry within one year.');
         const grant={personId,status:'active',expiresAt,grantedBy:a.id,at};if(prior)Object.assign(prior,grant);else r.access.push(grant);
