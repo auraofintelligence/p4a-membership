@@ -7,6 +7,9 @@ export const iconNames = Object.freeze([
   'gamify', 'campaigns', 'readiness', 'training', 'onboarding',
   'relevance', 'committees', 'twins', 'redlands', 'scan', 'genesis',
   'finance', 'merch',
+  'tools', 'webmaster', 'meetings', 'duties', 'inbox', 'documents', 'editions',
+  'partnerships', 'office-holders', 'treasury', 'team-games',
+  'membership-calculator', 'budget-planner', 'giving', 'funding-compare',
 ]);
 
 export function civicIcon(name) {

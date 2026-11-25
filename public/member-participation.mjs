@@ -15,7 +15,7 @@ export function memberParticipation(state, h) {
   const progress = h.trainingProgress;
   const metrics = [
     ['Modules completed', progress ? `${progress.completed} of ${progress.total}` : number.format(learning.length), h.civicTools ? '#training' : '#onboarding', 'training'],
-    ['Game sessions logged', number.format(plays.length), '#gamify/games', 'gamify'],
+    ['Game sessions logged', number.format(plays.length), '#gamify/games', 'team-games'],
     ['Working groups joined', number.format(groups), '#groups', 'groups'],
     ['Projects joined', number.format(projects), '#projects', 'projects'],
     ['Verified C-Hours', number.format(hours), '#hours', 'hours'],

@@ -1,0 +1,166 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+import { actorFor, createConstitution, emptyState, executeCommand } from '../src/domain.mjs';
+import { createDemoState } from '../src/seed.mjs';
+import { createWorkspaceDemoState, fixtureActor, fixtureProjection } from '../src/webmaster-preview.mjs';
+import { authorisedProjection } from '../src/scoped-projection.mjs';
+import { authorisedDomainActor, can } from '../src/scoped-access.mjs';
+import { committeeDirectory, committeeProjection } from '../src/committee-governance.mjs';
+import { resolvePilotActor } from '../src/pilot-auth.mjs';
+import { api } from '../src/http.mjs';
+import { groupWorkspace, groupWorkspaceData } from '../public/groups-workspace.mjs';
+globalThis.crypto??=webcrypto;
+
+const now=new Date('2026-11-25T03:00:00.000Z');
+const command=(state,type,data,id=crypto.randomUUID())=>({id,type,data,revision:state.revision});
+const denied=error=>error.status===403;
+
+test('an optional local charter link validates the existing group and preserves unlinked drafts',()=>{
+  const initial=createDemoState(),organiser=actorFor(initial,'person-2'),unchanged=structuredClone(initial.constitutions);
+  const cmd=command(initial,'constitution.create',{title:'Neighbourhood circle charter',scope:'local-charter',groupId:'group-1',status:'adopted',parentOrganisationId:'national'});
+  const first=executeCommand(initial,organiser,cmd,now),draft=first.state.constitutions.at(-1);
+  assert.equal(draft.groupId,'group-1');
+  assert.equal(draft.scope,'local-charter');
+  assert.equal(draft.status,'draft');
+  assert.equal(draft.createdBy,'person-2');
+  assert.equal(Object.hasOwn(draft,'parentOrganisationId'),false);
+  assert.deepEqual(first.state.constitutions.slice(0,-1),unchanged);
+  assert.deepEqual(first.state.groups,initial.groups);
+  assert.deepEqual(first.state.memberships,initial.memberships);
+  assert.equal(Object.hasOwn(first.state,'accessControl'),false);
+  const replay=executeCommand(first.state,organiser,cmd,now);
+  assert.equal(replay.result.replayed,true);
+  assert.equal(replay.state.constitutions.length,initial.constitutions.length+1);
+  for(const scope of ['movement','state','federal'])assert.throws(()=>executeCommand(initial,organiser,command(initial,'constitution.create',{title:'Wrong scope',scope,groupId:'group-1'}),now),error=>error.status===400);
+  for(const groupId of ['missing-group',0,{},true])assert.throws(()=>executeCommand(initial,organiser,command(initial,'constitution.create',{title:'Unknown group',scope:'local-charter',groupId}),now),error=>[400,404].includes(error.status));
+  const unlinked=executeCommand(initial,organiser,command(initial,'constitution.create',{title:'Independent working draft',scope:'local-charter',groupId:''}),now).state.constitutions.at(-1);
+  assert.equal(Object.hasOwn(unlinked,'groupId'),false);
+  assert.throws(()=>executeCommand(initial,actorFor(initial,'person-1'),cmd,now),denied);
+});
+
+test('existing owner creates connected local records through shared APIs without a parent or new authority',async()=>{
+  const owner={id:'pilot-organiser',name:'Example owner',role:'organiser',email:'',place:'',skills:'',interests:'',directoryConsent:false,contactConsent:false};
+  let state=emptyState();state.people.push(owner);let writes=0;
+  const env={PILOT_ORGANISER_EMAILS:'["owner@example.invalid"]'};
+  const claims={type:'app',sub:'owner-subject',iss:'https://example.cloudflareaccess.com',email:'owner@example.invalid'};
+  const store={read:async()=>structuredClone(state),compareAndSwap:async(revision,next)=>{if(revision!==state.revision)return false;state=structuredClone(next);writes++;return true;}};
+  const origin='https://example.invalid';
+  const call=(path,body)=>api(new Request(origin+path,body?{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(body)}:{}),{store,getActor:async(_r,s)=>resolvePilotActor(s,claims,env),mode:'pilot',workspace:false});
+  const post=async(path,type,data)=>{const response=await call(path,command(state,type,data));assert.equal(response.status,200,JSON.stringify(await response.clone().json()));return response.json();};
+  await post('/api/commands','group.create',{name:'Example local circle',place:'Example neighbourhood',description:'Useful work chosen by the people here.'});
+  const group=state.groups[0];
+  await post('/api/commands','project.create',{groupId:group.id,title:'A shared first step',summary:'Prepare a fictional public source guide.',theme:'local-care',urgency:2,importance:3,reason:'Start with a manageable example.',reviewDate:'2026-12-01'});
+  await post('/api/commands','constitution.create',{title:'Example local circle charter',scope:'local-charter',groupId:group.id});
+  const committee=await post('/api/committee','committee.propose',{name:'Example local organising committee',kind:'local',groupId:group.id});
+  const bootstrap=await (await call('/api/bootstrap')).json();
+  const detail=groupWorkspaceData(bootstrap,group.id);
+  assert.equal(detail.projects[0].id,state.projects[0].id);
+  assert.equal(detail.committees[0].id,committee.id);
+  assert.equal(detail.charters[0].id,state.constitutions[0].id);
+  const committeeView=await (await call('/api/committee?id='+committee.id)).json();
+  assert.equal(committeeView.relatedConstitutions[0].id,detail.charters[0].id);
+  assert.equal(committeeView.groupId,group.id);
+  assert.equal(committeeView.groupName,group.name);
+  assert.equal(committeeView.committee.offices.every(o=>o.status==='vacant'&&o.personId===null),true);
+  assert.equal(state.groups.length,1);
+  assert.equal(Object.hasOwn(state.groups[0],'parentId'),false);
+  assert.equal(state.memberships.length,0);
+  assert.equal(state.people.length,1);
+  assert.equal(Object.hasOwn(state,'accessControl'),false);
+  assert.equal(writes,4);
+  const publicView=await (await call('/api/public')).json();
+  assert.equal(JSON.stringify(publicView).includes(group.id),false);
+  assert.equal(JSON.stringify(publicView).includes(state.constitutions[0].id),false);
+});
+
+test('linked relationships do not add access and hide group metadata after group scope is revoked',()=>{
+  const state=createWorkspaceDemoState(now),actor=fixtureActor(state,'secretary');
+  state.constitutions.push({...createConstitution({id:'private-local-draft',title:'HIDDEN LOCAL DRAFT',scope:'local-charter',actorId:'person-3',at:now.toISOString()}),groupId:'group-1'});
+  const full=authorisedProjection(state,actor,'showcase',false,now);
+  const connected=groupWorkspaceData(full,'group-1');
+  assert.deepEqual(connected.charters.map(d=>d.id),['constitution-1']);
+  assert.deepEqual(connected.committees.map(c=>c.id),['committee-1']);
+  assert.equal(JSON.stringify(full).includes('HIDDEN LOCAL DRAFT'),false);
+  const committee=committeeProjection(state,actor,'committee-1',now,'showcase');
+  assert.deepEqual(committee.relatedConstitutions.map(d=>d.id),['constitution-1']);
+  assert.equal(committee.groupId,'group-1');
+  assert.equal(committee.groupName,state.groups[0].name);
+  const member=fixtureActor(state,'member');
+  assert.equal(can(state,member,'committee.meeting.manage','committee','committee-1',now),false);
+  assert.equal(committeeProjection(state,member,'committee-1',now,'showcase').groupId,'group-1');
+  assert.throws(()=>authorisedDomainActor(state,actor,command(state,'constitution.create',{title:'No new authority',scope:'local-charter',groupId:'group-1'}),now),denied);
+  state.accessControl.grants.find(g=>g.id==='grant-secretary-group-1').status='revoked';
+  const restricted=authorisedProjection(state,actor,'showcase',false,now);
+  assert.equal(groupWorkspaceData(restricted,'group-1'),null);
+  assert.equal(restricted.constitutions[0].id,'constitution-1');
+  assert.equal(Object.hasOwn(restricted.constitutions[0],'groupId'),false);
+  assert.equal(committeeDirectory(state,actor,now).committees[0].groupId,null);
+  const remaining=committeeProjection(state,actor,'committee-1',now,'showcase');
+  assert.equal(remaining.committee.groupId,null);
+  assert.equal(remaining.groupId,null);
+  assert.equal(remaining.groupName,null);
+  assert.deepEqual(remaining.relatedConstitutions,[]);
+  assert.deepEqual(remaining.constitutions.map(d=>d.id),['constitution-1'],'existing separately authorised draft choices remain available');
+  assert.equal(state.constitutions[0].groupId,'group-1','projection never rewrites the canonical relationship');
+});
+
+test('committee metadata never names a group from proposal permission without group view',()=>{
+  const state=createWorkspaceDemoState(now),actor=fixtureActor(state,'secretary');
+  const groupGrant=state.accessControl.grants.find(g=>g.id==='grant-secretary-group-1');
+  groupGrant.permissions=groupGrant.permissions.filter(p=>p!=='group.view');
+  const directory=committeeDirectory(state,actor,now);
+  assert.deepEqual(directory.proposalGroups,[]);
+  assert.equal(directory.committees[0].groupId,null);
+  const detail=committeeProjection(state,actor,'committee-1',now,'showcase');
+  assert.equal(detail.groupId,null);
+  assert.equal(detail.groupName,null);
+  assert.deepEqual(detail.relatedConstitutions,[]);
+  const member=fixtureActor(state,'member');
+  state.accessControl.grants.find(g=>g.id==='grant-member-group-1').status='revoked';
+  const released=committeeProjection(state,member,'committee-1',now,'showcase');
+  assert.equal(released.working,false);
+  assert.equal(released.groupId,null);
+  assert.equal(released.groupName,null);
+});
+
+test('a separately permitted draft from another group is not presented as this committee’s charter',()=>{
+  const state=createWorkspaceDemoState(now),actor=fixtureActor(state,'chair');
+  state.constitutions[0].groupId='group-2';
+  const projection=authorisedProjection(state,actor,'showcase',false,now);
+  assert.equal(Object.hasOwn(projection.constitutions[0],'groupId'),false);
+  assert.deepEqual(groupWorkspaceData(projection,'group-1').charters,[]);
+  assert.equal(groupWorkspaceData(projection,'group-2'),null);
+  const detail=committeeProjection(state,actor,'committee-1',now,'showcase');
+  assert.deepEqual(detail.relatedConstitutions,[]);
+  assert.deepEqual(detail.constitutions.map(d=>d.id),['constitution-1']);
+});
+
+test('group workspace uses canonical links, honest projected progress and preselected existing actions',()=>{
+  const state=fixtureProjection('secretary',now),before=structuredClone(state);
+  const html=groupWorkspace(state,'group-1',{canCreateProject:true,canProposeCommittee:true,canCreateCharter:true});
+  assert.match(html,/href="#project\/project-1"/);
+  assert.match(html,/href="#committee\/committee-1\/overview"/);
+  assert.match(html,/href="#constitution\/constitution-1"/);
+  for(const action of ['new-project','plan-group-committee','constitution-create'])assert.match(html,new RegExp('data-action="'+action+'" data-id="group-1"'));
+  assert.equal((html.match(/data-connected="true"/g)||[]).length,3);
+  assert.match(html,/Committee proposals and charter drafts remain work in progress/);
+  assert.deepEqual(state,before);
+  const member=groupWorkspace(fixtureProjection('member',now),'group-1');
+  assert.match(member,/href="#committee\/committee-1\/released"/);
+  assert.doesNotMatch(member,/data-action=/);
+  assert.match(member,/href="#constitution\/constitution-1"/);
+});
+
+test('unknown group routes fail closed, projected text is escaped and read-only creation stays disabled',()=>{
+  assert.match(groupWorkspace({groups:[]},'guess'),/Working group unavailable/);
+  assert.equal(groupWorkspaceData(null,'guess'),null);
+  const groupId='group"<x>',payload='<img src=x onerror="alert(1)">';
+  const state={groups:[{id:groupId,name:payload,description:payload,place:payload,memberCount:1}],projects:[{id:'project"<x>',groupId,title:payload,summary:payload,tasks:[]}],constitutions:[],committeeDirectory:{committees:[]}};
+  const html=groupWorkspace(state,groupId,{readOnly:true,canCreateProject:true,canProposeCommittee:true,canCreateCharter:true});
+  assert.doesNotMatch(html,/<img|onerror="/);
+  assert.match(html,/&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+  assert.match(html,/href="#project\/project%22%3Cx%3E"/);
+  assert.equal((html.match(/disabled aria-disabled="true"/g)||[]).length,3);
+  assert.equal((html.match(/data-id="group&quot;&lt;x&gt;"/g)||[]).length,3);
+});

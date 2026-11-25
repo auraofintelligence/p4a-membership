@@ -1,7 +1,8 @@
 import {rememberScrollPositions, restoreScrollPositions, focusSelectedClause} from './scroll-memory.mjs';
 import {civicIcon, compactLabels} from './civic-icons.mjs';
-import {workspaceEntry,perspectivePath} from './workspace-navigation.mjs';
+import {workspaceEntry,perspectivePath,cataloguePath,catalogueLaunchHref,catalogueReturnHref,catalogueSnapshot,validCatalogueToken,returnNavigation,sameWorkspaceDocument} from './workspace-navigation.mjs';
 import {workspaceHome, toolsDirectory, mountToolsDirectory, committeeHomeSummary} from './centre-overview.mjs';
+import {groupWorkspace} from './groups-workspace.mjs';
 import {homeDoors, campaignsView, campaignReplicationPrompt, localNodesView, redlandsCivicLab} from './local-nodes.mjs';
 import {constitutionView, selectClause, draftMarkdown} from './constitution.mjs';
 import {trialView, handleTrialAction, trialAuditRecord} from './constitution-trial.mjs';
@@ -21,7 +22,7 @@ const e = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<
 const paths = {arrow:'M5 12h14 M13 6l6 6-6 6',plus:'M12 5v14 M5 12h14',out:'M14 3h7v7 M21 3 10 14 M10 3H3v18h18v-7',check:'M5 12l4 4L19 6'};
 const icon = key => civicIcon(key) || (paths[key] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[key]}"/></svg>` : '');
 const themes = {'everyday-life':'Everyday life','missing-middle':'Missing Middle','verse-box':'Verse Box','civic-evidence':'Civic evidence','local-care':'Local care'};
-const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['committee','My Committee'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['finance','Electorate finance'],['merch','Merch'],['hours','Contributions'],['gamify','Gamify Democracy']];
+const workspaceRoutes = [['home','Your workspace'],['onboarding','Membership onboarding'],['training','Civic training'],['projects','Shared projects'],['priority','What matters now'],['people','People & relationships'],['groups','Working groups'],['committee','My Committee'],['nodes','Local nodes'],['campaigns','Campaign Command Centre'],['readiness','Electoral readiness'],['finance','Membership income calculator'],['merch','Merch'],['hours','Contributions'],['gamify','Gamify Democracy']];
 const accountabilityRoutes = [['transparency','Open transparency'],['resources','Connected ideas'],['constitution','Constitution workbench'],['profile','Your membership']];
 const missingMiddleUrl = 'https://auraofintelligence.github.io/installing-the-missing-middle/';
 const resources = [
@@ -54,7 +55,7 @@ const pageQuery=new URLSearchParams(location.search);
 const {webmaster:webmasterEntry,role:rolePreview}=workspaceEntry(location.pathname,location.search);
 const perspectives=['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant'];
 const roleName=role=>({webmaster:'Webmaster',chair:'Chair',deputy:'Deputy',secretary:'Secretary','assistant-secretary':'Assistant Secretary',treasurer:'Treasurer',committee:'Committee member',reviewer:'Reviewer',member:'Member',applicant:'Applicant'})[role]||role;
-if(webmasterEntry&&!location.hash)history.replaceState(null,'',location.pathname+location.search+'#webmaster');
+if(webmasterEntry&&!location.hash)history.replaceState(history.state,'',location.pathname+location.search+'#webmaster');
 const ownerTools=()=>state.ownerTools===true;
 const webmasterTools=()=>ownerTools()||scopedPermission('access.view','system','p4a');
 const privateShell=()=>isPilot()||Boolean(rolePreview)||state.mode==='showcase';
@@ -69,7 +70,7 @@ function rememberCommitteeContext(){
   const parts=location.hash.slice(1).split('/');
   if(parts[0]!=='committee'||!state.committeeDirectory?.committees?.some(c=>c.id===parts[1]))return;
   const url=new URL(location.href);if(url.searchParams.get('committee')===parts[1])return;
-  url.searchParams.set('committee',parts[1]);history.replaceState(null,'',url.pathname+url.search+url.hash);
+  url.searchParams.set('committee',parts[1]);history.replaceState(history.state,'',url.pathname+url.search+url.hash);
 }
 const previewActions = new Set(['constitution-clause','gamify-method','gamify-kind','gamify-reset','gamify-retry','resources','close-dialog']);
 const readOnly = () => Boolean(rolePreview || state.readOnly);
@@ -119,6 +120,83 @@ function loadDeskStyles(name){
   const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('./'+name+'-workspace.css',import.meta.url).href;style.dataset.deskStyle=name;document.head.append(style);
 }
 
+const catalogueStorageKey='p4a.centre.catalogues.v1';
+const catalogueRecords=(()=>{
+  try{
+    const raw=sessionStorage.getItem(catalogueStorageKey);
+    if(!raw||raw.length>80000)return new Map();
+    const rows=JSON.parse(raw);
+    return new Map(Array.isArray(rows)?rows.slice(-20).filter(row=>Array.isArray(row)&&validCatalogueToken(row[0])&&row[1]?.version===1):[]);
+  }catch{return new Map();}
+})();
+let activeCatalogue=null,catalogueScrollTimer,catalogueRestoreSequence=0;
+const navigationState=()=>history.state&&typeof history.state==='object'&&!Array.isArray(history.state)?history.state:{};
+function catalogueRecord(token){
+  const record=validCatalogueToken(token)?catalogueRecords.get(token):null;
+  if(!catalogueReturnHref(record,location.href,token))return null;
+  return {version:1,path:cataloguePath(record.path,location.href),snapshot:catalogueSnapshot(record.snapshot)};
+}
+function storeCatalogue(token,record){
+  catalogueRecords.delete(token);catalogueRecords.set(token,record);
+  while(catalogueRecords.size>20)catalogueRecords.delete(catalogueRecords.keys().next().value);
+  try{sessionStorage.setItem(catalogueStorageKey,JSON.stringify([...catalogueRecords]));}catch{}
+}
+function saveCatalogueSnapshot(focus){
+  if(!activeCatalogue||!$('#main :is(.centre-tools,.webmaster-workspace)'))return;
+  const previous=catalogueRecord(activeCatalogue.token)?.snapshot||{};
+  const query=$('#centre-tool-search');
+  const snapshot=catalogueSnapshot({query:query?.value||'',category:query?$('#main').dataset.toolCategory:'',scrollY:window.scrollY,focus:focus??previous.focus});
+  storeCatalogue(activeCatalogue.token,{version:1,path:activeCatalogue.path,snapshot});
+}
+function prepareCatalogue(sequence){
+  const path=cataloguePath(location.href,location.href);
+  const query=new URLSearchParams(location.search),oldState=navigationState();
+  const incoming=query.get('centreReturn')||oldState.centreReturn;
+  const returnToken=catalogueRecord(incoming)?incoming:null;
+  if(!path){
+    activeCatalogue=null;
+    if(oldState.centreReturn!==returnToken)history.replaceState({...oldState,centreReturn:returnToken},'');
+    return;
+  }
+  const restored=query.get('centreRestore'),prior=oldState.centreCatalogue;
+  const candidate=[restored,prior,activeCatalogue?.path===path?activeCatalogue.token:null].find(token=>catalogueRecord(token)?.path===path);
+  const token=candidate||crypto.randomUUID();
+  const record=catalogueRecord(token)||{version:1,path,snapshot:catalogueSnapshot()};
+  activeCatalogue={token,path,sequence,restore:Boolean(candidate),snapshot:record.snapshot};
+  storeCatalogue(token,record);
+  const clean=new URL(location.href);clean.searchParams.delete('centreRestore');
+  if(restored===token)clean.searchParams.delete('centreReturn');
+  history.replaceState({...oldState,centreCatalogue:token,centreReturn:restored===token?null:returnToken},'',clean.pathname+clean.search+clean.hash);
+}
+function renderReturnNavigation(currentLabel){
+  let toolbar=$('#centre-return-navigation');
+  if(!toolbar){toolbar=document.createElement('nav');toolbar.id='centre-return-navigation';toolbar.className='centre-return-navigation';toolbar.setAttribute('aria-label','Return navigation');$('#main').before(toolbar);}
+  const token=new URLSearchParams(location.search).get('centreReturn')||navigationState().centreReturn;
+  const navigation=returnNavigation({currentHref:location.href,record:catalogueRecord(token),token});
+  toolbar.hidden=!navigation;
+  if(!navigation){toolbar.innerHTML='';return;}
+  toolbar.innerHTML='<div class="centre-return-leading"><a class="centre-return-link" href="'+e(navigation.href)+'"><span aria-hidden="true">←</span>'+e(navigation.label)+'</a><span class="centre-return-context">'+e(currentLabel)+'</span></div>'+(navigation.find?'<button class="centre-return-home" type="button" data-centre-find>Find a tool</button>':'<a class="centre-return-home" href="#home">Home</a>');
+}
+function completeCatalogue(root,sequence){
+  if(!activeCatalogue||activeCatalogue.sequence!==sequence||sequence!==renderSequence)return;
+  const context=activeCatalogue;
+  if($('#centre-tool-search',root))mountToolsDirectory(root,{snapshot:context.snapshot,onChange:()=>saveCatalogueSnapshot()});
+  for(const link of root.querySelectorAll('.centre-tool-card,.wm-tool,.wm-metric,.wm-inline-links a')){
+    const href=catalogueLaunchHref(link.getAttribute('href'),location.href,context.token);
+    if(!href)continue;
+    const target=new URL(href,location.href);target.searchParams.delete('centreReturn');
+    link.dataset.centreLaunch=target.pathname+target.search+target.hash;link.href=href;
+  }
+  if(!context.restore)return;
+  const ticket=++catalogueRestoreSequence,snapshot=context.snapshot;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(ticket!==catalogueRestoreSequence||sequence!==renderSequence||activeCatalogue?.token!==context.token)return;
+    const link=[...root.querySelectorAll('[data-centre-launch]')].find(item=>item.dataset.centreLaunch===snapshot.focus&&!item.hidden&&!item.closest('[hidden]'));
+    link?.focus({preventScroll:true});
+    window.scrollTo({top:snapshot.scrollY,left:0,behavior:'auto'});
+  }));
+}
+
 let readiness;
 let readinessTimer;
 let training;
@@ -140,11 +218,11 @@ async function api(path, options={}) {
 }
 async function load(){state=await api('/api/bootstrap');for(const key of ['people','groups','projects','memberships','contributions','financialContributions','decisions','activity'])state[key] ||= [];if(!isPilot()||scoped())await loadGamify(api);}
 function notify(message){clearTimeout(noticeTimer);$('#notice').textContent=message;$('#notice').hidden=false;noticeTimer=setTimeout(()=>$('#notice').hidden=true,6000);}
-async function command(type,data,{rerender=true}={}){
+async function command(type,data,{rerender=true,endpoint='/api/commands'}={}){
   if(readOnly())throw new Error('This fictional role view is read-only.');
   const key=JSON.stringify({actorId:state.actor?.id,type,data});
   const id=pendingCommands.get(key)||crypto.randomUUID();pendingCommands.set(key,id);
-  try {await api('/api/commands',{method:'POST',body:JSON.stringify({id,revision:state.revision,type,data})});await load();if(rerender)render();pendingCommands.delete(key);}
+  try {await api(endpoint,{method:'POST',body:JSON.stringify({id,revision:state.revision,type,data})});await load();if(rerender)render();pendingCommands.delete(key);}
   catch(err){if(err.status===409){await load();if(err.message.toLowerCase().includes('workspace changed'))throw new Error('The workspace changed while you were editing. Your draft is still here. Review it and save again.');}throw err;}
 }
 function resourceCard(r) {
@@ -174,7 +252,7 @@ ${homeDoors(icon, hasCivicTools())}
 <div class="grid-main"><section><div class="section-heading"><h2>Work worth doing, together</h2><a href="#projects">All projects →</a></div>${state.projects.slice(0,3).map(projectCard).join('')||(isPilot()?'<div class="panel"><p class="muted">No projects yet. Projects are organised by working group.</p><a class="button quiet" href="#groups">Open working groups</a></div>':'<div class="panel"><p class="muted">Shared projects appear here when you join the workspace.</p></div>')}</section><div><section class="panel"><div class="section-heading"><h2>What matters now</h2><a href="#priority" aria-label="Open urgency and importance assessment">↗</a></div>${matrix(true)}<div class="matrix-note"><span>HUMAN JUDGEMENT</span><span>OPEN TO REVIEW</span></div><p class="muted">Urgency and importance, informed by Joyful Responsible Abundance.</p></section><section class="panel"><span class="eyebrow">A movement from the ground up</span><h3>Grow through relationships.</h3><div class="path"><div class="path-step current">People</div><div class="path-step current">Local groups</div><div class="path-step">State</div><div class="path-step">Federal</div></div><p class="muted">Build shared capacity locally. Future parties will have their own rules, consent and governance.</p></section></div></div><div class="quick-links">${resources.slice(0,3).map(resourceCard).join('')}</div>`;}
 function projects(){return `${heading('Shared work','From a good idea to something useful.','Gather people, agree the next actions and keep a record of what changes.',projectStartAction())}<div class="filters"><label class="sr-only" for="project-search">Search projects</label><input id="project-search" type="search" placeholder="Search projects, purposes and places…"><label class="sr-only" for="theme-filter">Project pathway</label><select id="theme-filter"><option value="">All pathways</option>${Object.entries(themes).map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select><label class="sr-only" for="status-filter">Project status</label><select id="status-filter"><option value="">All stages</option>${['proposed','active','review','complete'].map(s=>`<option>${s}</option>`).join('')}</select></div><div class="projects-grid" id="project-results">${state.projects.map(projectCard).join('')||(isPilot()?'<div class="empty">No projects yet. Projects are organised by working group.</div>':'<div class="empty">No projects to show yet.</div>')}</div><div class="callout">Missing Middle and Verse Box projects begin as proposals. A planning record does not establish a host agreement, operating installation or confirmed event.</div>`;}
 function priorities(){return `${heading('Joyful Responsible Abundance','What matters now. And what matters next.','Show your reasons and revisit them as evidence and circumstances change.')}<div class="grid-main"><section>${matrix()}</section><aside class="panel jra-priorities"><h2>How we assess the work</h2><p><strong>Urgency.</strong> What is happening now, when does a decision need to be made and what would delay cost?</p><p><strong>Importance.</strong> How much could this change people’s lives, and what benefit might last?</p>${jraQuestions()}<p>Use 1–5 for urgency and importance. Ratings of 4 or 5 appear in the higher band. Record separately what the project needs before it can go ahead.</p><a href="${e(jraSource)}" target="_blank" rel="noopener noreferrer">Explore Joyful Responsible Abundance ↗</a></aside></div>`;}
-function projectDetail(id){const p=project(id);if(!p)return `${heading('Shared work','Project unavailable','This project may be outside your groups, or the link may have changed.')}<a href="#projects">Back to projects</a>`;if(!state.actor)return `${heading(themes[p.theme]||'Public project',p.title,p.summary)}${requireMember()}`;const participating=isParticipant(p);return `<a class="back-link" href="#projects">← Shared projects</a>${heading(themes[p.theme]||'Shared project',p.title,p.summary,state.actor&&!p.participantIds?.includes(state.actor.id)?actionButton('Take part','join-project',p.id,''):tag(p.status,statusTone(p.status)))}<div class="button-row">${tag(group(p.groupId)?.name||'Working circle')}${tag(p.status,statusTone(p.status))}${canEdit(p)?actionButton('Update project stage','project-stage',p.id,'secondary small'):''}</div><div class="detail-grid"><div><section class="panel"><div class="section-heading"><h2>Next actions</h2><small class="muted">${(p.tasks||[]).filter(t=>t.done).length}/${(p.tasks||[]).length} complete</small></div>${(p.tasks||[]).map(t=>t.committeeAction?`<div class="task-row ${t.done?'done':''}"><span>${t.done?'Complete:':'Committee duty:'} ${e(t.title)}</span><a href="#committee/${e(t.committeeId)}/duties">Open duty desk</a></div>`:`<label class="task-row ${t.done?'done':''}"><input type="checkbox" data-task="${e(t.id)}" data-project="${e(p.id)}" ${t.done?'checked':''} ${!participating?'disabled':''}><span>${e(t.title)}</span></label>`).join('')||'<p class="muted">Agree a useful next action together.</p>'}${participating?`<form class="inline-form" data-form="task" data-id="${e(p.id)}"><label class="sr-only" for="new-task">New task</label><input id="new-task" name="title" placeholder="Add a clear next action…" maxlength="160" required><button class="button" type="submit">Add</button></form>`:'<p class="muted metric-explainer">Take part in the project to add actions and join the discussion.</p>'}</section>${pathwayPanel(p)}<section class="panel"><h2>The conversation</h2>${(p.comments||[]).map(c=>`<div class="comment"><strong>${e(person(c.personId)?.name||'Project participant')}</strong> <small>${dateText(c.createdAt)}</small><p>${e(c.text)}</p></div>`).join('')||'<p class="muted">Bring an observation, a useful question or an update.</p>'}${participating?`<form data-form="comment" data-id="${e(p.id)}"><label class="field subheading">Your contribution<textarea name="text" placeholder="Keep private household, legal and health details in your own files." maxlength="2000" required></textarea></label><button class="button" type="submit">Add to the conversation</button></form>`:''}</section></div><aside><section class="panel"><div class="section-heading"><h2>Why this matters</h2>${canEdit(p)?actionButton('Review','priority',p.id,'quiet small'):''}</div><div class="scores"><div><div class="score">${p.urgency}<small>Urgency / 5</small></div></div><div><div class="score">${p.importance}<small>Importance / 5</small></div></div></div><p class="muted">${e(p.reason||'Assessment awaiting a reason.')}</p>${['joy','responsibility','abundance'].filter(k=>p[k]).map(k=>`<p class="muted"><strong>${e(k[0].toUpperCase()+k.slice(1))}:</strong> ${e(p[k])}</p>`).join('')}<div class="meta-row"><span>Review due</span><strong>${dateText(p.reviewDate)}</strong></div><div class="meta-row"><span>Readiness</span><strong>${e(p.readiness||'To discuss')}</strong></div>${p.uncertainty?`<p class="muted"><strong>Open questions:</strong> ${e(p.uncertainty)}</p>`:''}<div class="subheading">${sourceLink(p.evidenceUrl)}</div>${(p.assessmentHistory||[]).length?`<details class="assessment-history"><summary>Previous assessments (${p.assessmentHistory.length})</summary>${p.assessmentHistory.slice().reverse().map(a=>`<div class="activity-line"><div><strong>Urgency ${a.urgency}/5 · Importance ${a.importance}/5</strong><p>${e(a.reason)}</p><small>${dateText(a.assessedAt)}</small></div></div>`).join('')}</details>`:''}</section><section class="panel"><h2>People & contribution</h2><div class="meta-row"><span>Coordinated by</span><strong>${e(person(p.ownerId)?.name||'Project coordinator')}</strong></div><div class="meta-row"><span>Participants</span><strong>${p.participantIds?.length||0}</strong></div><p class="muted">${isPilot()?'Contribution capture will open when Aura-assisted intake is ready.':'Record time freely given and submit it for independent verification.'}</p>${participating&&!isPilot()?actionButton('Record a contribution','log-hours',p.id,'secondary') : ''}</section></aside></div>`;}
+function projectDetail(id){const p=project(id);if(!p)return `${heading('Shared work','Project unavailable','This project may be outside your groups, or the link may have changed.')}<a href="#projects">Back to projects</a>`;if(!state.actor)return `${heading(themes[p.theme]||'Public project',p.title,p.summary)}${requireMember()}`;const participating=isParticipant(p);return `<a class="back-link" href="#projects">← Shared projects</a>${heading(themes[p.theme]||'Shared project',p.title,p.summary,state.actor&&!p.participantIds?.includes(state.actor.id)?actionButton('Take part','join-project',p.id,''):tag(p.status,statusTone(p.status)))}<div class="button-row">${group(p.groupId)?`<a class="chip" href="#groups/${encodeURIComponent(p.groupId)}" aria-label="Open working group: ${e(group(p.groupId).name)}">${e(group(p.groupId).name)} →</a>`:tag('Working circle')}${tag(p.status,statusTone(p.status))}${canEdit(p)?actionButton('Update project stage','project-stage',p.id,'secondary small'):''}</div><div class="detail-grid"><div><section class="panel"><div class="section-heading"><h2>Next actions</h2><small class="muted">${(p.tasks||[]).filter(t=>t.done).length}/${(p.tasks||[]).length} complete</small></div>${(p.tasks||[]).map(t=>t.committeeAction?`<div class="task-row ${t.done?'done':''}"><span>${t.done?'Complete:':'Committee duty:'} ${e(t.title)}</span><a href="#committee/${e(t.committeeId)}/duties">Open duty desk</a></div>`:`<label class="task-row ${t.done?'done':''}"><input type="checkbox" data-task="${e(t.id)}" data-project="${e(p.id)}" ${t.done?'checked':''} ${!participating?'disabled':''}><span>${e(t.title)}</span></label>`).join('')||'<p class="muted">Agree a useful next action together.</p>'}${participating?`<form class="inline-form" data-form="task" data-id="${e(p.id)}"><label class="sr-only" for="new-task">New task</label><input id="new-task" name="title" placeholder="Add a clear next action…" maxlength="160" required><button class="button" type="submit">Add</button></form>`:'<p class="muted metric-explainer">Take part in the project to add actions and join the discussion.</p>'}</section>${pathwayPanel(p)}<section class="panel"><h2>The conversation</h2>${(p.comments||[]).map(c=>`<div class="comment"><strong>${e(person(c.personId)?.name||'Project participant')}</strong> <small>${dateText(c.createdAt)}</small><p>${e(c.text)}</p></div>`).join('')||'<p class="muted">Bring an observation, a useful question or an update.</p>'}${participating?`<form data-form="comment" data-id="${e(p.id)}"><label class="field subheading">Your contribution<textarea name="text" placeholder="Keep private household, legal and health details in your own files." maxlength="2000" required></textarea></label><button class="button" type="submit">Add to the conversation</button></form>`:''}</section></div><aside><section class="panel"><div class="section-heading"><h2>Why this matters</h2>${canEdit(p)?actionButton('Review','priority',p.id,'quiet small'):''}</div><div class="scores"><div><div class="score">${p.urgency}<small>Urgency / 5</small></div></div><div><div class="score">${p.importance}<small>Importance / 5</small></div></div></div><p class="muted">${e(p.reason||'Assessment awaiting a reason.')}</p>${['joy','responsibility','abundance'].filter(k=>p[k]).map(k=>`<p class="muted"><strong>${e(k[0].toUpperCase()+k.slice(1))}:</strong> ${e(p[k])}</p>`).join('')}<div class="meta-row"><span>Review due</span><strong>${dateText(p.reviewDate)}</strong></div><div class="meta-row"><span>Readiness</span><strong>${e(p.readiness||'To discuss')}</strong></div>${p.uncertainty?`<p class="muted"><strong>Open questions:</strong> ${e(p.uncertainty)}</p>`:''}<div class="subheading">${sourceLink(p.evidenceUrl)}</div>${(p.assessmentHistory||[]).length?`<details class="assessment-history"><summary>Previous assessments (${p.assessmentHistory.length})</summary>${p.assessmentHistory.slice().reverse().map(a=>`<div class="activity-line"><div><strong>Urgency ${a.urgency}/5 · Importance ${a.importance}/5</strong><p>${e(a.reason)}</p><small>${dateText(a.assessedAt)}</small></div></div>`).join('')}</details>`:''}</section><section class="panel"><h2>People & contribution</h2><div class="meta-row"><span>Coordinated by</span><strong>${e(person(p.ownerId)?.name||'Project coordinator')}</strong></div><div class="meta-row"><span>Participants</span><strong>${p.participantIds?.length||0}</strong></div><p class="muted">${isPilot()?'Contribution capture will open when Aura-assisted intake is ready.':'Record time freely given and submit it for independent verification.'}</p>${participating&&!isPilot()?actionButton('Record a contribution','log-hours',p.id,'secondary') : ''}</section></aside></div>`;}
 function pathwayPanel(p){if(p.theme==='missing-middle')return `<section class="panel"><span class="eyebrow">Missing Middle · Local opportunity</span><h2>Make the opportunity concrete.</h2><p class="muted">Agree the host, useful workloads and local responsibilities before treating an installation as confirmed.</p><div class="button-row subheading">${['Host & place','Workloads & users','Power, connection & heat','Ownership & renewal','Skills & maintenance'].map(s=>tag(s)).join('')}</div><p class="muted">Use the next actions and discussion to identify unknowns, agree an owner and record evidence. Commercial and co-operative relationships remain distinct from P4A membership.</p><a class="source-link" target="_blank" rel="noopener noreferrer" href="${missingMiddleUrl}">Read the Missing Middle proposal ↗</a></section>`;if(p.theme==='verse-box')return `<section class="panel"><span class="eyebrow">Verse Box · Assisted participation</span><h2>Try something useful. Take it with you.</h2><p class="muted">Begin with a participant-chosen question, a learning task or a local project. Use sample material, inspect the result together, then let the participant choose what to keep and share.</p><div class="path"><div class="path-step current">Choose a task</div><div class="path-step">Try & review</div><div class="path-step">Take it home</div></div><p class="muted">Planning includes a host agreement, accessibility, assistance, consent, a tested handover and clearing public equipment. Personal Aura and Genesis records stay separate.</p><div class="button-row subheading">${actionButton('Make a take-home note','handover',p.id,'secondary')}<a class="source-link" target="_blank" rel="noopener noreferrer" href="${verseBoxUrl}">Explore the Verse Box ↗</a></div></section>`;return '';}
 function peopleDirectory() {
   const listed = new Set(state.people.map(person => person.id));
@@ -204,7 +282,16 @@ function peopleRows(list) {
     return `<tr><td><div class="person-cell"><span class="avatar">${e(initials(person.name))}</span><div><strong>${e(person.name)}</strong><small>${e(person.email || 'Contact details private')}</small>${hasInfluences ? `<a class="person-influences-link" href="${url}" aria-label="View influences for ${e(person.name)}">View influences</a>` : ''}</div></div></td><td>${e(person.place || 'Not shared')}</td><td>${e([person.skills, person.interests].filter(Boolean).join(' · ') || 'Not shared')}</td><td>${tag(sharing, person.directoryConsent || hasInfluences ? 'green' : 'gray')}</td></tr>`;
   }).join('') || '<tr><td colspan="4" class="empty">No visible people match.</td></tr>';
 }
-function groups(){return `${heading('People → Place → Possibility','Find a circle. Build something together.','Working groups connect people around a place or purpose. They are distinct from formal party branches.', isPilot() && isOrganiser() ? actionButton('Create a working group','new-group','','') : '')}<div class="projects-grid">${state.groups.map(g=>`<section class="panel group-card"><div class="section-heading"><span class="avatar">${icon('groups')}</span>${tag(g.level||'local')}</div><h2 class="subheading">${e(g.name)}</h2><p>${e(g.description)}</p><div class="meta-row"><span>Place</span><strong>${e(g.place)}</strong></div><div class="meta-row"><span>Working projects</span><strong>${state.projects.filter(p=>p.groupId===g.id).length}</strong></div>${state.actor&&(!scoped()||scopedPermission(g.memberIds?.includes(state.actor.id)?'group.leave':'group.join','group',g.id))?actionButton(g.memberIds?.includes(state.actor.id)?'Leave working group':'Join working group',g.memberIds?.includes(state.actor.id)?'leave-group':'join-group',g.id,'secondary'):''}</section>`).join('')||(isPilot()?`<div class="panel"><h2>No working groups yet</h2><p class="muted">${isOrganiser()?'Create a group to organise your first project.':'An organiser can create the first group.'}</p></div>`:'<div class="panel"><p class="muted">Groups will appear here as the movement develops.</p></div>')}</div>`;}
+function groups(id){
+  if(id){
+    let groupId;try{groupId=decodeURIComponent(id);}catch{return heading('Working groups','Group unavailable','This group is not available in your current workspace.');}
+    loadDeskStyles('groups');
+    return groupWorkspace(state,groupId,{icon,projectCard,readOnly:readOnly(),
+      canCreateProject:!readOnly()&&projectGroups().some(g=>g.id===groupId),
+      canProposeCommittee:!readOnly()&&Boolean(state.committeeDirectory?.proposalGroups?.some(g=>g.id===groupId)),
+      canCreateCharter:!readOnly()&&(ownerTools()||(!scoped()&&isOrganiser()))});
+  }
+  return `${heading('People → Place → Possibility','Find a circle. Build something together.','Working groups connect people around a place or purpose. They are distinct from formal party branches.', isPilot() && isOrganiser() ? actionButton('Create a working group','new-group','','') : '')}<div class="projects-grid">${state.groups.map(g=>`<section class="panel group-card"><div class="section-heading"><span class="avatar">${icon('groups')}</span>${tag(g.level||'local')}</div><h2 class="subheading"><a href="#groups/${encodeURIComponent(g.id)}">${e(g.name)}</a></h2><p>${e(g.description)}</p><div class="meta-row"><span>Place</span><strong>${e(g.place)}</strong></div><div class="meta-row"><span>Working projects</span><strong>${state.projects.filter(p=>p.groupId===g.id).length}</strong></div><div class="button-row"><a class="button secondary" href="#groups/${encodeURIComponent(g.id)}">Open group →</a>${state.actor&&(!scoped()||scopedPermission(g.memberIds?.includes(state.actor.id)?'group.leave':'group.join','group',g.id))?actionButton(g.memberIds?.includes(state.actor.id)?'Leave working group':'Join working group',g.memberIds?.includes(state.actor.id)?'leave-group':'join-group',g.id,'secondary'):''}</div></section>`).join('')||(isPilot()?`<div class="panel"><h2>No working groups yet</h2><p class="muted">${isOrganiser()?'Create a group to organise your first project.':'An organiser can create the first group.'}</p></div>`:'<div class="panel"><p class="muted">Groups will appear here as the movement develops.</p></div>')}</div>`;}
 function hours() {
   if (!state.actor) return `${heading('People & possibility','Contributions','Find ways to give your time and support shared work.')}<p class="button-row"><a class="button secondary" href="#hours/calculator">Explore the giving calculator</a></p>${requireMember()}`;
   const pilot = isPilot()&&!scoped();
@@ -280,6 +367,7 @@ function field(label,name,value='',options={}){return `<label class="field ${opt
 
 let renderSequence=0;
 function render() {
+  saveCatalogueSnapshot();
   const sequence=++renderSequence;
   rememberScrollPositions(document);
   const [route = 'home', id] = (location.hash.slice(1) || 'home').split('/');
@@ -297,6 +385,8 @@ function render() {
   const auraPage = route === 'resources' && id === 'aura';
   const currentProfile = route === 'people' && state.actor ? memberProfile(id) : null;
   const currentLabel = currentProfile?.name || (auraPage ? auraResource.name : (pilot ? pilotLabels[current[0]] || current[1] : current[1]));
+  prepareCatalogue(sequence);
+  renderReturnNavigation(currentLabel);
   document.title = `${currentLabel} · P4A`;
   const primaryRoutes=[['home','Home'],['committee','My committees'],['projects','Shared projects'],['tools','All tools']];
   const personalRoutes=[['groups','Working groups'],['training','Civic training'],['profile','Your profile']];
@@ -304,7 +394,7 @@ function render() {
   const navLink = ([key, label]) => {
     const text = pilot ? pilotLabels[key] || label : label;
     const active = route === key || (route === 'project' && key === 'projects') || (key==='tools'&&!pinned.has(route)&&route!=='project');
-    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${active ? 'aria-current="'+(route===key?'page':'location')+'"' : ''} aria-label="${text}" title="${text}">${icon(key==='committee'?'committees':key==='webmaster'?'transparency':key==='tools'?'resources':key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
+    return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${active ? 'aria-current="'+(route===key?'page':'location')+'"' : ''} aria-label="${text}" title="${text}">${icon(key==='committee'?'committees':key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]||text}</span></a>`;
   };
   const roleLabel = ownerTools()?'Webmaster · workspace owner':rolePreview?roleName(rolePreview)+' example':scoped() ? [...new Set(state.access?.grants?.map(g=>roleName(g.role))||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
   const context=committeeContext();
@@ -331,7 +421,7 @@ function render() {
   banner.innerHTML = readOnly() ? '<strong>DEMO · '+e(roleName(rolePreview||'webmaster'))+'</strong> Example records only. <a href="'+(pageQuery.get('view')==='fictional'?'/index.html#webmaster':'/webmaster.html')+'">Back to Webmaster</a>.' : pilot
     ? '<strong>YOUR PRIVATE WORKSPACE</strong> Your groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
-  const views = { tools:()=>toolsDirectory(centreOptions(),{icon}), onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups, hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
+  const views = { tools:()=>toolsDirectory(centreOptions(),{icon}), onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups:()=>groups(id), hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
   const isApplicationsPage = route === 'onboarding' && id === 'applications' && civicTools && isOrganiser() && (!pilot||state.applicationsAvailable===true);
   if (isApplicationsPage) {
     views.onboarding = () => applicationReview?.applicationReviewView({ heading }) || '<p role="status">Opening the applications register…</p>';
@@ -354,7 +444,7 @@ function render() {
     loadDeskStyles('webmaster');
     const mount=$('#main'),requested=location.hash;
     mount.innerHTML='<div class="panel"><p role="status">Opening Webmaster...</p></div>';
-    import('./webmaster-workspace.mjs').then(m=>m.mountWebmaster(mount,{api,readOnly:readOnly(),route:requested,perspectiveUrl,icon,onSaved:async()=>{await load();render();}})).catch(err=>{if(location.hash===requested)mount.innerHTML='<div class="panel"><h1>Webmaster</h1><p role="alert">'+e(err.message)+'</p></div>';});
+    import('./webmaster-workspace.mjs').then(m=>m.mountWebmaster(mount,{api,readOnly:readOnly(),route:requested,perspectiveUrl,icon,onSaved:async()=>{await load();render();}})).then(()=>completeCatalogue(mount,sequence)).catch(err=>{if(location.hash===requested)mount.innerHTML='<div class="panel"><h1>Webmaster</h1><p role="alert">'+e(err.message)+'</p></div>';});
     return;
   }
   if(route==='committee'){
@@ -374,7 +464,7 @@ function render() {
   }
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
   restrictPreview();
-  if(route==='tools')mountToolsDirectory($('#main'));
+  if(route==='tools')completeCatalogue($('#main'),sequence);
   if(route==='home'&&state.actor&&context&&routeAllowed('committee')){
     api('/api/committee?id='+encodeURIComponent(context.id)).then(data=>{
       const panel=$('[data-home-committee]');
@@ -478,7 +568,10 @@ function constitutionPage(documentId) {
       </div>
       <a class="button secondary" href="#constitution/trial">Open the worked proposal</a>
     </section>` : '';
-  return constitutionView(state, {...helpers, trialEntry}, documentId);
+  const draft=state.constitutions?.find(d=>d.id===documentId)||(!documentId||!scoped()?state.constitutions?.[0]:null);
+  const localGroup=draft?.groupId?group(draft.groupId):null;
+  const back=localGroup?`<a class="back-link" href="#groups/${encodeURIComponent(localGroup.id)}">← Back to ${e(localGroup.name)}</a>`:'';
+  return back+constitutionView(state, {...helpers, trialEntry}, documentId);
 }
 function gamifyHelpers(){return {e,heading,tag,person,dateText,actionButton,field,showDialog,command,notify,closeDialog,today,api,render,logHours};}
 function usesTrainingProgress(route, id) {
@@ -492,7 +585,7 @@ function showDialog(title,intro,body,form,submit='Save',id=''){dialogReturnFocus
 function closeDialog(){$('#dialog').close();if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus();else $('#main').focus({preventScroll:true});}
 function priorityFields(p={}){return `<label class="field">Urgency<select name="urgency">${[1,2,3,4,5].map(n=>`<option ${Number(p.urgency||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: can wait · 5: immediate decision or harm</small></label><label class="field">Importance<select name="importance">${[1,2,3,4,5].map(n=>`<option ${Number(p.importance||3)===n?'selected':''}>${n}</option>`).join('')}</select><small>1: limited change · 5: substantial lasting change</small></label><label class="field full">Reasons for this assessment<textarea name="reason" required maxlength="1800">${e(p.reason)}</textarea></label>${jraValues.map(({title, question}) => { const key = title.toLowerCase(); return field(title + " · " + question, key, p[key], {full:true,length:500}); }).join("")}${field('Supporting source (https://)','evidenceUrl',p.evidenceUrl,{type:'url',full:true,length:1000})}${field('Next review','reviewDate',p.reviewDate||today(),{type:'date',required:true})}${field('Readiness','readiness',p.readiness||'Exploring')}${field('Uncertainty and dependencies','uncertainty',p.uncertainty,{full:true,length:500})}`;}
 function projectGroups() {
-  return state.groups.filter(g => isOrganiser() || g.memberIds?.includes(state.actor?.id));
+  return state.groups.filter(g => (isOrganiser() || g.memberIds?.includes(state.actor?.id)) && (!scoped() || ownerTools() || scopedPermission('project.create','group',g.id)));
 }
 function projectStartAction() {
   if (!state.actor) return '';
@@ -509,7 +602,7 @@ function newGroup() {
     <label class="field full">Purpose<textarea name="description" maxlength="1000"></textarea></label>
   `, 'group', 'Create working group');
 }
-function newProject(){if(!state.actor){notify('Open the member demo to create a project.');return;}const available=projectGroups();if(!available.length){notify(isPilot()&&isOrganiser()?'Create a working group before starting a project.':'Join a working group before starting a project.');location.hash='groups';return;}showDialog('Start something useful.','Give it a purpose, a working group and a reviewable sense of priority.',`${field('Project name','title','',{required:true,full:true,length:140})}<label class="field full">What would change?<textarea name="summary" required maxlength="1800"></textarea></label><label class="field">Working group<select name="groupId">${available.map(g=>`<option value="${e(g.id)}">${e(g.name)}</option>`).join('')}</select></label><label class="field">Pathway<select name="theme">${Object.entries(themes).map(([key,title])=>`<option value="${key}">${title}</option>`).join('')}</select></label>${priorityFields()}`,'project','Create project');}
+function newProject(groupId=''){if(!state.actor){notify('Open the member demo to create a project.');return;}const available=projectGroups();if(!available.length){notify(isPilot()&&isOrganiser()?'Create a working group before starting a project.':'Join a working group before starting a project.');location.hash='groups';return;}showDialog('Start something useful.','Give it a purpose, a working group and a reviewable sense of priority.',`${field('Project name','title','',{required:true,full:true,length:140})}<label class="field full">What would change?<textarea name="summary" required maxlength="1800"></textarea></label><label class="field">Working group<select name="groupId">${available.map(g=>`<option value="${e(g.id)}" ${g.id===groupId?'selected':''}>${e(g.name)}</option>`).join('')}</select></label><label class="field">Pathway<select name="theme">${Object.entries(themes).map(([key,title])=>`<option value="${key}">${title}</option>`).join('')}</select></label>${priorityFields()}`,'project','Create project');}
 function logHours(id=''){if(isPilot()&&!scoped())return;const available=state.projects.filter(p=>isParticipant(p)&&(!scoped()||scopedPermission('contribution.log','group',p.groupId)));if(!available.length){notify('Take part in a project before recording a contribution.');return;}showDialog('Record a contribution','Log freely given time. Another organiser must verify it before it counts as verified.',`<label class="field full">Project<select name="projectId">${available.map(p=>`<option value="${e(p.id)}" ${p.id===id?'selected':''}>${e(p.title)}</option>`).join('')}</select></label>${field('Date','date',today(),{type:'date',max:today(),required:true})}<label class="field">Hours<input type="number" name="hours" value="1" step="0.25" min="0.25" max="24" required></label><label class="field full">What did you contribute?<textarea name="description" required maxlength="1000"></textarea></label><label class="check-field field full"><input type="checkbox" name="publicConsent"><span>Include verified time in the public aggregate.<small>Your name and description stay out of that aggregate.</small></span></label>`,'hours','Submit for verification');}
 function handover(id){showDialog('A note to take with you','Write only what you choose to keep. This note downloads to your device and is not saved in the CRM.',`${field('My question or task','task','',{full:true,required:true})}<label class="field full">What I want to keep<textarea name="result" maxlength="4000" required></textarea></label>${field('A source I can revisit','source','',{full:true,type:'url',length:1000})}${field('My next step','next','',{full:true,length:500})}<label class="check-field field full"><input type="checkbox" name="reviewed" required><span>I reviewed this note and chose what to include.</span></label>`,'handover','Download my note',id);}
 function download(name,text,type='application/json'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -580,7 +673,16 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
   }
   if(await handleGamifyClick(action,id,state,gamifyHelpers()))return;
   if(action==='constitution-clause'){selectClause(id,subid);render();focusSelectedClause($('#main'));return;}
-  if(action==='constitution-create')return showDialog('Open a working draft','Each document has its own scope and history. Creating one does not establish a party or adopt rules.',`${field('Document title','title','',{full:true,required:true,length:160})}<label class="field full">Scope<select name="scope"><option value="movement">Movement</option><option value="local-charter">Local charter</option><option value="state">Future state or territory party</option><option value="federal">Future federal party</option></select></label>`,'constitution-create','Create working draft');
+  if(action==='constitution-create'){
+    const localGroup=id?group(id):null;
+    if(id&&!localGroup)throw new Error('This group is not available in your current workspace.');
+    return showDialog(localGroup?'Shape your local charter':'Open a working draft',localGroup?'Develop the purpose and working rules for '+localGroup.name+'. The document starts as a discussion draft.':'Each document has its own scope and history. Creating one does not establish a party or adopt rules.',`${field('Document title','title',localGroup?localGroup.name+' local charter':'',{full:true,required:true,length:160})}${localGroup?`<input type="hidden" name="scope" value="local-charter"><input type="hidden" name="groupId" value="${e(localGroup.id)}"><p class="field full"><strong>Connected group</strong><br>${e(localGroup.name)}</p>`:'<label class="field full">Scope<select name="scope"><option value="movement">Movement</option><option value="local-charter">Local charter</option><option value="state">Future state or territory party</option><option value="federal">Future federal party</option></select></label>'}`,'constitution-create','Create working draft');
+  }
+  if(action==='plan-group-committee'){
+    const localGroup=group(id);
+    if(!localGroup||!state.committeeDirectory?.proposalGroups?.some(g=>g.id===id))throw new Error('Committee planning is not available for this group.');
+    return showDialog('Plan your local committee','Bring meetings and shared duties together for '+localGroup.name+'. Offices begin vacant.',`${field('Proposed committee name','name',(localGroup.name+' organising committee').slice(0,120),{full:true,required:true,length:120})}<p class="field full"><strong>Connected group</strong><br>${e(localGroup.name)}</p>`,'group-committee','Save committee plan',id);
+  }
   if(action==='constitution-add'){showDialog('Propose a new clause','Add a new section through discussion and independent review. Existing clauses remain intact.',`${field('Amendment title','title','',{full:true,required:true,length:160})}${field('New clause heading','heading',subid||'',{full:true,required:true,length:160})}<label class="field full">Proposed clause wording<textarea class="long-text" name="body" maxlength="10000" required></textarea></label><label class="field full">Why add this clause?<textarea name="reason" maxlength="2000" required></textarea></label>${field('Supporting source (https://)','evidenceUrl','',{type:'url',full:true,length:1000})}`,'constitution-add','Submit for discussion',id);return;}
   if(action==='constitution-export'){const draft=state.constitutions.find(d=>d.id===id);download('p4a-working-constitution-v'+(subid||draft.version)+'.md',draftMarkdown(draft,subid?Number(subid):draft.version),'text/markdown');notify('Working draft downloaded, clearly marked as not adopted.');return;}
   if(action==='constitution-propose'){const draft=state.constitutions.find(d=>d.id===id),clause=draft.clauses.find(c=>c.id===subid);showDialog('Propose an amendment','Your proposal will be shared with workspace members for discussion. The current clause remains until independent review.',`<input type="hidden" name="clauseId" value="${e(subid)}"><input type="hidden" name="baseVersion" value="${clause.version}">${field('Amendment title','title','',{full:true,required:true,length:160})}<label class="field full">Proposed clause wording<textarea class="long-text" name="body" maxlength="10000" required>${e(clause.body)}</textarea></label><label class="field full">Why should this change?<textarea name="reason" maxlength="2000" required></textarea></label>${field('Supporting source (https://)','evidenceUrl','',{type:'url',full:true,length:1000})}`,'constitution-propose','Submit for discussion',id);return;}
@@ -589,7 +691,7 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
 
   if(action==='close-dialog')return closeDialog();
   if(action==='new-group')return newGroup();
-  if(action==='new-project')return newProject();
+  if(action==='new-project')return newProject(id);
   if(action==='resources'){location.hash='resources';return;}
   if(action.startsWith('demo-'))return await setRole(action.slice(5));
   if(action==='priority'){const p=project(id);return showDialog('Review what matters','Make the judgement and its reasons visible. This is a proposed P4A working scale.',priorityFields(p),'priority','Save assessment',id);}
@@ -608,6 +710,10 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
 document.addEventListener('submit',async event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();if(readOnly()){notify('This fictional role view is read-only.');return;}const kind=form.dataset.form, id=form.dataset.id;const fd=new FormData(form);const data=Object.fromEntries(fd);const submit=form.querySelector('[type=submit]');const error=form.querySelector('.form-error');if(error)error.textContent='';if(submit)submit.disabled=true;
   try{if(await handleGamifySubmit(form,state,gamifyHelpers()))return;let type,payload=data;
     if(kind==='handover'){download('verse-box-take-home-note.md',`# My Verse Box take-home note\n\nPrepared ${today()}. Chosen and reviewed by the participant.\n\n## My question\n${data.task}\n\n## What I chose to keep\n${data.result}\n\n## Source to revisit\n${data.source||'None recorded'}\n\n## My next step\n${data.next||'My choice'}\n`,'text/markdown');closeDialog();notify('Your note was downloaded. It was not saved to the CRM.');return;}
+    if(kind==='group-committee'){
+      await command('committee.propose',{name:data.name,kind:'local',groupId:id},{endpoint:'/api/committee'});
+      closeDialog();notify('Committee plan saved with your local group.');return;
+    }
     if(kind==='constitution-create')type='constitution.create';
     if(kind==='constitution-structure'){type='constitution.structure';payload={constitutionId:id,topicId:data.topicId,clauseId:data.clauseId||null,sourceNote:data.sourceNote,structureVersion:Number(data.structureVersion)};}
     if(kind==='constitution-add'){type='constitution.propose';payload={...data,constitutionId:id,clauseId:null,baseVersion:0};}
@@ -648,7 +754,7 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
     else notify(kind==='hours'?'Contribution submitted for independent review.':'Saved. Your workspace is up to date.');
   }catch(err){if(error)error.textContent=err.message;else notify(err.message);}finally{if(submit)submit.disabled=false;}
 });
-document.addEventListener('change',async event=>{try{if(event.target.id==='workspace-perspective'){location.assign(perspectiveUrl(event.target.value));return;}if(event.target.id==='workspace-context'){const url=new URL(location.href);url.searchParams.set('committee',event.target.value||'all');history.replaceState(null,'',url.pathname+url.search+url.hash);const target=event.target.value?'committee/'+encodeURIComponent(event.target.value)+'/overview':'committee';if(location.hash==='#'+target)render();else location.hash=target;return;}if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){if(readOnly()){render();return;}const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
+document.addEventListener('change',async event=>{try{if(event.target.id==='workspace-perspective'){location.assign(perspectiveUrl(event.target.value));return;}if(event.target.id==='workspace-context'){const url=new URL(location.href);url.searchParams.set('committee',event.target.value||'all');history.replaceState(history.state,'',url.pathname+url.search+url.hash);const target=event.target.value?'committee/'+encodeURIComponent(event.target.value)+'/overview':'committee';if(location.hash==='#'+target)render();else location.hash=target;return;}if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){if(readOnly()){render();return;}const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
 function filterProjects(){const query=($('#project-search')?.value||'').toLowerCase(),theme=$('#theme-filter')?.value,status=$('#status-filter')?.value;const matches=state.projects.filter(p=>(!theme||p.theme===theme)&&(!status||p.status===status)&&`${p.title} ${p.summary} ${group(p.groupId)?.name}`.toLowerCase().includes(query));$('#project-results').innerHTML=matches.map(projectCard).join('')||'<div class="empty">No projects match. Try another word or pathway.</div>';}
 document.addEventListener('input', event => {
   if (!event.target.matches('[data-campaign-field]')) return;
@@ -657,7 +763,30 @@ document.addEventListener('input', event => {
   $('#campaign-prompt').value = campaignReplicationPrompt(fields);
 });
 document.addEventListener('input',event=>{if(event.target.id==='project-search')filterProjects();if(event.target.id==='people-search'){$('#people-results').innerHTML=peopleRows(peopleDirectory().filter(p=>`${p.name} ${p.place || ''} ${p.skills || ''} ${p.interests || ''}`.toLowerCase().includes(event.target.value.toLowerCase())));}});
-window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);focusPage();});
+let lastNavigationUrl=location.href;
+function renderNavigationChange(){
+  if(lastNavigationUrl===location.href)return;
+  render();lastNavigationUrl=location.href;window.scrollTo(0,0);focusPage();
+}
+window.addEventListener('hashchange',renderNavigationChange);
+window.addEventListener('popstate',renderNavigationChange);
+window.addEventListener('scroll',()=>{if(activeCatalogue){clearTimeout(catalogueScrollTimer);catalogueScrollTimer=setTimeout(()=>saveCatalogueSnapshot(),120);}},{passive:true});
+window.addEventListener('pagehide',()=>saveCatalogueSnapshot());
+document.addEventListener('click',event=>{
+  const launch=event.target.closest('a[data-centre-launch]');
+  if(launch)saveCatalogueSnapshot(launch.dataset.centreLaunch);
+  const navigation=launch||event.target.closest('#centre-return-navigation a');
+  if(navigation&&!event.defaultPrevented&&event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey&&!navigation.hasAttribute('download')&&(!navigation.target||navigation.target==='_self')&&sameWorkspaceDocument(navigation.href,location.href)){
+    event.preventDefault();
+    const target=new URL(navigation.href,location.href);
+    history.pushState({centreReturn:target.searchParams.get('centreReturn')},'',target.pathname+target.search+target.hash);
+    renderNavigationChange();
+  }
+  if(event.target.closest('[data-centre-find]')){
+    const input=$('#centre-tool-search');
+    if(input){event.preventDefault();input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}
+  }
+},true);
 document.addEventListener('click',event=>{
   const switcher=$('.centre-switcher[open]');if(switcher&&!switcher.contains(event.target))switcher.open=false;
   if(event.target.closest('#workspace-links a'))$('#workspace-menu')?.setAttribute('aria-expanded','false');
@@ -669,4 +798,4 @@ document.addEventListener('keydown',event=>{
   const menu=$('#workspace-menu[aria-expanded="true"]');if(menu){menu.setAttribute('aria-expanded','false');menu.focus();}
 });
 $('#dialog').addEventListener('click',event=>{if(event.target===$('#dialog')){const r=$('#dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();}});
-try{await load();render();}catch(err){$('#main').innerHTML=`<div class="panel"><h1>The workspace could not open.</h1><p class="muted subheading">${e(err.message)}</p><button class="button" id="retry">Try again</button></div>`;$('#retry').onclick=()=>location.reload();}
+try{await load();render();lastNavigationUrl=location.href;}catch(err){$('#main').innerHTML=`<div class="panel"><h1>The workspace could not open.</h1><p class="muted subheading">${e(err.message)}</p><button class="button" id="retry">Try again</button></div>`;$('#retry').onclick=()=>location.reload();}

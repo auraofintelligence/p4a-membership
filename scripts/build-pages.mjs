@@ -7,6 +7,7 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
 const publicFiles = [
   'index.html', 'app.mjs', 'styles.css', 'civic-icons.css', 'civic-icons.mjs', 'workspace-navigation.mjs', 'centre-overview.mjs', 'centre-layout.css',
+  'groups-workspace.mjs', 'groups-workspace.css',
   'constitution.mjs', 'gamify.mjs', 'gamify.css', 'member-participation.mjs', 'team-games-index.mjs', 'local-nodes.mjs', 'scroll-memory.mjs', 'jra-values.mjs', 'aura-overview.mjs', 'onboarding.mjs',
   'team-games-classics.mjs', 'team-games-sports.mjs', 'profile-influences.mjs',
   'constitution-trial.mjs', 'constitution-trial-model.mjs', 'constitution-trial.css',
@@ -18,7 +19,7 @@ const publicFiles = [
   'favicon.svg', 'robots.txt', 'LICENCE.md',
   'artwork/p4a-civic-icons-v1.png', 'artwork/gamify-democracy.svg', 'artwork/campaign-command-centre.png',
   'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png', 'artwork/p4a-membership.png',
-  'artwork/p4a-membership-mark.png',
+  'artwork/p4a-membership-mark.png', 'artwork/p4a-workspace-tools-v1.png',
 ];
 const domainFiles = ['domain.mjs', 'gamify.mjs', 'errors.mjs', 'seed.mjs', 'constitution-seed.mjs', 'onboarding.mjs'];
 // The guide is the landing page. Do not copy the source index alias: it exists

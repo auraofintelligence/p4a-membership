@@ -83,9 +83,11 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     }
   }
   await walk(built.directory);
-  assert.equal(names.length, 62);
+  assert.equal(names.length, 65);
   assert.ok(names.includes('centre-overview.mjs'));
   assert.ok(names.includes('centre-layout.css'));
+  assert.ok(names.includes('groups-workspace.mjs'));
+  assert.ok(names.includes('groups-workspace.css'));
   assert.ok(names.includes('workspace-navigation.mjs'));
   assert.ok(!names.includes('webmaster-workspace.mjs'));
   assert.ok(!names.includes('committee-workspace.mjs'));
@@ -100,7 +102,7 @@ test('Pages build contains only reviewed static and pure-domain files and leaves
     'finance-federal-data.mjs', 'finance-state-enrolments.mjs', 'finance-state-demographics.mjs',
     'team-games-index.mjs', 'team-games-classics.mjs', 'team-games-sports.mjs', 'profile-influences.mjs',
     'artwork/campaign-command-centre.png', 'artwork/connected-ideas-icons.png', 'artwork/aura-genesis-geode.png',
-    'artwork/p4a-membership.png', 'artwork/p4a-membership-mark.png',
+    'artwork/p4a-membership.png', 'artwork/p4a-membership-mark.png', 'artwork/p4a-workspace-tools-v1.png',
   ]) {
     assert.ok(names.includes(name), `Preview must include ${name}`);
   }

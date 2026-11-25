@@ -2,9 +2,9 @@
 const escape = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles=['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant'];
 const label=role=>({'assistant-secretary':'Assistant Secretary',committee:'Committee member',webmaster:'Webmaster',chair:'Chair',deputy:'Deputy',secretary:'Secretary',treasurer:'Treasurer',reviewer:'Reviewer',member:'Member',applicant:'Applicant',group:'Working group',constitution:'Constitution',system:'Centre'})[role]||String(role||'').replaceAll('-',' ');
-const roleIcons={webmaster:'transparency',chair:'committees',deputy:'groups',secretary:'readiness','assistant-secretary':'training',treasurer:'finance',committee:'people',reviewer:'constitution',member:'profile',applicant:'onboarding'};
+const roleIcons={webmaster:'webmaster',chair:'committees',deputy:'duties',secretary:'documents','assistant-secretary':'editions',treasurer:'treasury',committee:'meetings',reviewer:null,member:'profile',applicant:'onboarding'};
 const roleDescriptions={webmaster:'Accounts, access and centre administration.',chair:'Meeting preparation, decisions and shared responsibilities.',deputy:'Committee work, project follow-through and team support.',secretary:'Agendas, minutes, notices and working documents.','assistant-secretary':'Shared record keeping, editions and meeting preparation.',treasurer:'Budgets, recorded expenses and reconciliation.',committee:'Meetings, assigned duties and committee contributions.',reviewer:'Independent review of records and proposals.',member:'Projects, learning and your own participation.',applicant:'The membership journey and your own application.'};
-const tabs=[['overview','Overview','home'],['accounts','Accounts','people'],['permissions','Access','transparency'],['offices','Office planning','committees'],['views','Role examples','training'],['audit','History','readiness']];
+const tabs=[['overview','Overview','webmaster'],['accounts','Accounts','people'],['permissions','Access',null],['offices','Office planning','office-holders'],['views','Role examples',null],['audit','History',null]];
 const officeScopes={webmaster:['system'],chair:['group','constitution','committee'],deputy:['group','constitution','committee'],secretary:['group','constitution','committee'],'assistant-secretary':['group','constitution','committee'],treasurer:['group','committee'],committee:['group','constitution','committee'],reviewer:['group','constitution','committee']};
 const scopeFields={group:'groups',constitution:'constitutions',committee:'committees',system:'system'};
 const esc=escape;
@@ -26,10 +26,10 @@ function accountName(data,id){
   return held.length?held.join(' / ')+' account':account.personId||account.id;
 }
 function countCard(title,count,copy,image,icon,href){
-  return '<a class="wm-metric" href="'+esc(href)+'">'+icon(image)+'<div><span>'+esc(title)+'</span><strong>'+esc(count)+'</strong><small>'+esc(copy)+'</small></div><span class="wm-arrow" aria-hidden="true">→</span></a>';
+  return '<a class="wm-metric" href="'+esc(href)+'">'+(image?icon(image):'')+'<div><span>'+esc(title)+'</span><strong>'+esc(count)+'</strong><small>'+esc(copy)+'</small></div><span class="wm-arrow" aria-hidden="true">→</span></a>';
 }
 function toolLink(href,title,copy,image,icon,context=''){
-  return '<a class="wm-tool" href="'+esc(href)+'">'+icon(image)+'<div>'+(context?'<span class="wm-tool-context">'+esc(context)+'</span>':'')+'<h3>'+esc(title)+'</h3><p>'+esc(copy)+'</p></div><span class="wm-arrow" aria-hidden="true">→</span></a>';
+  return '<a class="wm-tool" href="'+esc(href)+'">'+(image?icon(image):'')+'<div>'+(context?'<span class="wm-tool-context">'+esc(context)+'</span>':'')+'<h3>'+esc(title)+'</h3><p>'+esc(copy)+'</p></div><span class="wm-arrow" aria-hidden="true">→</span></a>';
 }
 function exampleLink(role,route,title,copy,image,icon,perspectiveUrl){
   const href=perspectiveUrl(role).split('#')[0]+'#'+route;
@@ -47,14 +47,14 @@ function row(title,meta,extra='',status=''){
 function overview(data,icon,ro,perspectiveUrl){
   const countActive=data.accounts.filter(x=>x.status==='active').length;
   const reservations=data.reservations.filter(x=>x.status==='reserved').length;
-  const metrics='<div class="wm-metrics">'+countCard('Accounts',countActive,'currently active','people',icon,'#webmaster/accounts')+countCard('Access grants',data.grants.length,'recorded permissions','transparency',icon,'#webmaster/permissions')+countCard('Office plans',reservations,'reserved roles','committees',icon,'#webmaster/offices')+countCard('Recent changes',data.audit.length,'in the access history','readiness',icon,'#webmaster/audit')+'</div>';
+  const metrics='<div class="wm-metrics">'+countCard('Accounts',countActive,'currently active','people',icon,'#webmaster/accounts')+countCard('Access grants',data.grants.length,'recorded permissions',null,icon,'#webmaster/permissions')+countCard('Office plans',reservations,'reserved roles','office-holders',icon,'#webmaster/offices')+countCard('Recent changes',data.audit.length,'in the access history',null,icon,'#webmaster/audit')+'</div>';
   const working=!ro&&data.existingOwner?'<section class="wm-section"><div class="wm-section-heading"><div><h2>Your working tools</h2><p>Continue in your private workspace.</p></div><a class="wm-text-link" href="#tools">All tools →</a></div><div class="wm-tools wm-tools-compact">'+toolLink('#committee','Committee room','Meetings, duties and shared records.','committees',icon)+toolLink('#constitution','Constitution builder','Shape and review your working drafts.','constitution',icon)+toolLink('#projects','Shared projects','Keep local work moving.','projects',icon)+'</div></section>':'';
   const tour='<section class="wm-section"><div class="wm-section-heading"><div><h2>Explore the centre</h2><p>Each example opens the role that uses those tools.</p></div><a class="wm-text-link" href="#webmaster/views">All role examples →</a></div><div class="wm-tools">'+
     exampleLink('member','home','Membership & learning','See the member home and participation pathways.','profile',icon,perspectiveUrl)+
     exampleLink('member','projects','Projects & groups','Explore shared work and local collaboration.','projects',icon,perspectiveUrl)+
     exampleLink('chair','committee/committee-1/overview','Committee room','See the next meeting, responsibilities and notices.','committees',icon,perspectiveUrl)+
-    exampleLink('secretary','committee/committee-1/meetings','Meetings & records','Open the agenda, minutes and follow-up work.','readiness',icon,perspectiveUrl)+
-    exampleLink('treasurer','committee/committee-1/finance','Treasurer desk','Inspect budgets, expense records and reconciliation.','finance',icon,perspectiveUrl)+
+    exampleLink('secretary','committee/committee-1/meetings','Meetings & records','Open the agenda, minutes and follow-up work.','meetings',icon,perspectiveUrl)+
+    exampleLink('treasurer','committee/committee-1/finance','Treasurer desk','Inspect budgets, expense records and reconciliation.','treasury',icon,perspectiveUrl)+
     exampleLink('chair','constitution','Constitution builder','Explore the same working draft from the committee.','constitution',icon,perspectiveUrl)+'</div><p class="wm-note">Role examples contain fictional records and are read-only. Your signed-in identity stays the same.</p></section>';
   const recent=data.audit.slice(-3).reverse();
   const latest=recent.length?recent.map(r=>'<li><div><strong>'+esc(actionLabel(r.type))+'</strong><span>'+esc(accountName(data,r.actorId))+'</span></div><time>'+esc(dateText(r.at))+'</time></li>').join(''):'<li><p>No technical access changes recorded yet.</p></li>';
@@ -101,7 +101,7 @@ export async function mountWebmaster(root,{api,readOnly,route,perspectiveUrl,ico
   const selected=tabs.find(x=>x[0]===tab)||tabs[0];
   const descriptions={overview:'Keep the centre organised, manage access and explore how its tools fit together.',accounts:'See the accounts that can use this centre.',permissions:'Review what each account can access and where.',offices:'Prepare roles for people to take on later.',views:'Explore the centre through the people who use it.',audit:'Follow changes to technical access and the reasons behind them.'};
   const heading='<header class="wm-heading"><div><span class="eyebrow">Centre administration</span><h1>'+(selected[0]==='overview'?'Webmaster':'Webmaster <span>· '+esc(selected[1])+'</span>')+'</h1><p>'+esc(descriptions[selected[0]])+'</p></div>'+chip(ro?'Fictional · read-only':data.existingOwner?'Workspace owner':'Technical access')+'</header>';
-  const nav='<nav class="wm-nav" aria-label="Webmaster tools">'+tabs.map(([key,title,image])=>'<a href="#webmaster/'+key+'"'+(selected[0]===key?' aria-current="page"':'')+'>'+icon(image)+'<span>'+esc(title)+'</span></a>').join('')+'</nav>';
+  const nav='<nav class="wm-nav" aria-label="Webmaster tools">'+tabs.map(([key,title,image])=>'<a href="#webmaster/'+key+'"'+(selected[0]===key?' aria-current="page"':'')+'>'+(image?icon(image):'')+'<span>'+esc(title)+'</span></a>').join('')+'</nav>';
   const renderers={overview:()=>overview(data,icon,ro,perspectiveUrl),accounts:()=>accounts(data,ro),permissions:()=>permissions(data,ro),offices:()=>offices(data,ro),views:()=>views(icon,perspectiveUrl),audit:()=>audit(data)};
   root.innerHTML='<div class="webmaster-workspace">'+heading+nav+'<p class="wm-status" role="status" data-webmaster-status></p>'+renderers[selected[0]]()+'</div>';
   const search=root.querySelector('[data-webmaster-search]');

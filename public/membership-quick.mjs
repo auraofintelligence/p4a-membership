@@ -55,7 +55,7 @@ export function membershipSnapshot() {
 
 export function membershipQuickView({ heading, e }) {
   return `<div class="electorate-finance quick-finance" data-membership-quick>
-    ${heading('Campaign Command Centre', 'Electorate finance', 'See what federal membership brings in as P4A expands across Australia.', '<div class="button-row"><a class="button secondary" href="#merch">Merch calculator</a><a class="button secondary" href="#finance/compare">Combine estimates</a></div>')}
+    ${heading('Planning & calculators', 'Membership income calculator', 'Model member numbers and membership income across electorates.', '<div class="button-row"><a class="button secondary" href="#merch">Merch calculator</a><a class="button secondary" href="#finance/compare">Combine estimates</a></div>')}
     <section class="panel quick-assumptions" aria-label="Membership assumptions">
       <p><strong>A$5</strong> to apply <span aria-hidden="true">·</span> <strong>A$120</strong> standard annual <span aria-hidden="true">·</span> <strong>A$80</strong> concession annual <span aria-hidden="true">·</span> <strong>2%</strong> processing</p>
       <p>One membership payment covers federal and state membership in this model. Each member pays for one application and one quarter on approval, then annual dues from month four if they continue.</p>

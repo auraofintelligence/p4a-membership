@@ -11,19 +11,19 @@ const catalogue = [
   ]},
   {id:'committee',title:'Committee room',copy:'Meet, share responsibilities and keep the working record together.',items:[
     ['committee','Committee overview','See the next meeting, duties and messages.','committees','chair','overview'],
-    ['committee','Meetings & calendar','Agenda, attendance, notes and meeting follow-up.','readiness','secretary','meetings'],
-    ['committee','Duties','Assigned responsibilities and linked project tasks.','projects','secretary','duties'],
-    ['committee','Committee inbox','Internal notices, acknowledgements and reviews.','onboarding','secretary','notices'],
-    ['committee','Documents','Working papers, versions and review history.','resources','secretary','library'],
-    ['committee','Newsletters','Contributions, draft editions and independent review.','campaigns','secretary','editions'],
-    ['committee','Partnership proposals','Discuss scope, responsibilities and proposed collaboration.','groups','chair','partnerships'],
-    ['committee','Treasurer desk','Recorded receipts, expenses, budgets and reconciliation.','finance','treasurer','finance'],
-    ['committee','Office holders','Current office records and proposed transitions.','people','secretary','offices'],
+    ['committee','Meetings & calendar','Agenda, attendance, notes and meeting follow-up.','meetings','secretary','meetings'],
+    ['committee','Duties','Assigned responsibilities and linked project tasks.','duties','secretary','duties'],
+    ['committee','Committee inbox','Internal notices, acknowledgements and reviews.','inbox','secretary','notices'],
+    ['committee','Documents','Working papers, versions and review history.','documents','secretary','library'],
+    ['committee','Newsletters','Contributions, draft editions and independent review.','editions','secretary','editions'],
+    ['committee','Partnership proposals','Discuss scope, responsibilities and proposed collaboration.','partnerships','chair','partnerships'],
+    ['committee','Treasurer desk','Recorded receipts, expenses, budgets and reconciliation.','treasury','treasurer','finance'],
+    ['committee','Office holders','Current office records and proposed transitions.','office-holders','secretary','offices'],
   ]},
   {id:'learning',title:'Membership & learning',copy:'Your participation, learning and contribution.',items:[
     ['onboarding','Membership pathway','Understand the steps and review your progress.','onboarding','applicant'],
     ['training','Civic training','Practical lessons for taking part in civic life.','training','member'],
-    ['gamify/games','Team games','Activities for learning and building relationships.','gamify','member'],
+    ['gamify/games','Team games','Activities for learning and building relationships.','team-games','member'],
     ['gamify','Gamify Democracy','Participation, contribution records and recognition.','gamify','member'],
     ['hours','Voluntary contributions','Your time, evidence and independent receipt reviews.','hours','member'],
     ['profile','Your profile','Your details, preferences and membership information.','profile','member'],
@@ -31,11 +31,11 @@ const catalogue = [
   {id:'planning',title:'Planning & calculators',copy:'Explore scenarios. These tools do not move money.',items:[
     ['campaigns','Campaign workspace','Organise ideas, places and practical campaign planning.','campaigns','member'],
     ['readiness','Electoral readiness','Explore dates, requirements and planning context.','readiness','member'],
-    ['finance','Membership cost calculator','Model the costs and assumptions for membership services.','finance','member'],
-    ['finance/detail','Detailed budget planner','Build operating and campaign budget scenarios.','finance','member'],
+    ['finance','Membership income calculator','Model member numbers and membership income across electorates.','membership-calculator','member'],
+    ['finance/detail','Detailed budget planner','Build operating and campaign budget scenarios.','budget-planner','member'],
     ['merch','Merch calculator','Explore sales volumes and profit assumptions.','merch','member'],
-    ['hours/calculator','Giving calculator','Model donation schedules and potential bequests.','hours','member'],
-    ['finance/compare','Compare funding scenarios','Bring the membership, giving and merch estimates together.','finance','member'],
+    ['hours/calculator','Giving calculator','Model donation schedules and potential bequests.','giving','member'],
+    ['finance/compare','Compare funding scenarios','Bring the membership, giving and merch estimates together.','funding-compare','member'],
   ]},
   {id:'knowledge',title:'Rules, ideas & transparency',copy:'Work on shared rules and explore the wider civic tools.',items:[
     ['constitution','Constitution workbench','Discussion drafts, amendments and review history.','constitution','chair'],
@@ -57,18 +57,24 @@ export function centreToolGroups({canOpen, civicTools, previewRole, perspectiveU
 
 export function toolsDirectory(options, {icon}) {
   const groups=centreToolGroups(options), count=groups.reduce((n,g)=>n+g.items.length,0);
-  return `<section class="centre-tools"><div class="page-heading"><div><span class="eyebrow">Everything in its place</span><h1>All tools</h1><p>Choose the kind of work you want to do.</p></div><a class="button secondary" href="#home">Back to home</a></div>
+  return `<section class="centre-tools"><div class="page-heading"><div><span class="eyebrow">Everything in its place</span><h1>All tools</h1><p>Choose the kind of work you want to do.</p></div></div>
     ${options.previewRole==='webmaster'?'<p class="centre-context-note">Each example opens in the relevant fictional role. The role is shown on the card and in the page header.</p>':''}
-    <div class="centre-tool-filter"><label for="centre-tool-search">Find a tool</label><input id="centre-tool-search" type="search" placeholder="Try meetings, expenses, learning…" autocomplete="off"><span id="centre-tool-count" role="status">${count} tools</span></div>
+    <div class="centre-tool-filter"><label for="centre-tool-search">Find a tool</label><input id="centre-tool-search" type="search" placeholder="Try meetings, expenses, learning…" maxlength="120" autocomplete="off"><span id="centre-tool-count" role="status">${count} tools</span></div>
     <nav class="centre-category-links" aria-label="Tool categories">${groups.map(g=>`<a href="#tools" data-tool-category="${g.id}">${esc(g.title)}</a>`).join('')}</nav>
     ${groups.map(g=>`<section class="centre-tool-group" id="tools-${g.id}"><div class="section-heading"><div><h2>${esc(g.title)}</h2><p>${esc(g.copy)}</p></div></div><div class="centre-tool-grid">${g.items.map(t=>`<a class="centre-tool-card" href="${esc(t.href)}" data-tool-search="${esc((t.title+' '+t.description+' '+g.title).toLowerCase())}">${icon(t.icon)}<div><h3>${esc(t.title)} <span aria-hidden="true">→</span></h3><p>${esc(t.description)}</p>${t.role?`<small>${esc(t.role.replaceAll('-',' '))} example</small>`:''}</div></a>`).join('')}</div></section>`).join('')}
     <div class="centre-search-empty panel" hidden><h2>No matching tools</h2><p>Try a shorter word, or clear the search to see everything.</p></div>
   </section>`;
 }
 
-export function mountToolsDirectory(root) {
+export function mountToolsDirectory(root,{snapshot={},onChange=()=>{}}={}) {
   const input=root.querySelector('#centre-tool-search');
   if(!input)return;
+  input.value=snapshot.query||'';
+  root.dataset.toolCategory=snapshot.category||'';
+  const markCategory=()=>root.querySelectorAll('[data-tool-category]').forEach(link=>{
+    if(link.dataset.toolCategory===root.dataset.toolCategory)link.setAttribute('aria-current','location');
+    else link.removeAttribute('aria-current');
+  });
   const filter=()=>{
     const query=input.value.trim().toLowerCase();let visible=0;
     root.querySelectorAll('[data-tool-search]').forEach(card=>{card.hidden=!card.dataset.toolSearch.includes(query);if(!card.hidden)visible++;});
@@ -76,12 +82,14 @@ export function mountToolsDirectory(root) {
     root.querySelector('#centre-tool-count').textContent=`${visible} ${visible===1?'tool':'tools'}`;
     root.querySelector('.centre-search-empty').hidden=visible>0;
   };
-  input.addEventListener('input',filter);
+  input.addEventListener('input',()=>{root.dataset.toolCategory='';markCategory();filter();onChange();});
   root.querySelectorAll('[data-tool-category]').forEach(link=>link.addEventListener('click',event=>{
     event.preventDefault();input.value='';filter();
+    root.dataset.toolCategory=link.dataset.toolCategory;markCategory();
     const section=root.querySelector('#tools-'+link.dataset.toolCategory);
-    section.scrollIntoView({block:'start'});const title=section.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});
+    section.scrollIntoView({block:'start'});const title=section.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});onChange();
   }));
+  filter();markCategory();
 }
 
 export function workspaceHome({state, canOpen, previewRole, perspectiveUrl, committee, projectCard, icon, dateText, startAction, purpose}) {
@@ -89,11 +97,11 @@ export function workspaceHome({state, canOpen, previewRole, perspectiveUrl, comm
   const projects=(state.projects||[]).filter(p=>p.participantIds?.includes(state.actor.id)||p.ownerId===state.actor.id);
   const tasks=(state.projects||[]).flatMap(p=>(p.tasks||[]).filter(t=>!t.done&&t.assigneeId===state.actor.id).map(t=>({...t,project:p})));
   const links=[];
-  if(inspection)links.push({title:'Explore the centre',copy:'Browse the tools in their relevant example roles.',href:'#tools',icon:'resources'});
+  if(inspection)links.push({title:'Explore the centre',copy:'Browse the tools in their relevant example roles.',href:'#tools',icon:'tools'});
   else if(canOpen('committee'))links.push({title:committee?.name||'Your committees',copy:'Meetings, duties and the work you share.',href:'#'+committeePath(committee?.id),icon:'committees'});
   if(canOpen('projects'))links.push({title:'Shared projects',copy:projects.length?`${projects.length} ${projects.length===1?'project':'projects'} you are taking part in.`:'Find a project or start with your working group.',href:'#projects',icon:'projects'});
   if(canOpen('training'))links.push({title:'Learning & participation',copy:'Build skills and find ways to contribute.',href:'#training',icon:'training'});
-  if(canOpen('webmaster'))links.push({title:'Webmaster',copy:'Manage access and inspect the centre.',href:'#webmaster',icon:'transparency'});
+  if(canOpen('webmaster'))links.push({title:'Webmaster',copy:'Manage access and inspect the centre.',href:'#webmaster',icon:'webmaster'});
   if(!links.length||(!inspection&&links.length<3))links.push({title:'Your membership pathway',copy:'Your details, progress and next steps.',href:'#onboarding',icon:'onboarding'});
   const greeting=inspection?'Explore your Membership Centre':`Welcome, ${state.actor.name.split(' ')[0]}.`;
   return `<section class="centre-home"><div class="page-heading"><div><span class="eyebrow">People, place & possibility</span><h1>${esc(greeting)}</h1><p>${inspection?'A guided look at the tools, with connected fictional examples.':'Pick up your work, connect with your group, or learn something new.'}</p></div><a class="button secondary" href="#tools">Browse all tools ${icon('arrow')}</a></div>

@@ -71,6 +71,7 @@ export function createWorkspaceDemoState(now = new Date()) {
     const person = state.people.find(p=>p.id==='fixture-'+role);
     person.name = names[role]+' (example)';
   }
+  Object.assign(state.constitutions.find(d=>d.id==='constitution-1'),{title:'Neighbourhood circle local charter',scope:'local-charter',groupId:'group-1'});
   const g = state.governance;
   const next = g.meetings[0];
   Object.assign(next,{title:'Neighbourhood planning evening',kind:'committee',date:day(7),time:'18:00',location:'Example community room · Brisbane time',createdAt,history:[{version:1,actorId:'fixture-secretary',at:createdAt,action:'meeting.schedule'}]});

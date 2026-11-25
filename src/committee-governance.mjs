@@ -139,8 +139,8 @@ function noticeView(s,g,n,actor){
 export function committeeDirectory(state,actor,now=new Date()){
   if(actor?.access!=='scoped'&&!isPilotOwner(state,actor))return {committees:[],proposalGroups:[]};
   const g=governanceRegister(state);
-  const proposalGroups=state.groups.filter(group=>can(state,actor,'committee.propose','group',group.id,now)).map(({id,name})=>({id,name}));
-  const committees=g.committees.filter(c=>isWorking(state,actor,c,now)||perm(state,actor,'committee.minutes.released',c,now)||perm(state,actor,'committee.library.released',c,now)||perm(state,actor,'committee.edition.released',c,now)||(c.status==='proposed'&&c.createdBy===actor.id&&proposalGroups.some(group=>group.id===c.groupId))).map(c=>({id:c.id,name:c.name,kind:c.kind,status:c.status,working:isWorking(state,actor,c,now)}));
+  const proposalGroups=state.groups.filter(group=>can(state,actor,'group.view','group',group.id,now)&&can(state,actor,'committee.propose','group',group.id,now)).map(({id,name})=>({id,name}));
+  const committees=g.committees.filter(c=>isWorking(state,actor,c,now)||perm(state,actor,'committee.minutes.released',c,now)||perm(state,actor,'committee.library.released',c,now)||perm(state,actor,'committee.edition.released',c,now)||(c.status==='proposed'&&c.createdBy===actor.id&&proposalGroups.some(group=>group.id===c.groupId))).map(c=>({id:c.id,name:c.name,kind:c.kind,status:c.status,working:isWorking(state,actor,c,now),groupId:can(state,actor,'group.view','group',c.groupId,now)?c.groupId:null}));
   return {committees,proposalGroups};
 }
 export function committeeProjection(state,actor,committeeId,now=new Date(),mode='live'){
@@ -150,10 +150,11 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
   const c=byId(g.committees,committeeId);
   if(!c||!directory.committees.some(row=>row.id===c.id))fail();
   const working=isWorking(state,actor,c,now);
+  const group=can(state,actor,'group.view','group',c.groupId,now)?byId(state.groups,c.groupId):null;
   const released=g.meetings.filter(m=>m.committeeId===c.id).map(memberMinutes).filter(Boolean);
   const members=perm(state,actor,'committee.minutes.released',c,now);
-  const base={revision:state.revision,committee:{id:c.id,name:c.name,kind:c.kind,status:c.status,groupId:working?c.groupId:null},working,
-    permissions:{},meetings:[],actions:[],notices:[],releasedMinutes:members||working?released:[],officePeople:[],projects:[],constitutions:[],
+  const base={revision:state.revision,committee:{id:c.id,name:c.name,kind:c.kind,status:c.status,groupId:group?.id||null},groupId:group?.id||null,groupName:group?.name||null,working,
+    permissions:{},meetings:[],actions:[],notices:[],releasedMinutes:members||working?released:[],officePeople:[],projects:[],constitutions:[],relatedConstitutions:[],
     fictional:mode==='showcase'||rehearsalMode(mode),formalDecisionsEnabled:false};
   base.operations=operationsProjection(state,g,c,actor,now,mode);
   base.communications=communicationsProjection(state,g,c,actor,now);
@@ -181,6 +182,7 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
   base.notices=g.notices.filter(n=>n.committeeId===c.id&&noticeVisible(state,n,actor,c,now)).map(n=>noticeView(state,g,n,actor));
   base.projects=state.projects.filter(p=>p.groupId===c.groupId&&can(state,actor,'project.view','group',p.groupId,now)).map(({id,title})=>({id,title}));
   base.constitutions=state.constitutions.filter(d=>can(state,actor,'constitution.view','constitution',d.id,now)).map(({id,title,version})=>({id,title,version}));
+  base.relatedConstitutions=base.committee.groupId?state.constitutions.filter(d=>d.scope==='local-charter'&&d.groupId===c.groupId&&can(state,actor,'constitution.view','constitution',d.id,now)).map(({id,title,version})=>({id,title,version})):[];
   return base;
 }
 // Canonical collaboration task metadata is private to its assigned committee.

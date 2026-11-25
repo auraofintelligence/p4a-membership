@@ -25,7 +25,11 @@ export function authorisedProjection(state, actor, mode, workspace, now = new Da
   }));
   result.projects = filterCommitteeTasks(state,actor,structuredClone(visible.projects),now);
   result.committeeDirectory=committeeDirectory(state,actor,now);
-  result.constitutions = visible.constitutions.map(projectConstitution);
+  result.constitutions = visible.constitutions.map(draft=>{
+    const projected=projectConstitution(draft);
+    if(projected.groupId&&!visible.groups.some(group=>group.id===projected.groupId))delete projected.groupId;
+    return projected;
+  });
   result.contributions = structuredClone(visible.contributions);
   result.financialContributions = visible.financialContributions.map(financialProjection);
   result.memberProfiles = result.memberProfiles.filter(row => row.id === actor.id);

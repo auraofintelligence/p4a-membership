@@ -219,14 +219,14 @@ function committeeDesks(d){
   const p=d.permissions||{};
   return [
     {key:'overview',title:'Overview',icon:'home',copy:'The next meeting, duties and updates.'},
-    {key:'meetings',title:'Meetings',icon:'readiness',copy:'Dates, agendas, working minutes and follow-ups.'},
-    {key:'duties',title:'Duties',icon:'projects',copy:'Responsibilities, due dates and shared project tasks.'},
-    {key:'notices',title:'Inbox',icon:'people',copy:'Committee notices and updates for you.'},
-    {key:'offices',title:'Office holders',icon:'committees',copy:'The office register, terms and proposed handovers.'},
-    ...(d.operations?.finance?[{key:'finance',title:'Treasurer',icon:'finance',copy:'Working budgets, receipts, expenses and reconciliation.'}]:[]),
-    ...(p['committee.library.view']?[{key:'library',title:'Documents',icon:'constitution',copy:'Working papers, source notes and earlier versions.'}]:[]),
-    ...(p['committee.edition.contribute']||p['committee.edition.edit']||p['committee.edition.review']?[{key:'editions',title:'Editions',icon:'resources',copy:'Contribute, assemble and review member updates.'}]:[]),
-    ...(p['committee.partnership.propose']||p['committee.partnership.review']?[{key:'partnerships',title:'Partnerships',icon:'groups',copy:'Proposed cooperation, responsibilities and review.'}]:[]),
+    {key:'meetings',title:'Meetings',icon:'meetings',copy:'Dates, agendas, working minutes and follow-ups.'},
+    {key:'duties',title:'Duties',icon:'duties',copy:'Responsibilities, due dates and shared project tasks.'},
+    {key:'notices',title:'Inbox',icon:'inbox',copy:'Committee notices and updates for you.'},
+    {key:'offices',title:'Office holders',icon:'office-holders',copy:'The office register, terms and proposed handovers.'},
+    ...(d.operations?.finance?[{key:'finance',title:'Treasurer',icon:'treasury',copy:'Working budgets, receipts, expenses and reconciliation.'}]:[]),
+    ...(p['committee.library.view']?[{key:'library',title:'Documents',icon:'documents',copy:'Working papers, source notes and earlier versions.'}]:[]),
+    ...(p['committee.edition.contribute']||p['committee.edition.edit']||p['committee.edition.review']?[{key:'editions',title:'Editions',icon:'editions',copy:'Contribute, assemble and review member updates.'}]:[]),
+    ...(p['committee.partnership.propose']||p['committee.partnership.review']?[{key:'partnerships',title:'Partnerships',icon:'partnerships',copy:'Proposed cooperation, responsibilities and review.'}]:[]),
     {key:'released',title:'Shared records',icon:'transparency',copy:'Excerpts and editions released for this audience.'},
   ];
 }
@@ -259,7 +259,12 @@ function home(d,ro,actor){
   const noticePanel='<section class="panel"><div class="committee-panel-heading"><h2>Committee inbox</h2><a href="'+href(c,'notices')+'">Open inbox</a></div>'+(unread.length?'<ul class="committee-work-list">'+unread.slice(0,3).map(n=>'<li><div><a href="'+href(c,'notices')+'">'+esc(n.title)+'</a><small>'+esc(label(n.kind))+' · Unread</small></div></li>').join('')+'</ul>':'<p class="committee-empty">You are up to date. New notices and meeting updates will appear here.</p>')+'</section>';
   const reviewRows=items=>items.map(r=>'<li><div><a href="'+href(c,r.tab,r.item)+'">'+esc(r.title)+'</a><small>'+esc(r.kind)+'</small></div><span aria-hidden="true">→</span></li>').join('');
   const reviewPanel=reviews.length?'<section class="panel committee-review"><div class="committee-panel-heading"><h2>Ready for review</h2><span class="committee-count">'+reviews.length+'</span></div><ul class="committee-work-list">'+reviewRows(reviews.slice(0,4))+'</ul>'+(reviews.length>4?'<details class="committee-review-more"><summary>Show '+(reviews.length-4)+' more to review</summary><ul class="committee-work-list">'+reviewRows(reviews.slice(4))+'</ul></details>':'')+'<p class="committee-footnote">Open the record to check its evidence and any conflict of interest.</p></section>':'';
-  const connected='<section class="panel committee-connected"><h2>Connected work</h2>'+ (d.constitutions.length?'<h3>Constitution drafts</h3><ul>'+d.constitutions.map(p=>'<li><a href="#constitution/'+esc(p.id)+'">'+esc(p.title)+'</a><small>Working version '+p.version+'</small></li>').join('')+'</ul>':'')+(d.projects.length?'<h3>Shared projects</h3><ul>'+d.projects.map(p=>'<li><a href="#project/'+esc(p.id)+'">'+esc(p.title)+'</a></li>').join('')+'</ul>':'')+(!d.constitutions.length&&!d.projects.length?'<p class="committee-empty">Related projects and constitution drafts will appear when they are available in your view.</p>':'')+'</section>';
+  const relatedCharters=d.relatedConstitutions||[];
+  const connected='<section class="panel committee-connected"><h2>Connected work</h2>'+
+    (d.groupId?'<h3>Local group</h3><ul><li><a href="#groups/'+esc(encodeURIComponent(d.groupId))+'">'+esc(d.groupName||'Open local group')+'</a></li></ul>':'')+
+    (relatedCharters.length?'<h3>Charter drafts</h3><ul>'+relatedCharters.map(p=>'<li><a href="#constitution/'+esc(encodeURIComponent(p.id))+'">'+esc(p.title)+'</a><small>Working version '+p.version+'</small></li>').join('')+'</ul>':'')+
+    (d.projects.length?'<h3>Shared projects</h3><ul>'+d.projects.map(p=>'<li><a href="#project/'+esc(p.id)+'">'+esc(p.title)+'</a></li>').join('')+'</ul>':'')+
+    (!relatedCharters.length&&!d.projects.length?'<p class="committee-empty">Related projects and charter drafts will appear when they are available in your view.</p>':'')+'</section>';
   const tools=committeeDesks(d).filter(x=>!['overview','meetings','duties','notices'].includes(x.key));
   return '<div class="committee-metrics" aria-label="Committee at a glance">'+metric(meetings.length,'Working meetings','meetings','purple')+metric(open.length,'Open duties','duties','green')+metric(unread.length,'Unread notices','notices','blue')+metric(reviews.length,'Ready for review',reviews[0]?.tab||'overview','gold')+'</div><div class="committee-dashboard"><div class="committee-main-column">'+meeting+dutyPanel+reviewPanel+'</div><div class="committee-side-column">'+noticePanel+connected+'</div></div><section class="committee-tools"><div class="committee-panel-heading"><h2>Your committee tools</h2><p>Find the right place for each part of the work.</p></div><div class="committee-tool-grid">'+tools.map(t=>'<a class="committee-tool" href="'+href(c,t.key)+'">'+civicIcon(t.icon)+'<div><h3>'+esc(t.title)+'</h3><p>'+esc(t.copy)+'</p></div><span class="committee-arrow" aria-hidden="true">→</span></a>').join('')+'</div></section>';
 }

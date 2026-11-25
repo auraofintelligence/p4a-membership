@@ -129,3 +129,36 @@ Asset: `public/artwork/p4a-membership-mark.png`. The member-card artwork above s
 ```text
 Refine the attached purple membership card into one square P4A favicon and sidebar icon. It must communicate both the Purple Party for Australia and membership. Make the outer silhouette one nearly full-frame deep violet square membership card with softly rounded corners, upright and front-on. Across the upper half of the card put the exact white uppercase wordmark “P4A”, in a bold clean sans serif, very large and high contrast, taking most of the width. Under the wordmark, use a simple cream member portrait pictogram on the left and one small warm gold circular seal on the right. Keep the seal within the square, with a plain circular face. Treat the wordmark and two pictograms as parts of one card. Match the reference’s violet, cream and gold and friendly clay finish, with very restrained bevels and solid shapes. Compose on a true square canvas with slight equal transparent margin outside the violet silhouette. Make the design recognisable at 16 × 16 pixels. P4A is the only text. No other letters, no border around the canvas, no shadows outside the card, no props, no extra motifs.
 ```
+
+## Workspace tools extension, 25 November 2026
+
+Generated with the built-in `image_gen.imagegen` tool using `transparent_background: true`, as one new sprite asset with no reference images. The PNG was copied unchanged to `public/artwork/p4a-workspace-tools-v1.png`. No raster editing or image-generation CLI was used. It is 1254 × 1254 pixels, RGBA, with actual alpha values from 0 to 255.
+
+The sixteen tool meanings below address repeated or misleading artwork in the tool catalogue and working desks. The existing core civic icons are retained for their existing meanings. Webmaster Access, History and Role examples tabs use text where no dedicated symbol is available.
+
+The unchanged sheet uses measured 320-pixel square CSS windows (`background-size: 391.875% 391.875%`), centred on each illustration's opaque bounds. It was inspected at the actual navigation and tool-card sizes against the app's pale and purple backgrounds. The legacy `finance` key aliases the membership calculator for remaining finance entry points; the Treasurer, budget, giving and comparison tools have separate keys.
+
+| Row | Column | Icon key | Meaning |
+| --- | --- | --- | --- |
+| 1 | 1 | `tools` | Open toolbox, All tools |
+| 1 | 2 | `webmaster` | Monitor with system controls |
+| 1 | 3 | `meetings` | Calendar and clock |
+| 1 | 4 | `duties` | Checklist and pencil |
+| 2 | 1 | `inbox` | Envelope and in-tray |
+| 2 | 2 | `documents` | Folder and working papers |
+| 2 | 3 | `editions` | Folded newsletter |
+| 2 | 4 | `partnerships` | Handshake |
+| 3 | 1 | `office-holders` | Office chair and nameplate |
+| 3 | 2 | `treasury` | Ledger and coins |
+| 3 | 3 | `team-games` | Game pieces and die |
+| 3 | 4 | `membership-calculator` | Member card and calculator |
+| 4 | 1 | `budget-planner` | Planning notebook and chart |
+| 4 | 2 | `giving` | Hand holding a heart coin |
+| 4 | 3 | `funding-compare` | Two reports with comparison arrow |
+| 4 | 4 | `merch` | Shopping bag and T-shirt |
+
+### Final generation prompt
+
+```text
+Use case: stylized-concept. Asset type: one production-ready UI icon sprite sheet for an existing community Membership Centre. Create ONE square image containing exactly sixteen distinct illustrations arranged on a perfectly regular 4-column by 4-row grid. Each equal square cell holds one centred isolated icon, all icons entirely inside their cells with generous transparent gutters, no overlapping cells. Actual transparent background. Style: beautifully polished friendly miniature 3D clay/plastic illustrations, rounded purple objects, rich teal, mint, sunny gold and small coral accents, soft studio shading, crisp silhouettes readable at 40px. Match a joyful civic workspace whose existing icons are purple houses, project building blocks, a clock in a hand, and books. Consistent camera angle, size, material and lighting. Each illustration should fill about 70 percent of the width and height of its cell. No labels, lettering, numerals, watermark, border, tile backgrounds, gradient backdrop, drop-shadow panels or decorative confetti. Order is exact left-to-right, top-to-bottom. Row 1: (1) All tools: open purple toolbox with distinct teal spanner and gold screwdriver. (2) Webmaster: purple desktop monitor displaying a simple gold gear and teal control sliders. (3) Meetings: purple desk calendar with teal tabs, paired with one small gold clock, no numbers or written dates. (4) Duties: purple clipboard with three clear mint checkmarks and a small gold pencil. Row 2: (5) Inbox: purple in-tray holding a teal open envelope, one gold notification dot. (6) Documents: purple file folder containing two cream paper sheets with simple teal lines. (7) Newsletters: folded cream newspaper with purple heading blocks and a teal picture panel, no text. (8) Partnerships: friendly handshake of two hands, one medium brown and one light tan, purple and teal cuffs, no extra symbols. Row 3: (9) Office holders: purple small desk nameplate with gold person silhouette, teal chair behind it. (10) Treasurer: open purple accounting ledger with mint ruled pages and a neat stack of gold coins. (11) Team games: teal and purple board-game pawns beside a gold six-sided die, simple clear pips. (12) Membership calculator: purple membership card with teal person silhouette, next to a small gold pocket calculator. Row 4: (13) Budget planner: purple bound planning notebook showing a simple teal-and-gold pie chart, with a coral pencil. (14) Giving calculator: one welcoming hand holding a gold coin with a clear purple heart, no clock. (15) Compare funding: two side-by-side upright purple report cards showing contrasting teal and gold bar charts, a small double-ended horizontal arrow between the cards. (16) Merch calculator: purple shopping bag with gold handles, with a neatly folded teal T-shirt in front. Make every subject semantically distinct and visually balanced. This whole image is a single sprite asset used with CSS; grid precision and transparent gutters matter.
+```

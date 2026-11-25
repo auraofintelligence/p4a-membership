@@ -31,43 +31,27 @@
 .civic-icon-training { background-image: url('/artwork/civic-training.png'); background-size: contain; background-position: center; }
 .civic-icon-genesis { background-image: url('/artwork/aura-genesis-geode.png'); background-size: contain; background-position: center; }
 
-:is(.civic-icon-finance, .civic-icon-merch) { position: relative; background: none; }
-:is(.civic-icon-finance, .civic-icon-merch)::before,
-:is(.civic-icon-finance, .civic-icon-merch)::after { content: ''; position: absolute; }
-.civic-icon-finance::before {
-  inset: 6% 17%;
-  border: 2px solid #c5a0ec;
-  border-radius: 18% / 13%;
-  background:
-    linear-gradient(160deg, #c2ffeb, #6edaca) center 15% / 75% 23% no-repeat,
-    linear-gradient(145deg, #8d57c0, #513078);
-  box-shadow: 0 2px 0 #170c2c66;
+/* Dedicated tool illustrations share one unchanged generated sprite. */
+:is(.civic-icon-tools, .civic-icon-webmaster, .civic-icon-meetings, .civic-icon-duties, .civic-icon-inbox, .civic-icon-documents, .civic-icon-editions, .civic-icon-partnerships, .civic-icon-office-holders, .civic-icon-treasury, .civic-icon-team-games, .civic-icon-membership-calculator, .civic-icon-budget-planner, .civic-icon-giving, .civic-icon-funding-compare, .civic-icon-merch, .civic-icon-finance) {
+  background-image: url('/artwork/p4a-workspace-tools-v1.png');
+  background-size: 391.875% 391.875%;
 }
-.civic-icon-finance::after {
-  inset: 48% 30% 19%;
-  background:
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left top / 28% 31% no-repeat,
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center top / 28% 31% no-repeat,
-    radial-gradient(ellipse, #ffda77 56%, transparent 62%) right top / 28% 31% no-repeat,
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left center / 28% 31% no-repeat,
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center / 28% 31% no-repeat,
-    radial-gradient(ellipse, #ffda77 56%, transparent 62%) right bottom / 28% 62% no-repeat,
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) left bottom / 28% 31% no-repeat,
-    radial-gradient(ellipse, #eee0ff 56%, transparent 62%) center bottom / 28% 31% no-repeat;
-}
-.civic-icon-merch::before {
-  inset: 7% 31% 52%;
-  border: 3px solid #f8d476;
-  border-radius: 50% 50% 20% 20%;
-}
-.civic-icon-merch::after {
-  inset: 30% 11% 8%;
-  clip-path: polygon(10% 0, 90% 0, 100% 92%, 93% 100%, 7% 100%, 0 92%);
-  background:
-    radial-gradient(circle, #ffe398 48%, transparent 54%) 46% 58% / 34% 46% no-repeat,
-    linear-gradient(90deg, transparent 75%, #693398 76%),
-    linear-gradient(145deg, #e3bcff 19%, #b778e3 20%, #9254ca 74%, #7d40ad);
-}
+.civic-icon-tools { background-position: 1.0171% 2.9443%; }
+.civic-icon-webmaster { background-position: 33.2441% 2.9979%; }
+.civic-icon-meetings { background-position: 66.3812% 3.1049%; }
+.civic-icon-duties { background-position: 100.2677% 1.6060%; }
+.civic-icon-inbox { background-position: 0.6959% 34.7430%; }
+.civic-icon-documents { background-position: 33.5118% 33.7794%; }
+.civic-icon-editions { background-position: 65.9529% 34.9572%; }
+.civic-icon-partnerships { background-position: 99.1970% 35.2784%; }
+.civic-icon-office-holders { background-position: 0.6959% 66.2741%; }
+.civic-icon-treasury { background-position: 33.0835% 66.2741%; }
+.civic-icon-team-games { background-position: 65.6852% 66.5953%; }
+.civic-icon-membership-calculator, .civic-icon-finance { background-position: 99.0899% 66.6488%; }
+.civic-icon-budget-planner { background-position: 0.4818% 99.8394%; }
+.civic-icon-giving { background-position: 32.8158% 99.4647%; }
+.civic-icon-funding-compare { background-position: 66.0064% 99.2505%; }
+.civic-icon-merch { background-position: 99.2505% 98.6081%; }
 
 :is(.civic-icon-relevance, .civic-icon-committees, .civic-icon-twins,
     .civic-icon-redlands, .civic-icon-scan) {

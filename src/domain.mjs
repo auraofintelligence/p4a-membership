@@ -270,7 +270,15 @@ export function executeCommand(state, actor, command, now = new Date(), { mode }
     }
     case 'constitution.create': {
       requireOrganiser(actor);
-      next.constitutions.push(createConstitution({ title: data.title, scope: data.scope, actorId: actor.id, at }));
+      let linkedGroup=null;
+      if(data.groupId!==undefined&&data.groupId!==null&&data.groupId!==''){
+        if(typeof data.groupId!=='string'||data.groupId.length>160)fail('Choose an existing working group.');
+        if(data.scope!=='local-charter')fail('A working group can be linked to a local charter.');
+        linkedGroup=find(next.groups,data.groupId,'Working group');
+      }
+      const draft=createConstitution({ title: data.title, scope: data.scope, actorId: actor.id, at });
+      if(linkedGroup)draft.groupId=linkedGroup.id;
+      next.constitutions.push(draft);
       summary = 'Created a constitution working draft; no rules were adopted.'; break;
     }
     case 'constitution.structure': {

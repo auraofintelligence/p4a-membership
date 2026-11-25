@@ -37,7 +37,7 @@ GitHub Pages serves a separate, clearly labelled fictional browser demo. Try Pub
 
 The [worked C-Hour proposal](https://auraofintelligence.github.io/p4a-membership/#constitution/trial) demonstrates how Aura could prepare records of overlapping voluntary work from agreed evidence. Compare the drafts, choose what to share, then try evidence review, a fictional ballot, sunset and audit download.
 
-The [Electorate finance calculator](https://auraofintelligence.github.io/p4a-membership/#finance) uses one payment per member, the standard and concession mix, and federal electorate coverage. The [Merch calculator](https://auraofintelligence.github.io/p4a-membership/#merch) groups monthly sales by dollar profit per item. [Giving calculator](https://auraofintelligence.github.io/p4a-membership/#hours/calculator) combines different gift amounts within each donation schedule, with a separate total for potential bequests. The [detailed cash budget](https://auraofintelligence.github.io/p4a-membership/#finance/detail) starts each electorate at A$0, keeps operating and campaign funds separate, and supports planning and local file export through 2031.
+The [Membership income calculator](https://auraofintelligence.github.io/p4a-membership/#finance) uses one payment per member, the standard and concession mix, and federal electorate coverage. The [Merch calculator](https://auraofintelligence.github.io/p4a-membership/#merch) groups monthly sales by dollar profit per item. [Giving calculator](https://auraofintelligence.github.io/p4a-membership/#hours/calculator) combines different gift amounts within each donation schedule, with a separate total for potential bequests. The [detailed cash budget](https://auraofintelligence.github.io/p4a-membership/#finance/detail) starts each electorate at A$0, keeps operating and campaign funds separate, and supports planning and local file export through 2031.
 
 [Combine estimates](https://auraofintelligence.github.io/p4a-membership/#finance/compare) rolls the three quick calculators into a 12-month exercise with two reference electorates, adjustable donation and merch activity, and CSV export. AEC electorate types and matched ABS population, area and Census figures provide context for the assumptions you choose.
 
@@ -94,6 +94,12 @@ The private pilot implementation in [wrangler.pilot.jsonc](wrangler.pilot.jsonc)
 4. Enable the pilot's `workers.dev` route once Access is set up. Verify signed-out protection and the signed-in workspace. The pilot database has a 1 MiB snapshot limit. Public member enrolment and live payments require their own setup. Reconcile an existing private deployment before creating any new database or Access application.
 
 See [Cloudflare Worker Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/) and [application audience tags](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/#get-your-aud-tag).
+
+## Working inside the Membership Centre
+
+All tools (`#tools`) groups the existing workspaces by purpose. A persistent return bar keeps Home and the tool catalogue within reach while scrolling. Opening a fictional role from the Webmaster catalogue retains its originating catalogue, search and place; ordinary same-page navigation preserves the public preview's current demo session. [Tool artwork](docs/ICON-SHEET.md) assigns distinct illustrations to meetings, duties, inbox, documents, newsletters, partnerships, office holders, Treasury, games and the different planning calculators.
+
+Open a working group at `#groups/<groupId>` to see its projects, permitted committee records and linked local charters together. Authorised creation actions preselect that group. These are the existing canonical records: a committee opens the same charter and project, with no duplicate planner. Local groups can organise independently; creating a committee proposal leaves offices vacant, and a charter remains a discussion draft. Each linked record still requires its own existing access permission. This source implementation and its deployment/acceptance status are tracked in the [master matrix](docs/ONBOARDING-GOVERNANCE-MATRIX.md).
 
 ## Separate applicant intake
 
