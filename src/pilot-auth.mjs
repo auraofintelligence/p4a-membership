@@ -1,6 +1,6 @@
 import { accessTokenFromRequest, verifyAccessToken } from './auth.mjs';
 
-import { scopedIdentity, legacyPersonAllowed } from './scoped-access.mjs';
+import { scopedIdentity, legacyPersonAllowed, markVerifiedPilotOwner } from './scoped-access.mjs';
 
 const organiserId = 'pilot-organiser';
 
@@ -43,7 +43,7 @@ export function resolvePilotActor(state, claims, env) {
   const scoped = scopedIdentity(state, claims);
   if (scoped.managed) return env.PILOT_SCOPED_ACCESS === 'enabled' ? scoped.actor : null;
   const legacy = legacyPilotIdentity(claims, env);
-  return legacy && legacyPersonAllowed(state, organiserId) ? pilotActorForRole(legacy.role,state) : null;
+  return legacy && legacyPersonAllowed(state, organiserId) ? markVerifiedPilotOwner(state,pilotActorForRole(legacy.role,state)) : null;
 }
 export async function getPilotRole(request, env) {
   return (await getPilotIdentity(request, env))?.role ?? null;
