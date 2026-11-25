@@ -145,8 +145,8 @@ function detail(d,tab,item,ro,actor){
   const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],['released','Released minutes']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
   return '<a href="#committee">My Committee directory</a>'+heading(c.name,'Working proposals only. No adopted rules, formal vote or external communications are enabled.')+nav+content;
 }
-function calendar(rows){
-  const escIcs=v=>String(v??'').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+export function privateCommitteeCalendar(rows){
+  const escIcs=v=>String(v??'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
   const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//P4A//Private working calendar//EN','CALSCALE:GREGORIAN'];
   for(const m of rows.filter(m=>m.status==='scheduled'||m.status==='open')){
@@ -154,7 +154,17 @@ function calendar(rows){
     lines.push('BEGIN:VEVENT','UID:'+escIcs(m.id)+'@p4a-workspace','DTSTAMP:'+stamp,'DTSTART:'+start,'SUMMARY:'+escIcs('Proposed: '+m.title),'LOCATION:'+escIcs(m.location),'CLASS:PRIVATE','STATUS:TENTATIVE','END:VEVENT');
   }
   lines.push('END:VCALENDAR','');
-  return lines.join('\r\n');
+  const encoder=new TextEncoder();
+  const fold=line=>{
+    let result='',segment='',bytes=0;
+    for(const ch of line){
+      const size=encoder.encode(ch).length;
+      if(bytes+size>75){result+=segment+'\r\n';segment=' ';bytes=1;}
+      segment+=ch;bytes+=size;
+    }
+    return result+segment;
+  };
+  return lines.map(fold).join('\r\n');
 }
 const pending=new Map();
 function payload(formEl){
@@ -175,7 +185,7 @@ export async function mountCommittee(root,{api,actor,readOnly,route,onSaved}){
   root.innerHTML=(ro?'<div class="callout"><strong>Fictional, read-only committee preview.</strong> No changes, downloads or printing from the demo.</div>':'')+(id?detail(d,tab,item,ro,actor):directory(d,ro));
   if(ro){root.querySelectorAll('[data-committee-calendar],[data-committee-print]').forEach(el=>el.remove());return;}
   root.querySelector('[data-committee-calendar]')?.addEventListener('click',()=>{
-    const blob=new Blob([calendar(d.meetings)],{type:'text/calendar;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='p4a-private-working-calendar.ics';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const blob=new Blob([privateCommitteeCalendar(d.meetings)],{type:'text/calendar;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='p4a-private-working-calendar.ics';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   root.querySelectorAll('[data-committee-print]').forEach(b=>b.addEventListener('click',()=>window.print()));
   for(const f of root.querySelectorAll('[data-committee-form]'))f.addEventListener('submit',async ev=>{
