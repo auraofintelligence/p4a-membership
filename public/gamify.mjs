@@ -11,7 +11,14 @@ const money = cents => new Intl.NumberFormat('en-AU', { style: 'currency', curre
 const hours = value => new Intl.NumberFormat('en-AU', { maximumFractionDigits: 2 }).format(Number(value || 0));
 const own = (record, state) => record.personId === state.actor?.id;
 const organiser = state => state.actor?.role === 'organiser';
-const independent = (record, state) => organiser(state) && !own(record, state) && record.createdBy !== state.actor.id;
+const scoped = state => state.actor?.access === 'scoped';
+const restrictedPilot = state => state.mode === 'pilot' && !scoped(state);
+const permission = (state,action,groupId) => Boolean(state.access?.grants?.some(g=>g.scope.kind==='group'&&g.scope.id===groupId&&g.permissions.includes(action)));
+const independent = (record,state,kind,operation) => {
+  const groupId=state.projects.find(p=>p.id===record.projectId)?.groupId;
+  const prefix=kind==='money'?'financial':'contribution';
+  return !own(record,state)&&record.createdBy!==state.actor.id&&(organiser(state)||permission(state,prefix+'.view',groupId)&&permission(state,prefix+'.'+operation,groupId));
+};
 const net = record => record.netCents ?? record.amountCents - (record.refundedCents ?? (record.refunds || []).reduce((sum, item) => sum + item.amountCents, 0));
 const getReceipt = (state, kind, id) => (kind === 'money' ? state.financialContributions || [] : state.contributions || []).find(item => item.id === id);
 const tone = status => status === 'verified' ? 'green' : status === 'pending' ? 'orange' : 'gray';
@@ -85,11 +92,12 @@ function receiptCard(record, kind, state, h) {
   const publicProject = state.projects.some(project => project.id === record.projectId && project.public === true) || (board?.options?.projects || []).some(project => project.id === record.projectId);
   const project = state.projects.find(item => item.id === record.projectId);
   const name = state.people.find(person => person.id === record.personId)?.name || (own(record, state) ? state.actor.name : 'Contributor');
-  const canReview = independent(record, state);
-  const canCorrect = own(record, state) || (isMoney && record.createdBy === state.actor.id);
-  const canRefund = isMoney && canReview && record.status === 'verified' && net(record) > 0;
+  const canReview = independent(record,state,kind,'review');
+  const canRevoke = independent(record,state,kind,'revoke');
+  const canCorrect = own(record,state) || (!scoped(state)&&isMoney&&record.createdBy===state.actor.id);
+  const canRefund = isMoney && independent(record,state,kind,'refund') && record.status === 'verified' && net(record) > 0;
   const amount = isMoney ? money(net(record)) : `${hours(record.hours)} h`;
-  return `<article class="gamify-receipt"><div class="gamify-receipt-head"><div><span class="gamify-receipt-kind">${isMoney ? e(categories[record.category] || record.category) : 'Voluntary time'} · ${dateText(record.date)}</span><h3>${e(project?.title || 'Project record')}</h3><p>${e(name)}</p></div><div class="gamify-receipt-amount"><strong>${amount}</strong>${tag(record.status, tone(record.status))}</div></div><p class="gamify-receipt-description">${e(record.description)}</p>${isMoney ? `<div class="gamify-receipt-reference"><span>Private reference</span><code>${e(record.reference)}</code>${record.refundedCents ? `<small>Original ${money(record.amountCents)} · Refunded ${money(record.refundedCents)}</small>` : ''}</div>` : ''}<div class="gamify-visibility"><span>${record.namedConsent ? 'Named recognition chosen' : record.publicConsent ? 'Aggregate only' : 'Private contribution'}</span>${record.namedConsent && record.publicConsent ? '<span>Aggregate sharing also chosen</span>' : ''}${!publicProject ? '<span>Project not publicly listed · excluded from Gamify boards</span>' : record.status !== 'verified' ? '<span>Not counted until independently verified</span>' : ''}</div><div class="button-row">${own(record, state) ? actionButton('Visibility choices', `gamify-${kind}-sharing`, record.id, 'secondary small') : ''}${record.status === 'pending' && canReview ? actionButton('Review receipt', `gamify-${kind}-review`, record.id, 'small') : ''}${canCorrect && !(isMoney && record.refundedCents) ? actionButton('Correct receipt', `gamify-${kind}-correct`, record.id, 'secondary small') : ''}${canRefund ? actionButton('Record a refund', 'gamify-money-refund', record.id, 'secondary small') : ''}${record.status === 'verified' && canReview ? actionButton('Revoke verification', `gamify-${kind}-revoke`, record.id, 'quiet small') : ''}</div>${historyView(record, h)}</article>`;
+  return `<article class="gamify-receipt"><div class="gamify-receipt-head"><div><span class="gamify-receipt-kind">${isMoney ? e(categories[record.category] || record.category) : 'Voluntary time'} · ${dateText(record.date)}</span><h3>${e(project?.title || 'Project record')}</h3><p>${e(name)}</p></div><div class="gamify-receipt-amount"><strong>${amount}</strong>${tag(record.status, tone(record.status))}</div></div><p class="gamify-receipt-description">${e(record.description)}</p>${isMoney ? `<div class="gamify-receipt-reference"><span>Private reference</span><code>${e(record.reference)}</code>${record.refundedCents ? `<small>Original ${money(record.amountCents)} · Refunded ${money(record.refundedCents)}</small>` : ''}</div>` : ''}<div class="gamify-visibility"><span>${record.namedConsent ? 'Named recognition chosen' : record.publicConsent ? 'Aggregate only' : 'Private contribution'}</span>${record.namedConsent && record.publicConsent ? '<span>Aggregate sharing also chosen</span>' : ''}${!publicProject ? '<span>Project not publicly listed · excluded from Gamify boards</span>' : record.status !== 'verified' ? '<span>Not counted until independently verified</span>' : ''}</div><div class="button-row">${own(record, state) ? actionButton('Visibility choices', `gamify-${kind}-sharing`, record.id, 'secondary small') : ''}${record.status === 'pending' && canReview ? actionButton('Review receipt', `gamify-${kind}-review`, record.id, 'small') : ''}${canCorrect && !(isMoney && record.refundedCents) ? actionButton('Correct receipt', `gamify-${kind}-correct`, record.id, 'secondary small') : ''}${canRefund ? actionButton('Record a refund', 'gamify-money-refund', record.id, 'secondary small') : ''}${record.status === 'verified' && canRevoke ? actionButton('Revoke verification', `gamify-${kind}-revoke`, record.id, 'quiet small') : ''}</div>${historyView(record, h)}</article>`;
 }
 
 function privateWorkspace(state, h) {
@@ -97,11 +105,11 @@ function privateWorkspace(state, h) {
   const moneyReceipts = state.financialContributions || [];
   const timeReceipts = state.contributions || [];
   const records = (privateKind === 'money' ? moneyReceipts : timeReceipts).filter(record => privateStatus === 'all' || record.status === privateStatus).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt)));
-  return `<section class="gamify-private" aria-labelledby="gamify-private-heading"><div class="section-heading"><div><span class="eyebrow">${organiser(state) ? 'Organiser workspace · restricted records' : 'Your private contribution workspace'}</span><h2 id="gamify-private-heading">${organiser(state) ? 'Receipts, review and recognition' : 'Choose what your contribution shares'}</h2></div><div class="button-row">${h.actionButton('Record money received', 'gamify-money-new', '', 'secondary')}${h.actionButton('Record voluntary time', 'log-hours', '', '')}</div></div><p class="gamify-private-intro">${state.mode === 'demo' ? 'These are fictional local review records. Recording a receipt does not collect or transfer money.' : 'Record keeping only. Online payments and crypto conversion are not connected.'} ${organiser(state) ? 'Another organiser must review receipts you created or contributed.' : 'Another person must verify a receipt before it can count.'}</p><div class="gamify-private-toolbar"><div class="gamify-tabs" role="group" aria-label="Receipt category">${h.actionButton(`Money (${moneyReceipts.length})`, 'gamify-kind', 'money', privateKind === 'money' ? '' : 'secondary', `aria-pressed="${privateKind === 'money'}"`)}${h.actionButton(`Voluntary time (${timeReceipts.length})`, 'gamify-kind', 'hours', privateKind === 'hours' ? '' : 'secondary', `aria-pressed="${privateKind === 'hours'}"`)}</div><label class="field" for="gamify-status">Receipt status<select id="gamify-status"><option value="all">All statuses</option>${['pending', 'verified', 'rejected', 'revoked'].map(status => `<option value="${status}" ${privateStatus === status ? 'selected' : ''}>${status[0].toUpperCase() + status.slice(1)}</option>`).join('')}</select></label></div><div class="gamify-receipts">${records.map(record => receiptCard(record, privateKind, state, h)).join('') || `<div class="gamify-empty-private"><h3>${privateStatus === 'all' ? 'A clear record starts here.' : 'No receipts with this status.'}</h3><p>${privateKind === 'money' ? 'Record a financial contribution and its private receipt reference for independent review.' : 'Record freely given human time and keep the project context with it.'}</p></div>`}</div></section>`;
+  return `<section class="gamify-private" aria-labelledby="gamify-private-heading"><div class="section-heading"><div><span class="eyebrow">${organiser(state) ? 'Organiser workspace · restricted records' : 'Your private contribution workspace'}</span><h2 id="gamify-private-heading">${organiser(state) ? 'Receipts, review and recognition' : 'Choose what your contribution shares'}</h2></div><div class="button-row">${!scoped(state)||eligibleFinancialProjects(state).length?h.actionButton('Record money received', 'gamify-money-new', '', 'secondary'):''}${!scoped(state)||state.projects.some(p=>permission(state,'contribution.log',p.groupId))?h.actionButton('Record voluntary time', 'log-hours', '', ''):''}</div></div><p class="gamify-private-intro">${state.mode === 'demo' ? 'These are fictional local review records. Recording a receipt does not collect or transfer money.' : 'Record keeping only. Online payments and crypto conversion are not connected.'} ${organiser(state) ? 'Another organiser must review receipts you created or contributed.' : 'Another person must verify a receipt before it can count.'}</p><div class="gamify-private-toolbar"><div class="gamify-tabs" role="group" aria-label="Receipt category">${h.actionButton(`Money (${moneyReceipts.length})`, 'gamify-kind', 'money', privateKind === 'money' ? '' : 'secondary', `aria-pressed="${privateKind === 'money'}"`)}${h.actionButton(`Voluntary time (${timeReceipts.length})`, 'gamify-kind', 'hours', privateKind === 'hours' ? '' : 'secondary', `aria-pressed="${privateKind === 'hours'}"`)}</div><label class="field" for="gamify-status">Receipt status<select id="gamify-status"><option value="all">All statuses</option>${['pending', 'verified', 'rejected', 'revoked'].map(status => `<option value="${status}" ${privateStatus === status ? 'selected' : ''}>${status[0].toUpperCase() + status.slice(1)}</option>`).join('')}</select></label></div><div class="gamify-receipts">${records.map(record => receiptCard(record, privateKind, state, h)).join('') || `<div class="gamify-empty-private"><h3>${privateStatus === 'all' ? 'A clear record starts here.' : 'No receipts with this status.'}</h3><p>${privateKind === 'money' ? 'Record a financial contribution and its private receipt reference for independent review.' : 'Record freely given human time and keep the project context with it.'}</p></div>`}</div></section>`;
 }
 
 export function gamifyView(state, h) {
-  if (state.mode === 'pilot') {
+  if (restrictedPilot(state)) {
     return `<section class="panel"><h2>Contribution reporting</h2><p class="muted">Payment collection and financial reporting are unavailable here. Voluntary contribution capture will open when Aura-assisted intake is ready.</p><div class="button-row subheading"><a class="button secondary" href="#hours">View voluntary contributions</a><a class="button quiet" href="#transparency">View restricted transparency</a></div></section>`;
   }
 
@@ -113,7 +121,7 @@ export function gamifyView(state, h) {
 }
 
 function eligibleFinancialProjects(state, record = null) {
-  return (state.projects || []).filter(project => organiser(state) || project.id === record?.projectId || state.groups.some(group => group.id === project.groupId && group.memberIds?.includes(state.actor?.id)));
+  return (state.projects || []).filter(project => (!scoped(state)||permission(state,'financial.log',project.groupId))&&(organiser(state) || project.id === record?.projectId || state.groups.some(group => group.id === project.groupId && group.memberIds?.includes(state.actor?.id))));
 }
 
 function receiptFields(record, state, h, { correcting = false } = {}) {
@@ -136,7 +144,7 @@ function sharingDialog(record, kind, state, h) {
 }
 
 export async function handleGamifyClick(action, id, state, h) {
-  if (state.mode === 'pilot' || !action.startsWith('gamify-')) return false;
+  if (restrictedPilot(state) || !action.startsWith('gamify-')) return false;
   if (action === 'gamify-method') {
     const method = document.querySelector('.gamify-method');
     if (method) {
@@ -191,7 +199,7 @@ function cents(value) {
 
 export async function handleGamifySubmit(form, state, h) {
   const name = form.dataset.form || '';
-  if (state.mode === 'pilot' || !name.startsWith('gamify-')) return false;
+  if (restrictedPilot(state) || !name.startsWith('gamify-')) return false;
   const fields = new FormData(form);
   const [, kind, operation] = name.split('-');
   const contributionId = form.dataset.id;
