@@ -1,5 +1,5 @@
 import { AppError } from './errors.mjs';
-import { accessRegistry, can, effectiveAccess } from './scoped-access.mjs';
+import { accessRegistry, can, effectiveAccess, isPilotOwner } from './scoped-access.mjs';
 
 const fail=(message='This committee operation is outside your authorised scope.',status=403)=>{throw new AppError(message,status);};
 const invalid=m=>fail(m,400), conflict=m=>fail(m,409);
@@ -200,8 +200,8 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     const amountCents=money(d.amountCents);if(!amountCents)invalid('Use a positive recorded expense.');
     const reference=text(d.reference,'external receipt reference',120);
     if(ops.expenses.some(x=>x.id!==d.id&&(x.reference.toLowerCase()===reference.toLowerCase()||x.history.some(h=>h.before?.reference?.toLowerCase()===reference.toLowerCase()))))conflict('This expense reference is already recorded.');
-    const payeeId=d.payeeId||null;if(payeeId&&!actorFor(s,payeeId))invalid('Choose an existing scoped participant or leave the payee unspecified.');
-    if(payeeId&&!perm(s,actorFor(s,payeeId),c,'committee.view',now))fail('Choose a participant from this committee.');
+    const payeeId=d.payeeId||null;const payee=payeeId===a.id&&isPilotOwner(s,a)?a:actorFor(s,payeeId);if(payeeId&&!payee)invalid('Choose an existing scoped participant or leave the payee unspecified.');
+    if(payeeId&&!perm(s,payee,c,'committee.view',now))fail('Choose a participant from this committee.');
     if(d.settled!==true)invalid('Confirm that this records an existing settled expense, not a payment request.');
     const values={date:day(d.date),amountCents,reference,description:text(d.description,'expense evidence description',500),payeeId,status:'pending',updatedBy:a.id,updatedAt:at};
     if(values.date>at.slice(0,10))invalid('Recorded expenses cannot be future-dated.');
