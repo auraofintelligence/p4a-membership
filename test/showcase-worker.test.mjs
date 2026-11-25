@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {webcrypto} from 'node:crypto';
+import showcase from '../src/showcase-worker.mjs';
+globalThis.crypto ??= webcrypto;
+
+test('isolated showcase authenticates its own audience and subject and never falls through to live data',async t=>{
+  const algorithm={name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'};
+  const keys=await crypto.subtle.generateKey(algorithm,true,['sign','verify']);
+  const jwk={...await crypto.subtle.exportKey('jwk',keys.publicKey),kid:'showcase-key',alg:'RS256',use:'sig'};
+  const origin='https://showcase.example.invalid',issuer='https://showcase-test.cloudflareaccess.com';
+  const env={SHOWCASE_MODE:'isolated',SHOWCASE_ORIGIN:origin,SHOWCASE_ACCESS_ISSUER:issuer,SHOWCASE_ACCESS_AUD:'showcase-only',SHOWCASE_SUBJECTS:'["invited-subject"]'};
+  const encode=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
+  const sign=async extra=>{
+    const payload={iss:issuer,aud:[env.SHOWCASE_ACCESS_AUD],sub:'invited-subject',type:'app',exp:Math.floor(Date.now()/1000)+300,...extra};
+    const unsigned=encode({alg:'RS256',kid:jwk.kid})+'.'+encode(payload);
+    const signature=await crypto.subtle.sign(algorithm.name,keys.privateKey,new TextEncoder().encode(unsigned));
+    return unsigned+'.'+Buffer.from(signature).toString('base64url');
+  };
+  const previous=globalThis.fetch;
+  globalThis.fetch=async(url,options)=>{assert.equal(url,issuer+'/cdn-cgi/access/certs');assert.equal(options.redirect,'manual');return Response.json({keys:[jwk]});};
+  t.after(()=>{globalThis.fetch=previous;});
+  const call=(path,token,options={})=>showcase.fetch(new Request((options.origin||origin)+path,{method:options.method||'GET',headers:{...(token?{'Cf-Access-Jwt-Assertion':token}:{}),...(options.cookie?{Cookie:options.cookie}:{})}}),options.env||env);
+  const valid=await sign({});
+  assert.equal((await call('/api/access')).status,401);
+  assert.equal((await call('/api/access',await sign({sub:'uninvited'}))).status,401);
+  assert.equal((await call('/api/access',await sign({aud:['production']}))).status,401);
+  assert.equal((await call('/api/access',await sign({aud:['production','showcase-only']}))).status,401);
+  assert.equal((await call('/api/access',await sign({exp:1}))).status,401);
+  assert.equal((await call('/api/access',valid,{origin:'https://different.example.invalid'})).status,503);
+  assert.equal((await call('/api/access',valid,{env:{...env,PILOT_DB:{prepare(){assert.fail('must not read production');}}}})).status,503);
+  assert.equal((await call('/api/access',valid,{env:{...env,ACCESS_AUD:'production'}})).status,503);
+  const live=await sign({aud:['production']});
+  assert.equal((await call('/api/access',live,{cookie:'CF_Authorization='+valid})).status,401,'invalid real assertion never falls through to demo cookie');
+  const desk=await (await call('/api/access',valid)).json();
+  assert.equal(desk.readOnly,true);assert.equal(desk.fictional,true);
+  assert.equal(JSON.stringify(desk).includes('subject-chair'),false);
+  const preview=await (await call('/api/access/preview?role=treasurer',valid)).json();
+  assert.equal(preview.readOnly,true);
+  assert.deepEqual(preview.financialContributions.map(r=>r.id),['receipt-example']);
+  assert.equal((await call('/api/access/preview?role=organiser',valid)).status,400);
+  for(const path of ['/api/export','/api/applications','/api/accounts','/api/demo/session','/api/invite'])assert.equal((await call(path,valid)).status,403);
+  for(const path of ['/api/commands','/api/access','/api/access/preview'])assert.equal((await call(path,valid,{method:'POST'})).status,403);
+  assert.equal((await call('/api/bootstrap',valid)).headers.get('cache-control'),'no-store');
+  assert.equal((await call('/api/bootstrap',valid,{env:{...env,SHOWCASE_SUBJECTS:'[]'}})).status,401);
+});
