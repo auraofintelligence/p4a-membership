@@ -33,7 +33,7 @@ export function requireSameOrigin(request) {
   const fetchSite = request.headers.get('sec-fetch-site');
   if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) throw new AppError('Cross-site changes are not accepted.', 403);
 }
-export async function api(request, { store, getActor, mode, workspace, demoSession }) {
+export async function api(request, { store, getActor, mode, workspace, demoSession, applicationsAvailable = false }) {
   try {
     const url = new URL(request.url);
     if (request.method === 'POST') requireSameOrigin(request);
@@ -47,7 +47,11 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
     if (url.pathname === '/api/gamify' && request.method === 'GET') return json(gamifyProjection(state, { period: url.searchParams.get('period') ?? 'all', groupId: url.searchParams.get('groupId') ?? '', projectId: url.searchParams.get('projectId') ?? '' }, mode));
     if (url.pathname === '/api/public' && request.method === 'GET') return json(publicProjection(state, mode));
     const actor = await getActor(request, state);
-    if (url.pathname === '/api/bootstrap' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace));
+    if (url.pathname === '/api/bootstrap' && request.method === 'GET') {
+      const projection=authorisedProjection(state,actor,mode,workspace);
+      if(mode==='pilot')projection.applicationsAvailable=Boolean(actor&&actor.role==='organiser'&&actor.access!=='scoped'&&applicationsAvailable);
+      return json(projection);
+    }
     if (!actor) return json({ error: 'Sign in before opening private workspace records.' }, 401);
     if (url.pathname === '/api/export' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
     // Existing verified private pilot organiser can inspect fictional examples
