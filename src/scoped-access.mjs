@@ -22,6 +22,9 @@ const grantRules = Object.freeze({
   webmaster: { system: ['access.view','access.reserve','access.revoke'] },
 });
 export const officeRoles = Object.freeze(Object.keys(grantRules));
+const identityKey = row => JSON.stringify([row.issuer,row.subject]);
+const validIdentity = row => row && typeof row.subject === 'string' && row.subject.length > 0 && row.subject.length <= 512 &&
+  typeof row.issuer === 'string' && /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(row.issuer);
 const unique = (rows, field) => new Set(rows.map(row => row[field])).size === rows.length;
 const scopeKey = scope => scope.kind + ':' + scope.id;
 function validScope(state, scope) {
@@ -50,11 +53,10 @@ export function accessRegistry(state) {
   if (!registry || registry.version !== 1 || !['accounts','grants','reservations','audit','receipts'].every(name => Array.isArray(registry[name]))) fail('The access register is invalid.', 503);
   if (!registry.accounts.every(row => row && key(row.id) && key(row.personId) &&
       state.people.filter(person => person.id === row.personId).length === 1 &&
-      typeof row.subject === 'string' && row.subject.length > 0 && row.subject.length <= 512 &&
-      typeof row.issuer === 'string' && /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(row.issuer) &&
+      Array.isArray(row.identities) && row.identities.length > 0 && row.identities.every(validIdentity) &&
       ['active','disabled'].includes(row.status)) ||
       !unique(registry.accounts,'id') || !unique(registry.accounts,'personId') ||
-      new Set(registry.accounts.map(row => JSON.stringify([row.issuer,row.subject]))).size !== registry.accounts.length ||
+      new Set(registry.accounts.flatMap(row => row.identities.map(identityKey))).size !== registry.accounts.reduce((count,row) => count + row.identities.length,0) ||
       !registry.grants.every(grant => validGrant(state, registry, grant)) || !unique(registry.grants,'id') ||
       !registry.reservations.every(row => row && key(row.id) && officeRoles.includes(row.role) && validScope(state,row.scope) &&
         Object.hasOwn(grantRules[row.role],row.scope.kind) && ['reserved','cancelled'].includes(row.status) && !row.accountId) ||
@@ -66,7 +68,7 @@ export function accessRegistry(state) {
 export function scopedIdentity(state, claims) {
   const registry = accessRegistry(state);
   if (!registry) return { managed: false, actor: null };
-  const account = registry.accounts.find(row => row.subject === claims?.sub && row.issuer === claims?.iss);
+  const account = registry.accounts.find(row => row.identities.some(identity => identity.subject === claims?.sub && identity.issuer === claims?.iss));
   if (!account) return { managed: false, actor: null };
   if (account.status !== 'active' || claims.type !== 'app') return { managed: true, actor: null };
   const person = state.people.find(row => row.id === account.personId);
