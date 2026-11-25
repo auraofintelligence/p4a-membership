@@ -11,8 +11,8 @@ const area=(title,name,value='',max=2000,required=false)=>'<label class="field">
 const select=(title,name,opts,required=true)=>'<label class="field">'+esc(title)+'<select name="'+esc(name)+'"'+(required?' required':'')+'>'+opts.join('')+'</select></label>';
 const hidden=(name,value)=>'<input type="hidden" name="'+esc(name)+'" value="'+esc(value)+'">';
 const form=(type,body,button,meta={})=>'<form data-committee-form="'+esc(type)+'" class="subheading">'+Object.entries(meta).map(([k,v])=>hidden(k,v)).join('')+body+'<div class="form-error" role="alert"></div><button type="submit" class="button">'+esc(button)+'</button></form>';
-const permitted=(d,p,ro)=>!ro&&d.permissions[p]===true;
-const heading=(title,copy)=>'<div class="page-heading"><div><span class="eyebrow">Scoped committee workspace</span><h1>'+esc(title)+'</h1><p>'+esc(copy)+'</p></div></div>';
+const permitted=(d,p,ro)=>d.permissions[p]===true;
+const heading=(title,copy)=>'<div class="page-heading"><div><span class="eyebrow">Organising committee</span><h1>'+esc(title)+'</h1><p>'+esc(copy)+'</p></div></div>';
 function name(d,id){return d.officePeople.find(p=>p.id===id)?.name||id||'Not assigned';}
 function dateText(m){return esc(m.date)+' · '+esc(m.time)+' AEST';}
 function meetingList(d,ro){
@@ -77,7 +77,7 @@ function planning(d,m,ro){
       '<label class="field">Chosen days relative to meeting (negative = before)<input type="number" name="offset.'+esc(job.key)+'" min="-365" max="365" step="1" required value="'+esc(previous?.offsetDays??'')+'"></label></fieldset>';
   }).join('');
   return card(m.kind==='agm'?'Annual meeting working checklist':'Formation working checklist',
-    '<p>No statutory or adopted deadline is assumed. Record the source or proposed basis for your chosen dates. Draft notices and nominations remain internal.</p>'+summary+
+    '<p>Choose dates and record why they matter. Notices and nominations stay in your working plan.</p>'+summary+
     (can&&d.officePeople.length?form('meeting.plan',area('Proposed date basis and source reference','basis',plan?.basis||'',1000,true)+fields,'Save checklist and linked duties',{meetingId:m.id,version:plan?.version||0}):'')+
     (plan?.history?.length?'<details><summary>Earlier planning bases</summary>'+plan.history.map(h=>'<p>Version '+h.version+' · '+esc(h.basis)+' · '+esc(h.actorId)+'</p>').join('')+'</details>':''));
 }
@@ -141,7 +141,7 @@ function offices(d,ro,actor){
     '<fieldset><legend>Existing accessible documents (no new access granted)</legend>'+p.library.map(doc=>'<label class="check-field"><input type="checkbox" name="documentIds" value="'+esc(doc.id)+'"> '+esc(doc.title)+'</label>').join('')+'</fieldset>';
   return card('Prospective office register',seatRows+'<p>Office terms and grants are separate records. A proposal does not confer office, change grants or transfer duties.</p>')+
     card('Handover register',rows||'<p>No handover proposals in your scope.</p>')+
-    (can?card('Prepare a handover',form('office.plan',fields,'Save proposed handover')+'<p>Actual appointments and technical transitions are held. The successor must already have a separately authorised grant; a handover cannot create it.</p>'):'');
+    (can?card('Prepare a handover',form('office.plan',fields,'Save proposed handover')+'<p>Actual appointments and technical transitions are held. Choose someone who already has access to the role.</p>'):'');
 }
 function budgetFields(r={}){
   return field('Budget title','title',r.title||'')+field('Period start','start',r.start||'','date')+field('Period end','end',r.end||'','date')+
@@ -206,8 +206,8 @@ function home(d,ro){
 }
 function directory(d,ro){
   const entries=d.committees.map(c=>'<article class="panel"><h2><a href="'+href(c.id,'overview')+'">'+esc(c.name)+'</a></h2><p>'+esc(label(c.kind))+' · '+status(c.status)+' · '+(c.working?'Working desk':'Limited view')+'</p></article>').join('');
-  return heading('My Committee','Committee access requires an explicit scope grant; ordinary working-group participation is not an office.')+
-    (entries||'<p>No committees in your current authorised view.</p>')+
+  return heading('My committees','Find a committee or plan one around an existing working group.')+
+    (entries||'<p>No committees yet. Start with a <a href="#groups">working group</a>, then plan a committee around it.</p>')+
     (!ro&&d.proposalGroups.length?card('Propose a committee',form('committee.propose',field('Proposed name','name')+select('Scope','kind',['local','state','territory','national'].map(v=>option(v,label(v))))+select('Connected working group','groupId',d.proposalGroups.map(g=>option(g.id,g.name))),'Save proposal')+'<p>This creates a draft with vacant offices. It does not establish a committee or grant anyone new access.</p>'):'');
 }
 
@@ -253,7 +253,7 @@ function detail(d,tab,item,ro,actor,document){
   else if(tab==='released')content=released(d);
   else content=home(d,ro);
   const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['offices','Office transitions'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],...(d.operations?.finance?[['finance','Treasurer desk']]:[]),...(d.permissions['committee.library.view']?[['library','Document library']]:[]),...((d.permissions['committee.edition.contribute']||d.permissions['committee.edition.edit']||d.permissions['committee.edition.review'])?[['editions','Internal editions']]:[]),...((d.permissions['committee.partnership.propose']||d.permissions['committee.partnership.review'])?[['partnerships','Partnership proposals']]:[]),['released','Released records']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
-  return '<a href="#committee">My Committee directory</a>'+heading(c.name,'Working proposals only. No adopted rules, formal vote or external communications are enabled.')+nav+content;
+  return '<a href="#committee">My Committee directory</a>'+heading(c.name,'Plan your work, share responsibilities and keep track of what happens next.')+nav+content;
 }
 export function privateCommitteeCalendar(rows){
   const escIcs=v=>String(v??'').replace(/\\/g,'\\\\').replace(/\r\n|\r|\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
@@ -302,8 +302,8 @@ export async function mountCommittee(root,{api,actor,readOnly,route,onSaved}){
   if(id&&tab==='library'&&item){const [docId,version]=decodeURIComponent(item).split('~');document=await api('/api/committee/document?committee='+encodeURIComponent(id)+'&id='+encodeURIComponent(docId)+'&version='+encodeURIComponent(version));}
   if(location.hash.slice(1)!==route)return;
   const ro=readOnly||d.readOnly||d.fictional;
-  root.innerHTML=(ro?'<div class="callout"><strong>Fictional, read-only committee preview.</strong> No changes, downloads or printing from the demo.</div>':'')+(id?detail(d,tab,item,ro,actor,document):directory(d,ro));
-  if(ro){root.querySelectorAll('[data-committee-calendar],[data-committee-print]').forEach(el=>el.remove());return;}
+  root.innerHTML=(ro?'<div class="callout"><strong>Demo committee</strong> Explore the tools. Example records cannot be changed.</div>':'')+(id?detail(d,tab,item,ro,actor,document):directory(d,ro));
+  if(ro){root.querySelectorAll('[data-committee-calendar],[data-committee-print]').forEach(el=>el.remove());root.querySelectorAll('form').forEach(form=>{form.addEventListener('submit',event=>event.preventDefault());form.querySelectorAll('input,select,textarea,button').forEach(control=>control.disabled=true);});return;}
   root.querySelector('[data-committee-document-download]')?.addEventListener('click',()=>{
     if(!document)return;const blob=new Blob([document.body],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=window.document.createElement('a');
     a.href=url;a.download='p4a-working-document-v'+document.version+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
