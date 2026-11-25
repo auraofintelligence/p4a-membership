@@ -90,7 +90,7 @@ let electorateFinance;
 async function api(path, options={}) {
   if(rolePreview){
     if((options.method||'GET')!=='GET'||options.body)throw new Error('This fictional role view is read-only.');
-    const requested=new URL(path,location.origin), views={'/api/bootstrap':'workspace','/api/public':'public','/api/gamify':'gamify','/api/committee':'committee'};
+    const requested=new URL(path,location.origin), views={'/api/bootstrap':'workspace','/api/public':'public','/api/gamify':'gamify','/api/committee':'committee','/api/committee/document':'committee-document'};
     const view=views[requested.pathname];
     if(!view||requested.origin!==location.origin)throw new Error('This route is unavailable in the fictional role view.');
     const params=new URLSearchParams(requested.search);params.set('role',rolePreview);params.set('view',view);path='/api/access/preview?'+params;
