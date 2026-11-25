@@ -35,7 +35,7 @@ export function communicationsProjection(s,g,c,a,n){
  const r=communicationsRegister(g),working=allowed(s,a,c,'committee.view',n);
  return {editions:working&&(editor(s,a,c,n)||reviewer(s,a,c,n)||allowed(s,a,c,'committee.edition.contribute',n))?r.editions.filter(e=>e.committeeId===c.id).map(e=>editionView(s,a,c,e,n)):[],
  released:allowed(s,a,c,'committee.edition.released',n)?r.editions.filter(e=>e.committeeId===c.id&&e.release?.active).map(e=>({id:e.id,month:e.month,title:e.release.title,text:e.release.text,version:e.release.version,fictional:true})):[],
- partnerships:working&&(allowed(s,a,c,'committee.partnership.propose',n)||allowed(s,a,c,'committee.partnership.review',n))?r.partnerships.filter(e=>e.committeeId===c.id).map(e=>({...structuredClone(e),effectiveStatus:e.status==='accepted-fictional'&&e.reviewDate<n.toISOString().slice(0,10)?'review-due':e.status})):[]};
+ partnerships:working&&(allowed(s,a,c,'committee.partnership.propose',n)||allowed(s,a,c,'committee.partnership.review',n))?r.partnerships.filter(e=>e.committeeId===c.id).map(e=>{const copy=structuredClone(e);if(copy.projectId&&!s.projects.some(p=>p.id===copy.projectId&&can(s,a,'project.view','group',p.groupId,n)))copy.projectId=null;return {...copy,effectiveStatus:e.status==='accepted-fictional'&&e.reviewDate<n.toISOString().slice(0,10)?'review-due':e.status};}):[]};
 }
 function motionFor(g,c,d,p){
  const m=g.meetings.find(x=>x.id===d.meetingId&&x.committeeId===c.id);
