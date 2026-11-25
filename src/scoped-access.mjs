@@ -12,9 +12,9 @@ const constitutionBase = ['constitution.view','constitution.propose','constituti
 const grantRules = Object.freeze({
   member: { group: groupBase, constitution: constitutionBase },
   committee: { group: groupOffice, constitution: constitutionBase },
-  chair: { group: [...groupOffice,'project.priority','project.status'], constitution: constitutionBase },
+  chair: { group: [...groupOffice,'project.priority','project.status','scope.delegate'], constitution: [...constitutionBase,'scope.delegate'] },
   deputy: { group: groupOffice, constitution: constitutionBase },
-  secretary: { group: groupOffice, constitution: [...constitutionBase,'constitution.review'] },
+  secretary: { group: [...groupOffice,'scope.delegate'], constitution: [...constitutionBase,'constitution.review','scope.delegate'] },
   'assistant-secretary': { group: groupOffice, constitution: constitutionBase },
   treasurer: { group: ['group.view','project.view','financial.view','financial.log','financial.review','financial.refund','financial.revoke','contribution.view','contribution.review','contribution.revoke'] },
   reviewer: { group: ['group.view','project.view','contribution.view','contribution.review','contribution.revoke'], constitution: [...constitutionBase,'constitution.review'] },
@@ -45,7 +45,15 @@ function validGrant(state, registry, grant) {
     Array.isArray(grant.permissions) && grant.permissions.length > 0 && new Set(grant.permissions).size === grant.permissions.length &&
     grant.permissions.every(permission => allowed.includes(permission)) &&
     ['active','revoked'].includes(grant.status) && instant(grant.startsAt) && instant(grant.endsAt) &&
-    grant.startsAt < grant.endsAt && key(grant.authorityRef) && !grant.delegatedFrom);
+    grant.startsAt < grant.endsAt && key(grant.authorityRef) && (grant.delegatedFrom === undefined || key(grant.delegatedFrom)));
+}
+function validDelegation(registry, grant) {
+  if (!grant.delegatedFrom) return true;
+  const parent = registry.grants.find(row => row.id === grant.delegatedFrom);
+  return Boolean(parent && !parent.delegatedFrom && parent.accountId !== grant.accountId &&
+    scopeKey(parent.scope) === scopeKey(grant.scope) && parent.permissions.includes('scope.delegate') &&
+    !grant.permissions.includes('scope.delegate') && grant.permissions.every(action => parent.permissions.includes(action)) &&
+    parent.startsAt <= grant.startsAt && grant.endsAt <= parent.endsAt);
 }
 export function accessRegistry(state) {
   if (!Object.hasOwn(state, 'accessControl')) return null;
@@ -53,11 +61,11 @@ export function accessRegistry(state) {
   if (!registry || registry.version !== 1 || !['accounts','grants','reservations','audit','receipts'].every(name => Array.isArray(registry[name]))) fail('The access register is invalid.', 503);
   if (!registry.accounts.every(row => row && key(row.id) && key(row.personId) &&
       state.people.filter(person => person.id === row.personId).length === 1 &&
-      Array.isArray(row.identities) && row.identities.length > 0 && row.identities.every(validIdentity) &&
+      Array.isArray(row.identities) && row.identities.length > 0 && row.identities.every(identity => validIdentity(identity) && !state.people.some(person => person.id !== row.personId && person.authSubject === identity.subject)) &&
       ['active','disabled'].includes(row.status)) ||
       !unique(registry.accounts,'id') || !unique(registry.accounts,'personId') ||
       new Set(registry.accounts.flatMap(row => row.identities.map(identityKey))).size !== registry.accounts.reduce((count,row) => count + row.identities.length,0) ||
-      !registry.grants.every(grant => validGrant(state, registry, grant)) || !unique(registry.grants,'id') ||
+      !registry.grants.every(grant => validGrant(state, registry, grant)) || !unique(registry.grants,'id') || !registry.grants.every(grant=>validDelegation(registry,grant)) ||
       !registry.reservations.every(row => row && key(row.id) && officeRoles.includes(row.role) && validScope(state,row.scope) &&
         Object.hasOwn(grantRules[row.role],row.scope.kind) && ['reserved','cancelled'].includes(row.status) && !row.accountId) ||
       !unique(registry.reservations,'id')) fail('The access register is invalid.', 503);
@@ -84,7 +92,12 @@ function grantsFor(state, actor, now = new Date()) {
   const registry = accessRegistry(state);
   if (!registry || actor?.access !== 'scoped') return [];
   const account = registry.accounts.find(row => row.id === actor.accountId && row.personId === actor.id && row.status === 'active');
-  return account ? registry.grants.filter(grant => grant.accountId === account.id && active(grant, now.getTime())) : [];
+  return account ? registry.grants.filter(grant => {
+    if (grant.accountId !== account.id || !active(grant,now.getTime())) return false;
+    if (!grant.delegatedFrom) return true;
+    const parent = registry.grants.find(row => row.id === grant.delegatedFrom);
+    return active(parent,now.getTime()) && registry.accounts.some(row=>row.id===parent.accountId&&row.status==='active');
+  }) : [];
 }
 export function can(state, actor, action, kind, id, now = new Date()) {
   return grantsFor(state, actor, now).some(grant => grant.scope.kind === kind && grant.scope.id === id && grant.permissions.includes(action));
@@ -178,8 +191,10 @@ export function accessOverview(state, actor, now = new Date()) {
   // Metadata only; never expose sign-in subjects, credentials or raw records.
   return {
     revision: state.revision,
+    currentAccountId: actor.accountId,
+    capabilities: { reserve:can(state,actor,'access.reserve','system','p4a',now), revoke:can(state,actor,'access.revoke','system','p4a',now) },
     accounts: registry.accounts.map(({id,personId,status}) => ({id,personId,status})),
-    grants: registry.grants.map(({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef}) => ({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef})),
+    grants: registry.grants.map(({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom}) => ({id,accountId,role,scope,permissions,startsAt,endsAt,status,authorityRef,delegatedFrom})),
     reservations: registry.reservations.map(({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt}) => ({id,role,scope,status,createdBy,createdAt,cancelledBy,cancelledAt})),
     audit: registry.audit.slice(-100).map(({id,actorId,type,targetId,at,reason}) => ({id,actorId,type,targetId,at,reason})),
     scopes: { groups: state.groups.map(({id,name}) => ({id,name})), constitutions: state.constitutions.map(({id,title}) => ({id,title})), system:[{id:'p4a',name:'Technical workspace'}] },
