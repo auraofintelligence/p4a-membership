@@ -19,7 +19,9 @@ These are separately maintained projects. Public information and participation d
 - [Redlands Civic Lab](https://auraofintelligence.github.io/redlands-mayoral-campaign/): local civic simulation, public questions, project research and collaboration. Its repository retains the earlier mayoral campaign name; it is not an active candidacy. Its Explore P4A pathway is an additional public doorway to the membership guide.
 - [Strange But True](https://auraofintelligence.github.io/strange-but-true/): independent business, creative and community-project doorway on Minjerribah, already represented in Local nodes. Its Community Ledger provides a contextual P4A connection.
 
-The onboarding matrix covers all five sites. Public guide links are optional; neither a business enquiry nor civic collaboration constitutes membership. No personal records, business customer information or private campaign workspace data are transferred between sites.
+The wider P4A family also includes [P4A Oceania](https://auraofintelligence.github.io/p4a-oceania-cinema/), a regional civic research lab, and [Native Nations of the World](https://auraofintelligence.github.io/p4a-native-nations-cinema/), with nation-controlled data sovereignty and independent self-onboarding. Their scope and authority are distinct from Australian political membership; nation-led onboarding is not a membership funnel.
+
+The onboarding matrix covers all seven sites. Public guide links are optional; neither a business enquiry nor civic collaboration constitutes membership. No personal records, business customer information or private campaign workspace data are transferred between sites.
 
 ## Development and acceptance matrix
 
