@@ -1,6 +1,7 @@
 import { AppError } from './errors.mjs';
 import { accessRegistry, can, effectiveAccess } from './scoped-access.mjs';
 import { operationRegister, operationPermissions, operationViewPermissions, operationsProjection, applyCommitteeOperation, libraryDocument } from './committee-operations.mjs';
+import { communicationsRegister, communicationPermissions, communicationViewPermissions, communicationsProjection, applyCommunication } from './committee-communications.mjs';
 
 const fail=(message='This committee action is outside your authorised scope.',status=403)=>{throw new AppError(message,status)};
 const invalid=message=>fail(message,400);
@@ -62,6 +63,7 @@ export function governanceRegister(state){
     !g.actions.every(row=>byId(g.committees,row.committeeId)&&(!row.meetingId||byId(g.meetings,row.meetingId)?.committeeId===row.committeeId))||
     !g.notices.every(row=>byId(g.committees,row.committeeId)))fail('The committee register is invalid.',503);
   operationRegister(g);
+  communicationsRegister(g);
   return g;
 }
 const perm=(s,a,action,c,now)=>can(s,a,action,'committee',c.id,now);
@@ -138,7 +140,7 @@ export function committeeDirectory(state,actor,now=new Date()){
   if(actor?.access!=='scoped')return {committees:[],proposalGroups:[]};
   const g=governanceRegister(state);
   const proposalGroups=state.groups.filter(group=>can(state,actor,'committee.propose','group',group.id,now)).map(({id,name})=>({id,name}));
-  const committees=g.committees.filter(c=>isWorking(state,actor,c,now)||perm(state,actor,'committee.minutes.released',c,now)||perm(state,actor,'committee.library.released',c,now)||(c.status==='proposed'&&c.createdBy===actor.id&&proposalGroups.some(group=>group.id===c.groupId))).map(c=>({id:c.id,name:c.name,kind:c.kind,status:c.status,working:isWorking(state,actor,c,now)}));
+  const committees=g.committees.filter(c=>isWorking(state,actor,c,now)||perm(state,actor,'committee.minutes.released',c,now)||perm(state,actor,'committee.library.released',c,now)||perm(state,actor,'committee.edition.released',c,now)||(c.status==='proposed'&&c.createdBy===actor.id&&proposalGroups.some(group=>group.id===c.groupId))).map(c=>({id:c.id,name:c.name,kind:c.kind,status:c.status,working:isWorking(state,actor,c,now)}));
   return {committees,proposalGroups};
 }
 export function committeeProjection(state,actor,committeeId,now=new Date(),mode='live'){
@@ -154,11 +156,12 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
     permissions:{},meetings:[],actions:[],notices:[],releasedMinutes:members||working?released:[],officePeople:[],projects:[],constitutions:[],
     fictional:mode==='showcase'||rehearsalMode(mode),formalDecisionsEnabled:false};
   base.operations=operationsProjection(state,g,c,actor,now,mode);
+  base.communications=communicationsProjection(state,g,c,actor,now);
   if(!working){
     if(c.status==='proposed'&&c.createdBy===actor.id&&directory.proposalGroups.some(g=>g.id===c.groupId))base.proposedOffices=c.offices.map(({role,status})=>({role,status}));
     return base;
   }
-  for(const action of ['committee.meeting.manage','committee.attendance','committee.motion.write','committee.minutes.write','committee.minutes.review','committee.task.assign','committee.task.own','committee.notice.read','committee.notice.write',...operationViewPermissions])base.permissions[action]=perm(state,actor,action,c,now);
+  for(const action of ['committee.meeting.manage','committee.attendance','committee.motion.write','committee.minutes.write','committee.minutes.review','committee.task.assign','committee.task.own','committee.notice.read','committee.notice.write',...operationViewPermissions,...communicationViewPermissions])base.permissions[action]=perm(state,actor,action,c,now);
   base.committee={...base.committee,offices:c.offices.map(o=>({...structuredClone(o),effectiveStatus:o.term&&Date.parse(o.term.endsAt)<=now.getTime()?'expired':o.status})),createdBy:c.createdBy,createdAt:c.createdAt};
   base.officePeople=officePeople(state,c,now);
   base.planningTemplates=structuredClone(planningTemplates);
@@ -244,12 +247,12 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
   if(type==='committee.propose'){
     if(!can(state,actor,'committee.propose','group',data.groupId,now))fail();
   }else{
-    c0=byId(g0.committees,data.committeeId);permission=meetingOps[type]||operationPermissions[type];
+    c0=byId(g0.committees,data.committeeId);permission=meetingOps[type]||operationPermissions[type]||communicationPermissions[type];
     if(!c0||!permission)fail();
     requirePerm(state,actor,permission,c0,now);
     if(!isWorking(state,actor,c0,now))fail();
   }
-  if(['motion.open-ballot','motion.vote','motion.tally','motion.defer','minutes.release','minutes.withdraw-release','office.execute','library.release'].includes(type)&&!rehearsalMode(mode))fail('Formal decisions and release are not enabled.');
+  if(['motion.open-ballot','motion.vote','motion.tally','motion.defer','minutes.release','minutes.withdraw-release','office.execute','library.release','edition.release','edition.withdraw','partnership.authorise','partnership.accept','partnership.revoke'].includes(type)&&!rehearsalMode(mode))fail('Formal decisions and release are not enabled.');
   // Check current scope and mode before allowing a successful idempotent replay.
   const fingerprint=JSON.stringify({type,data});
   const prev=g0.receipts.find(r=>r.id===command.id);
@@ -264,6 +267,8 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
     if(g.committees.some(row=>row.groupId===data.groupId&&row.name.toLowerCase()===name.toLowerCase()))conflict('A proposal with this name already exists.');
     targetId=crypto.randomUUID();
     g.committees.push({id:targetId,name,kind,groupId:data.groupId,status:'proposed',offices:roles.map(role=>({role,status:'vacant',personId:null,term:null,authorityRef:null})),createdBy:actor.id,createdAt:at});
+  }else if(communicationPermissions[type]){
+    targetId=applyCommunication(next,g,c,actor,type,data,now,mode);
   }else if(operationPermissions[type]){
     targetId=applyCommitteeOperation(next,g,c,actor,type,data,now,mode,{notice});
   }else if(type==='meeting.schedule'){
@@ -350,7 +355,9 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
       const draft=data.constitutionId?scopeDraft(next,actor,data.constitutionId,now):null;
       const handover=data.officeHandoverId?operationRegister(g).handovers.find(h=>h.id===data.officeHandoverId&&h.committeeId===c.id&&h.status==='reviewed'):null;
       if(data.officeHandoverId&&(!handover||!perm(next,actor,'committee.office.review',c,now)))fail('Choose a reviewed handover in this committee.');
-      const motion={id:crypto.randomUUID(),text:txt(data.text,'proposed wording',2000),authorId:actor.id,version:1,history:[],projectId,constitutionId:draft?.id||null,constitutionVersion:draft?.version||null,officeHandoverId:handover?.id||null,officeHandoverVersion:handover?.version||null,ballot:null,status:'proposed'};
+      const partnership=data.partnershipId?communicationsRegister(g).partnerships.find(p=>p.id===data.partnershipId&&p.committeeId===c.id&&p.status==='reviewed'):null;
+      if(data.partnershipId&&(!partnership||!perm(next,actor,'committee.partnership.review',c,now)))fail('Choose a reviewed partnership proposal in this committee.');
+      const motion={id:crypto.randomUUID(),text:txt(data.text,'proposed wording',2000),authorId:actor.id,version:1,history:[],projectId,constitutionId:draft?.id||null,constitutionVersion:draft?.version||null,officeHandoverId:handover?.id||null,officeHandoverVersion:handover?.version||null,partnershipId:partnership?.id||null,partnershipVersion:partnership?.version||null,ballot:null,status:'proposed'};
       item.motions.push(motion);targetId=motion.id;stamp(m,actor,at,type,{motionId:motion.id});
     }else if(type==='motion.amend'){
       mutableMeeting(m);const motion=targetMotion(m,data.motionId);
