@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir, copyFile, readdir, lstat, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { publicOnboardingNavigation } from './public-onboarding-links.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
@@ -57,8 +58,11 @@ export function applicationPreviewHtml(contents, page) {
     if (buttons.length !== 1 || !/\sdisabled(?:\s|>)/.test(buttons[0]) || /<(?:input|select|textarea)\b[^>]*\bname\s*=|<input\b[^>]*\btype\s*=\s*["'](?:submit|image)["']/i.test(contents)) {
       throw new Error('Application preview contains an unreviewed submission control.');
     }
-  } else if (/<(?:form|input|select|textarea|button)\b/i.test(contents)) {
-    throw new Error('Application guide must remain a read-only page.');
+  } else {
+    if (/<(?:form|input|select|textarea|button)\b/i.test(contents)) throw new Error('Application guide must remain a read-only page.');
+    contents = replaceOnce(contents, /<div class="guide-layout">/g, '<div class="guide-layout">\n      ' + publicOnboardingNavigation(), 'public participation pathways');
+    contents = replaceOnce(contents, /<a href="\.\/application\.html">Apply<\/a>/g, '<a href="./application.html">Application preview</a>', 'preview navigation label');
+    contents = replaceOnce(contents, /Membership application <span aria-hidden="true">→<\/span>/g, 'Application preview <span aria-hidden="true">→</span>', 'preview footer label');
   }
   return contents;
 }
