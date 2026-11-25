@@ -119,14 +119,20 @@ function cancelPlanDuties(state,g,c,m,actor,at){
   }
 }
 function noticeVisible(s,n,actor,c,now){
-  return perm(s,actor,'committee.notice.read',c,now)&&(!n.ownerId||n.ownerId===actor.id||perm(s,actor,'committee.task.assign',c,now));
+  if(!perm(s,actor,'committee.notice.read',c,now))return false;
+  if(n.kind==='handover'){
+    const h=operationRegister(s.governance).handovers.find(r=>r.id===n.sourceId&&r.committeeId===c.id);
+    return Boolean(h&&(h.fromId===actor.id||h.toId===actor.id||perm(s,actor,'committee.office.plan',c,now)||perm(s,actor,'committee.office.review',c,now)));
+  }
+  return !n.ownerId||n.ownerId===actor.id||perm(s,actor,'committee.task.assign',c,now);
 }
 function noticeView(s,g,n,actor){
   const action=n.kind==='task'?byId(g.actions,n.sourceId):null;
+  const handover=n.kind==='handover'?operationRegister(g).handovers.find(h=>h.id===n.sourceId):null;
   return {id:n.id,kind:n.kind,sourceId:n.sourceId,title:n.title,version:n.version,ownerId:n.ownerId,retracted:n.retracted,updatedAt:n.updatedAt,
     unread:!n.retracted&&n.updatedBy!==actor.id&&!n.reads.some(r=>r.actorId===actor.id&&r.version===n.version),
     reviewed:n.reviews.some(r=>r.actorId===actor.id&&r.version===n.version),
-    resolved:n.retracted||(action?taskDone(s,action)||action.cancelled===true:false),dueDate:action?.dueDate||null};
+    resolved:n.retracted||(action?taskDone(s,action)||action.cancelled===true:handover?['cancelled','executed-fictional'].includes(handover.status):false),dueDate:action?.dueDate||null};
 }
 export function committeeDirectory(state,actor,now=new Date()){
   if(actor?.access!=='scoped')return {committees:[],proposalGroups:[]};
