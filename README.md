@@ -14,6 +14,13 @@ A working custom membership and civic CRM foundation for **P4A the Purple Party 
 
 These are separately maintained projects. Public information and participation discovery remain freely accessible. Linking an official inquiry is not permission to represent P4A, submit on someone's behalf, or enrol anyone. The public membership preview does not create real memberships, collect payments or share its sample records with either public information site. P4A is a proposed movement in formation, not a registered political party or an adopted constitution.
 
+## Related local entry points
+
+- [Redlands Civic Lab](https://auraofintelligence.github.io/redlands-mayoral-campaign/): local civic simulation, public questions, project research and collaboration. Its repository retains the earlier mayoral campaign name; it is not an active candidacy. Its Explore P4A pathway is an additional public doorway to the membership guide.
+- [Strange But True](https://auraofintelligence.github.io/strange-but-true/): independent business, creative and community-project doorway on Minjerribah, already represented in Local nodes. Its Community Ledger provides a contextual P4A connection.
+
+The onboarding matrix covers all five sites. Public guide links are optional; neither a business enquiry nor civic collaboration constitutes membership. No personal records, business customer information or private campaign workspace data are transferred between sites.
+
 ## Development and acceptance matrix
 
 The [master onboarding and governance matrix](docs/ONBOARDING-GOVERNANCE-MATRIX.md) defines the missing public-site onboarding links, PLFC-inspired committee and constitution workflows, scoped permissions, real Webmaster and separate view-only Webmaster demo. It extends the existing build contract; no production enrolment, office appointment or service activation is authorised by the matrix itself.
