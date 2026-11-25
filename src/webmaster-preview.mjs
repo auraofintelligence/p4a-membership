@@ -54,7 +54,7 @@ export function fixtureProjection(role) {
   const state = createShowcaseState();
   const actor = fixtureActor(state,role);
   const projection = authorisedProjection(state,actor,'showcase',false);
-  return {...projection,readOnly:true,fictional:true,previewRole:role};
+  return {...projection,public:{...projection.public,sampleData:true},readOnly:true,fictional:true,previewRole:role};
 }
 export function fixtureOverview() {
   const state = createShowcaseState();
@@ -65,8 +65,8 @@ export function fixtureView(role, params) {
   const view = params.get('view');
   if (!view || view === 'workspace') return fixtureProjection(role);
   const state = createShowcaseState();
-  if (view === 'public') return publicProjection(state,'showcase');
-  if (view === 'gamify') return gamifyProjection(state,{period:params.get('period') ?? 'all',groupId:params.get('groupId') ?? '',projectId:params.get('projectId') ?? ''},'showcase');
+  if (view === 'public') return {...publicProjection(state,'showcase'),sampleData:true};
+  if (view === 'gamify') return {...gamifyProjection(state,{period:params.get('period') ?? 'all',groupId:params.get('groupId') ?? '',projectId:params.get('projectId') ?? ''},'showcase'),sampleData:true};
   throw new AppError('This preview route is not available.',403);
 }
 export function realWebmasterPreview(state,actor,role,params,now = new Date()) {
