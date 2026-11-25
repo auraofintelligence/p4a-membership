@@ -27,3 +27,34 @@ export function starterClauses() {
   ];
   return wording.map(([id, heading, body]) => ({ id, heading, body, version: 1, history: [], sourceUrl }));
 }
+
+export const formationTopics=Object.freeze([
+ ['purpose','Purpose and jurisdiction','clause-purpose'],
+ ['membership','Membership, admission and departure','clause-membership'],
+ ['scope','Local, state, territory and national scope','clause-local-autonomy'],
+ ['offices','Office structure and responsibilities','clause-offices'],
+ ['appointments','Appointment, election, terms and vacancies',null],
+ ['meetings','Meetings, notice, attendance and quorum',null],
+ ['delegation','Decision rights and bounded delegation','clause-human-authority'],
+ ['finance','Finance, expenditure and independent review','clause-transparency'],
+ ['conflicts','Conflicts, disclosure and recusal','clause-offices'],
+ ['records','Records, privacy and disclosure','clause-privacy'],
+ ['contribution','Money, voluntary time and outcomes','clause-contribution'],
+ ['amendments','Amendment and adoption safeguards','clause-amendments'],
+ ['appeals','Disputes, correction and appeal','clause-fair-process'],
+ ['dissolution','Dissolution and residual assets',null],
+ ['legal-review','Jurisdiction-specific legal and registration review',null],
+].map(([id,label,suggestion])=>Object.freeze({id,label,suggestion})));
+
+export function formationChecklist(draft){
+ const structure=draft.formationStructure||{version:0,mappings:[],history:[]};
+ return {version:structure.version,topics:formationTopics.map(topic=>{
+   const explicit=structure.mappings.find(m=>m.topicId===topic.id);
+   const clause=draft.clauses.find(c=>c.id===(explicit?explicit.clauseId:topic.suggestion));
+   return {id:topic.id,label:topic.label,clauseId:clause?.id||null,clauseHeading:clause?.heading||null,
+    status:clause?(explicit?'mapped-for-discussion':'starter-suggestion'):'missing',sourceNote:explicit?.sourceNote||'',updatedBy:explicit?.updatedBy||null};
+ }),history:structuredClone(structure.history)};
+}
+export function projectConstitution(draft){
+ return {...structuredClone(draft),formationChecklist:formationChecklist(draft)};
+}
