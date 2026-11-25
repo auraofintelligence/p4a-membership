@@ -1,4 +1,5 @@
 import { projectState, publicProjection } from './domain.mjs';
+import { projectConstitution } from './constitution-seed.mjs';
 import { financialProjection } from './gamify.mjs';
 import { scopedCollections, effectiveAccess } from './scoped-access.mjs';
 import { committeeDirectory, filterCommitteeTasks } from './committee-governance.mjs';
@@ -23,7 +24,7 @@ export function authorisedProjection(state, actor, mode, workspace, now = new Da
   }));
   result.projects = filterCommitteeTasks(state,actor,structuredClone(visible.projects),now);
   result.committeeDirectory=committeeDirectory(state,actor,now);
-  result.constitutions = structuredClone(visible.constitutions);
+  result.constitutions = visible.constitutions.map(projectConstitution);
   result.contributions = structuredClone(visible.contributions);
   result.financialContributions = visible.financialContributions.map(financialProjection);
   result.memberProfiles = result.memberProfiles.filter(row => row.id === actor.id);
