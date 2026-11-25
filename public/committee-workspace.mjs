@@ -116,7 +116,7 @@ function directory(d,ro){
 function detail(d,tab,item,ro,actor){
   const c=d.committee;
   let content;
-  if(!d.working)content=card('Limited committee view','<p>Working records and technical office permissions are not included in this account.</p>')+released(d);
+  if(!d.working)content=card('Limited committee view','<p>Working records and technical office permissions are not included in this account.</p>'+(d.proposedOffices||[]).map(o=>'<p>'+esc(label(o.role))+' · '+status(o.status)+'</p>').join(''))+released(d);
   else if(tab==='meetings')content=meetingList(d,ro);
   else if(tab==='meeting')content=meetingPage(d,d.meetings.find(m=>m.id===item),ro,actor);
   else if(tab==='duties')content=card('Officer duties',duties(d,ro,actor)+'<button class="button secondary" data-committee-print type="button">Print visible duties</button>')+dutyForm(d,ro);
