@@ -117,7 +117,85 @@ function notices(d,ro){
     (!ro&&!n.retracted&&!n.reviewed?form('notice.review','','Record review',{noticeId:n.id,version:n.version}):'')+'</div></article>').join('')||'<p>No internal notices.</p>')+
     (permitted(d,'committee.notice.write',ro)?card('Post an internal notice',form('notice.post',field('Notice','title','','text',true,240),'Save in-app notice')+'<p>Visible within this committee only. No email, invitation or external message is sent.</p>'):'');
 }
-function released(d){return card('Released minutes',d.releasedMinutes.map(m=>'<article><h3>'+esc(m.title)+'</h3><p>'+esc(m.date)+' · Fictional member excerpt · version '+m.version+'</p><p>'+esc(m.text)+'</p></article>').join('')||'<p>No member excerpts are released. Formal release is not enabled.</p>');}
+function released(d){return card('Released minutes',d.releasedMinutes.map(m=>'<article><h3>'+esc(m.title)+'</h3><p>'+esc(m.date)+' · Fictional member excerpt · version '+m.version+'</p><p>'+esc(m.text)+'</p></article>').join('')||'<p>No member excerpts are released. Formal release is not enabled.</p>')+card('Released document excerpts',(d.operations?.released||[]).map(x=>'<article><h3>'+esc(x.title)+'</h3><p>Fictional member excerpt · version '+x.version+'</p><p>'+esc(x.text)+'</p></article>').join('')||'<p>No document excerpts released.</p>');}
+
+const aud=n=>new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(n/100);
+const centsField=(title,name,value='')=>'<label class="field">'+esc(title)+' (whole AUD cents)<input type="number" name="'+esc(name)+'" min="0" max="1000000000" step="1" required value="'+esc(value)+'"></label>';
+const checkField=(title,name)=>'<label class="check-field"><input type="checkbox" name="'+esc(name)+'" required> '+esc(title)+'</label>';
+const independentReview=()=>area('Independent review reason','reason','',1000,true)+checkField('I have no conflicting interest in this review','noConflict');
+const docRoute=(c,id,v)=>href(c,'library',id+'~'+v);
+function offices(d,ro,actor){
+  const p=d.operations,can=permitted(d,'committee.office.plan',ro),review=permitted(d,'committee.office.review',ro);
+  const seatRows=d.committee.offices.map(o=>'<article class="activity-line"><div><h3>'+esc(label(o.role))+'</h3><p>'+status(o.effectiveStatus||o.status)+' · '+esc(o.personId?name(d,o.personId):'Vacant')+'</p>'+(o.term?'<p>Term: '+esc(o.term.startsAt)+' to '+esc(o.term.endsAt)+'</p>':'')+(o.authorityRef?'<p>Authority reference: '+esc(o.authorityRef)+'</p>':'')+(o.history?.length?'<details><summary>Prior occupants</summary>'+o.history.map(h=>'<p>'+esc(h.personId||'Vacant')+' · '+esc(h.endedAt)+'</p>').join('')+'</details>':'')+'</div></article>').join('');
+  const rows=p.handovers.map(h=>'<article class="panel"><h3>'+esc(label(h.role))+' handover</h3><p>'+status(h.status)+' · revision '+h.version+'</p><p>'+esc(name(d,h.fromId))+' → '+esc(name(d,h.toId))+'</p><p>Proposed term: '+esc(h.termStart)+' to '+esc(h.termEnd)+' · review '+esc(h.reviewDate)+'</p><p>'+esc(h.reason)+'</p><p>Proposed authority: '+esc(h.authorityNote)+'</p><p>'+h.dutyIds.length+' visible linked duties · '+h.documentIds.length+' accessible linked documents</p>'+
+    (h.reviewReason?'<p>Independent review: '+esc(h.reviewReason)+'</p>':'')+
+    (!ro&&h.status==='proposed'&&h.toId===actor.id?form('office.accept',checkField('I acknowledge the proposed handover and existing scope. This is not an appointment.','acknowledged'),'Acknowledge proposal',{id:h.id,version:h.version}):'')+
+    (review&&h.status==='accepted'&&![h.createdBy,h.fromId,h.toId].includes(actor.id)?form('office.review',independentReview(),'Review proposal',{id:h.id,version:h.version}):'')+
+    (can&&['proposed','accepted','reviewed'].includes(h.status)?form('office.cancel',area('Reason','reason','',500,true),'Cancel proposal',{id:h.id,version:h.version}):'')+
+    (h.history.length?'<details><summary>Transition history</summary>'+h.history.map(v=>'<p>'+esc(label(v.action))+' · '+esc(v.actorId)+' · '+esc(v.at)+'</p>').join('')+'</details>':'')+'</article>').join('');
+  const fields=select('Prospective office','role',d.committee.offices.map(o=>option(o.role,label(o.role))))+
+    select('Successor with an existing grant','toId',[option('','Choose existing participant'),...p.candidates.map(x=>option(x.id,x.name+' · '+x.roles.map(label).join(', ')))])+
+    field('Proposed term start','termStart','','date')+field('Proposed term end','termEnd','','date')+field('Review date','reviewDate','','date')+
+    area('Reason','reason','',1000,true)+area('Proposed authority reference','authorityNote','',500,true)+
+    '<fieldset><legend>Outstanding duties to transfer in a later authorised transition</legend>'+d.actions.filter(a=>!a.done&&!a.cancelled).map(a=>'<label class="check-field"><input type="checkbox" name="dutyIds" value="'+esc(a.id)+'"> '+esc(a.title)+' · '+esc(name(d,a.ownerId))+'</label>').join('')+'</fieldset>'+
+    '<fieldset><legend>Existing accessible documents (no new access granted)</legend>'+p.library.map(doc=>'<label class="check-field"><input type="checkbox" name="documentIds" value="'+esc(doc.id)+'"> '+esc(doc.title)+'</label>').join('')+'</fieldset>';
+  return card('Prospective office register',seatRows+'<p>Office terms and grants are separate records. A proposal does not confer office, change grants or transfer duties.</p>')+
+    card('Handover register',rows||'<p>No handover proposals in your scope.</p>')+
+    (can?card('Prepare a handover',form('office.plan',fields,'Save proposed handover')+'<p>Actual appointments and technical transitions are held. The successor must already have a separately authorised grant; a handover cannot create it.</p>'):'');
+}
+function budgetFields(r={}){
+  return field('Budget title','title',r.title||'')+field('Period start','start',r.start||'','date')+field('Period end','end',r.end||'','date')+
+    centsField('Proposed review limit','reviewLimitCents',r.reviewLimitCents??'')+area('Budget lines, one per line: label | whole AUD cents','linesText',(r.lines||[]).map(l=>l.label+' | '+l.amountCents).join('\n'),3000,true)+area('Basis and source reference','basis',r.basis||'',1000,true);
+}
+function expenseFields(r={},d){
+  return field('Existing expense date','date',r.date||'','date')+centsField('Recorded expense','amountCents',r.amountCents??'')+
+    field('External receipt reference','reference',r.reference||'','text',true,120)+area('Evidence description (no payment credentials)','description',r.description||'',500,true)+
+    select('Participant payee, if applicable','payeeId',[option('','Not specified'),...d.officePeople.map(p=>option(p.id,p.name,p.id===r.payeeId))],false)+
+    checkField('This is an existing settled expense, not a payment instruction','settled')+(r.id?area('Correction reason','reason','',500,true):'');
+}
+function financeDesk(d,ro,actor){
+  const f=d.operations.finance;if(!f)return card('Treasurer desk','<p>This account does not have scoped financial review access.</p>');
+  const write=permitted(d,'committee.finance.write',ro),review=permitted(d,'committee.finance.review',ro);
+  const conflict=r=>[r.createdBy,r.updatedBy,r.payeeId].includes(actor.id)||(r.history||[]).some(h=>h.actorId===actor.id&&h.action.endsWith('.save'));
+  const budget=f.budgets.map(r=>'<article class="panel"><h3>'+esc(r.title)+'</h3><p>'+status(r.status)+' · revision '+r.version+' · '+esc(r.start)+' to '+esc(r.end)+'</p>'+
+    r.lines.map(l=>'<p>'+esc(l.label)+': '+esc(aud(l.amountCents))+'</p>').join('')+'<p>Draft total: '+esc(aud(r.lines.reduce((n,l)=>n+l.amountCents,0)))+' · Proposed review limit '+esc(aud(r.reviewLimitCents))+'</p><p>'+esc(r.basis)+'</p>'+
+    (r.reviewReason?'<p>Review: '+esc(r.reviewReason)+'</p>':'')+
+    (write&&r.status==='draft'?'<details><summary>Revise working budget</summary>'+form('budget.save',budgetFields(r),'Save revision',{id:r.id,version:r.version})+'</details>':'')+
+    (review&&!conflict(r)&&r.status==='draft'?form('budget.review',independentReview(),'Review working budget',{id:r.id,version:r.version}):'')+'</article>').join('');
+  const expenses=f.expenses.map(r=>'<article class="panel"><h3>'+esc(r.description)+'</h3><p>'+esc(r.date)+' · '+esc(aud(r.amountCents))+' · '+status(r.status)+' · revision '+r.version+'</p><p>Evidence reference: '+esc(r.reference)+'</p>'+
+    (r.reviewReason?'<p>Review: '+esc(r.reviewReason)+'</p>':'')+
+    (write&&r.createdBy===actor.id?'<details><summary>Prepare correction</summary>'+form('expense.save',expenseFields(r,d),'Save corrected evidence',{id:r.id,version:r.version})+'</details>':'')+
+    (review&&!conflict(r)&&r.status==='pending'?form('expense.review',select('Outcome','outcome',[option('verify','Verify recorded evidence'),option('reject','Reject evidence')])+independentReview(),'Record independent review',{id:r.id,version:r.version}):'')+'</article>').join('');
+  const recon=f.reconciliations.map(r=>'<article class="panel"><h3>'+esc(r.start)+' to '+esc(r.end)+'</h3><p>'+status(r.status)+(r.stale?' · Source records changed':'')+'</p><p>Opening '+esc(aud(r.openingCents))+' · Expected closing '+esc(aud(r.expectedClosingCents))+' · Statement '+esc(aud(r.statementClosingCents))+'</p><p>Difference '+esc(aud(r.differenceCents))+' · '+r.sources.received.length+' source receipts · '+r.sources.expenses.length+' reviewed expenses</p><p>'+esc(r.basis)+'</p>'+
+    (r.reviewReason?'<p>'+esc(r.reviewReason)+'</p>':'')+
+    (review&&!conflict(r)&&r.status==='draft'?form('reconcile.review',select('Outcome','outcome',[...(r.stale||r.differenceCents!==0?[]:[option('confirm','Confirm zero-difference reconciliation')]),option('return','Return for correction')])+independentReview(),'Review reconciliation',{id:r.id,version:r.version}):'')+'</article>').join('');
+  return card('Treasurer working desk','<p>AUD only. No payments, bank connections or spending authority are enabled. Voluntary C-Hours remain separate.</p>')+
+    card('Existing independently verified income',f.income.map(r=>'<p>'+esc(r.date)+' · '+esc(aud(r.amountCents))+' · '+esc(r.id)+'</p>').join('')||'<p>No verified AUD receipts in this scope.</p>')+
+    card('Working budgets',budget||'<p>No draft budgets.</p>')+(write?card('Prepare a draft budget',form('budget.save',budgetFields(),'Save working budget')):'')+
+    card('Recorded expense evidence',expenses||'<p>No recorded expenses.</p>')+(write?card('Record existing expense evidence',form('expense.save',expenseFields({},d),'Save evidence for review')):'')+
+    card('Reconciliation history',recon||'<p>No reconciliations.</p>')+
+    (write?card('Reconcile a statement period',form('reconcile.save',field('Period start','start','','date')+field('Period end','end','','date')+centsField('Opening balance','openingCents')+centsField('Statement closing balance','statementClosingCents')+area('Statement and opening balance evidence reference','basis','',1000,true),'Calculate and save reconciliation')):'');
+}
+function libraryDesk(d,ro,actor,document){
+  const p=d.operations,write=permitted(d,'committee.library.write',ro),review=permitted(d,'committee.library.review',ro);
+  const fields=(v={})=>field('Source date','sourceDate',v.sourceDate||'','date')+area('Source note','sourceNote',v.sourceNote||'',500,true)+area('Plain text or Markdown (no raw identity, banking, medical or credential evidence)','body',v.body||'',6000,true);
+  const versions=p.library.map(doc=>'<article class="activity-line"><div><h3>'+esc(doc.title)+'</h3><p>'+status(doc.status)+' · '+esc(label(doc.classification))+' · '+doc.versionCount+' content versions</p>'+doc.versions.map(v=>'<p><a href="'+docRoute(d.committee.id,doc.id,v.version)+'">Open version '+v.version+'</a> · '+esc(v.sourceDate)+'</p>').join('')+'</div></article>').join('');
+  let selected='';
+  if(document){
+    const m=p.library.find(row=>row.id===document.document.id),current=m&&m.contentVersion===document.version,owner=m?.createdBy===actor.id;
+    const access=owner&&write&&m.classification==='restricted'?'<details><summary>Restricted access list</summary>'+((m.access||[]).map(g=>'<p>'+esc(name(d,g.personId))+' · '+esc(g.status)+' · expires '+esc(g.expiresAt)+'</p>').join('')||'<p>Owner only.</p>')+
+      form('library.access',select('Participant','personId',d.officePeople.filter(p=>p.id!==actor.id).map(p=>option(p.id,p.name)))+
+      select('Action','action',[option('grant','Grant or renew read access'),option('revoke','Revoke read access')])+field('Expiry (UTC date, required for grant)','expiresOn','','date',false)+area('Reason','reason','',500,true),'Save access change',{id:m.id,version:m.version})+'</details>':'';
+    selected=card(document.document.title,'<p>Content version '+document.version+' · '+esc(document.sourceDate)+' · '+esc(document.sourceNote)+'</p><div class="clause-text">'+esc(document.body)+'</div>'+
+      (!ro?'<button type="button" class="button secondary" data-committee-document-download>Download this text version</button>':'')+
+      (current&&owner&&write?'<details><summary>Prepare new version</summary>'+form('library.revise',fields(document),'Save next version',{id:m.id,version:m.version})+'</details>':'')+
+      (current&&review&&!owner&&m.status==='draft'?form('library.review',independentReview(),'Review working version',{id:m.id,version:m.version}):'')+
+      (current?access:'')+(current&&owner&&write?form('library.withdraw',area('Withdrawal reason','reason','',500,true),'Withdraw document',{id:m.id,version:m.version}):''));
+  }
+  return card('Protected document library','<p>Each version is retrieved through the scoped API. Restricted documents need explicit unexpired reader access. No public file upload, raw personal evidence or public derivative release is enabled.</p>'+versions)+selected+
+    (write?card('Create a bounded working document',form('library.create',field('Title','title')+select('Classification','classification',[option('working','Committee working'),option('restricted','Restricted readers only')])+select('Document type','kind',['minutes','working-paper','evidence-summary','constitution-note','report'].map(k=>option(k,label(k))))+select('Source meeting','meetingId',[option('','None'),...d.meetings.map(m=>option(m.id,m.title))],false)+select('Linked constitution','constitutionId',[option('','None'),...d.constitutions.map(x=>option(x.id,x.title))],false)+fields(),'Save first version')):'');
+}
+
 function home(d,ro){
   return card('Prospective office register',d.committee.offices.map(o=>'<p>'+esc(label(o.role))+' · '+status(o.status)+' '+(o.personId?esc(name(d,o.personId)):'')+'</p>').join('')+
     '<p>Office reservations are not appointments. Current technical grants and actual office authority are separate.</p>')+
@@ -132,7 +210,7 @@ function directory(d,ro){
     (entries||'<p>No committees in your current authorised view.</p>')+
     (!ro&&d.proposalGroups.length?card('Propose a committee',form('committee.propose',field('Proposed name','name')+select('Scope','kind',['local','state','territory','national'].map(v=>option(v,label(v))))+select('Connected working group','groupId',d.proposalGroups.map(g=>option(g.id,g.name))),'Save proposal')+'<p>This creates a draft with vacant offices. It does not establish a committee or grant anyone new access.</p>'):'');
 }
-function detail(d,tab,item,ro,actor){
+function detail(d,tab,item,ro,actor,document){
   const c=d.committee;
   let content;
   if(!d.working)content=card('Limited committee view','<p>Working records and technical office permissions are not included in this account.</p>'+(d.proposedOffices||[]).map(o=>'<p>'+esc(label(o.role))+' · '+status(o.status)+'</p>').join(''))+released(d);
@@ -140,9 +218,12 @@ function detail(d,tab,item,ro,actor){
   else if(tab==='meeting')content=meetingPage(d,d.meetings.find(m=>m.id===item),ro,actor);
   else if(tab==='duties')content=card('Officer duties',duties(d,ro,actor)+'<button class="button secondary" data-committee-print type="button">Print visible duties</button>')+dutyForm(d,ro);
   else if(tab==='notices')content=notices(d,ro);
+  else if(tab==='offices')content=offices(d,ro,actor);
+  else if(tab==='finance')content=financeDesk(d,ro,actor);
+  else if(tab==='library')content=libraryDesk(d,ro,actor,document);
   else if(tab==='released')content=released(d);
   else content=home(d,ro);
-  const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],['released','Released minutes']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
+  const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['offices','Office transitions'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],...(d.operations?.finance?[['finance','Treasurer desk']]:[]),...(d.permissions['committee.library.view']?[['library','Document library']]:[]),['released','Released minutes']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
   return '<a href="#committee">My Committee directory</a>'+heading(c.name,'Working proposals only. No adopted rules, formal vote or external communications are enabled.')+nav+content;
 }
 export function privateCommitteeCalendar(rows){
@@ -169,10 +250,17 @@ export function privateCommitteeCalendar(rows){
 const pending=new Map();
 function payload(formEl){
   const fd=new FormData(formEl),d=Object.fromEntries(fd);
+  if(formEl.dataset.committeeForm==='office.plan'){d.dutyIds=fd.getAll('dutyIds');d.documentIds=fd.getAll('documentIds');}
   if(formEl.dataset.committeeForm==='meeting.attendance')for(const k of ['present','apologies','recused'])d[k]=fd.getAll(k);
   if(formEl.dataset.committeeForm==='meeting.plan'){
     d.jobs=Object.keys(d).filter(k=>k.startsWith('owner.')).map(k=>{const key=k.slice(6);return {key,ownerId:d[k],offsetDays:d['offset.'+key]===''?null:Number(d['offset.'+key])};});
     for(const k of Object.keys(d))if(k.startsWith('owner.')||k.startsWith('offset.'))delete d[k];
+  }
+  for(const key of ['reviewLimitCents','amountCents','openingCents','statementClosingCents'])if(key in d)d[key]=d[key]===''?null:Number(d[key]);
+  for(const key of ['noConflict','acknowledged','settled'])if(formEl.elements.namedItem(key))d[key]=fd.has(key);
+  if('linesText'in d){
+    d.lines=d.linesText.split(/\r?\n/).filter(line=>line.trim()).map(line=>{const at=line.lastIndexOf('|');return at<0?{label:line.trim(),amountCents:null}:{label:line.slice(0,at).trim(),amountCents:/^\d+$/.test(line.slice(at+1).trim())?Number(line.slice(at+1).trim()):null};});
+    delete d.linesText;
   }
   if('version'in d)d.version=Number(d.version);
   return d;
@@ -180,12 +268,18 @@ function payload(formEl){
 export async function mountCommittee(root,{api,actor,readOnly,route,onSaved}){
   const [,id,tab='overview',item]=route.split('/');
   const d=await api('/api/committee'+(id?'?id='+encodeURIComponent(id):''));
+  let document;
+  if(id&&tab==='library'&&item){const [docId,version]=decodeURIComponent(item).split('~');document=await api('/api/committee/document?committee='+encodeURIComponent(id)+'&id='+encodeURIComponent(docId)+'&version='+encodeURIComponent(version));}
   if(location.hash.slice(1)!==route)return;
   const ro=readOnly||d.readOnly||d.fictional;
-  root.innerHTML=(ro?'<div class="callout"><strong>Fictional, read-only committee preview.</strong> No changes, downloads or printing from the demo.</div>':'')+(id?detail(d,tab,item,ro,actor):directory(d,ro));
+  root.innerHTML=(ro?'<div class="callout"><strong>Fictional, read-only committee preview.</strong> No changes, downloads or printing from the demo.</div>':'')+(id?detail(d,tab,item,ro,actor,document):directory(d,ro));
   if(ro){root.querySelectorAll('[data-committee-calendar],[data-committee-print]').forEach(el=>el.remove());return;}
+  root.querySelector('[data-committee-document-download]')?.addEventListener('click',()=>{
+    if(!document)return;const blob=new Blob([document.body],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=window.document.createElement('a');
+    a.href=url;a.download='p4a-working-document-v'+document.version+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
   root.querySelector('[data-committee-calendar]')?.addEventListener('click',()=>{
-    const blob=new Blob([privateCommitteeCalendar(d.meetings)],{type:'text/calendar;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='p4a-private-working-calendar.ics';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const blob=new Blob([privateCommitteeCalendar(d.meetings)],{type:'text/calendar;charset=utf-8'}),url=URL.createObjectURL(blob),a=window.document.createElement('a');a.href=url;a.download='p4a-private-working-calendar.ics';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   root.querySelectorAll('[data-committee-print]').forEach(b=>b.addEventListener('click',()=>window.print()));
   for(const f of root.querySelectorAll('[data-committee-form]'))f.addEventListener('submit',async ev=>{
