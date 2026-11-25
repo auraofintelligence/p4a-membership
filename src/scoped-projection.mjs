@@ -1,11 +1,16 @@
 import { projectState, publicProjection } from './domain.mjs';
 import { financialProjection } from './gamify.mjs';
 import { scopedCollections, effectiveAccess } from './scoped-access.mjs';
+import { committeeDirectory, filterCommitteeTasks } from './committee-governance.mjs';
 
 // Use existing UI contract, but never feed a scoped actor the legacy broad
 // organiser projection. All alternate private projections share this path.
 export function authorisedProjection(state, actor, mode, workspace, now = new Date()) {
-  if (actor?.access !== 'scoped') return projectState(state,actor,mode,workspace);
+  if (actor?.access !== 'scoped') {
+    const result=projectState(state,actor,mode,workspace);
+    if(actor)result.projects=filterCommitteeTasks(state,actor,result.projects,now);
+    return result;
+  }
   const visible = scopedCollections(state,actor,now);
   const limited = { ...state, ...visible, gamifyIdeas:state.gamifyIdeas.filter(row => row.personId === actor.id) };
   const result = projectState(limited, {id:actor.id,name:actor.name,role:'member'}, mode, workspace);
@@ -16,7 +21,8 @@ export function authorisedProjection(state, actor, mode, workspace, now = new Da
   result.groups = visible.groups.map(({id,name,level,place,description,public:published,memberIds}) => ({
     id,name,level,place,description,public:published,memberIds:memberIds.filter(id => id === actor.id),memberCount:memberIds.length,
   }));
-  result.projects = structuredClone(visible.projects);
+  result.projects = filterCommitteeTasks(state,actor,structuredClone(visible.projects),now);
+  result.committeeDirectory=committeeDirectory(state,actor,now);
   result.constitutions = structuredClone(visible.constitutions);
   result.contributions = structuredClone(visible.contributions);
   result.financialContributions = visible.financialContributions.map(financialProjection);
