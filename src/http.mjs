@@ -2,6 +2,7 @@ import { AppError, executeCommand, normaliseState, publicProjection, gamifyProje
 import { authorisedDomainActor, accessOverview, changeAccess } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
 import { realWebmasterPreview } from './webmaster-preview.mjs';
+import { committeeProjection, executeCommitteeCommand, guardCommitteeTask } from './committee-governance.mjs';
 
 export const securityHeaders = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
@@ -60,8 +61,15 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
       if (!outcome.result.replayed && !(await store.compareAndSwap(state.revision, outcome.state))) return json({ error: 'The workspace changed. Refresh and try again.' }, 409);
       return json(outcome.result);
     }
+    if (url.pathname === '/api/committee' && request.method === 'GET') return json(committeeProjection(state,actor,url.searchParams.get('id'),new Date(),mode));
+    if (url.pathname === '/api/committee' && request.method === 'POST') {
+      const outcome=executeCommitteeCommand(state,actor,await readBody(request),new Date(),{mode});
+      if(!outcome.result.replayed&&!(await store.compareAndSwap(state.revision,outcome.state)))return json({error:'The workspace changed. Refresh before saving.'},409);
+      return json(outcome.result);
+    }
     if (url.pathname === '/api/commands' && request.method === 'POST') {
       const command = await readBody(request);
+      guardCommitteeTask(state,command);
       if (mode !== 'demo' && ['membership.apply', 'membership.review'].includes(command?.type)) {
         throw new AppError('Membership admission is not available until the required checks are in place.', 403);
       }
