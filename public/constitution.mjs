@@ -6,7 +6,7 @@ export function constitutionView(state, h, documentId) {
   const {e,heading,tag,person,dateText,actionButton,sourceLink,requireMember,trialEntry=''} = h;
   const organiser=state.actor?.role==='organiser';
   const docs=state.constitutions||[];
-  const draft=docs.find(d=>d.id===documentId)||(!documentId?docs[0]:null);
+  const draft=docs.find(d=>d.id===documentId)||(!documentId||state.actor?.access!=='scoped'?docs[0]:null);
   const header=heading('The rules we shape together','Constitution workbench','Make every power visible, every change reviewable and every rule open to a reason.',organiser?actionButton('New working draft','constitution-create','',''): '');
   const status='<div class="callout"><strong>Working drafts, not adopted constitutions.</strong> P4A has no adopted constitution and is not a registered party. Reviewing a change here does not confer legal force or complete a member ballot.</div>';
   if(!state.actor)return `${header}${status}${trialEntry}<div class="panel wide-panel"><h2>Read the public foundations</h2><p class="muted">The existing P4A workbench explores membership, decision rights, accountable power, privacy, contribution and democratic revision.</p><a class="button quiet" href="https://p4a.xyz/pages/constitution.html" target="_blank" rel="noopener noreferrer">Open the public constitution workbench ↗</a></div><div class="subheading">${requireMember()}</div>`;
