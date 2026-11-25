@@ -114,6 +114,7 @@ export function operationsProjection(s,g,c,a,now=new Date(),mode='live'){
 export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
   const at=now.toISOString(),ops=g.operations??=operationRegister(g),permission=operationPermissions[type];
   if(!permission)fail();check(s,a,c,permission,now);
+  if(/^(budget|expense|reconcile)\./.test(type))check(s,a,c,'committee.finance.view',now);
   if(type==='office.execute'||type==='library.release'){
     if(!fictional(mode))fail('Actual appointments, authority changes and external publication are held.');
   }
@@ -131,7 +132,7 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     if(!Array.isArray(documentIds)||!unique(documentIds))invalid('Choose each document once.');
     for(const id of documentIds){const doc=scopedRow(ops,'documents',id,c);if(!canReadDoc(s,c,a,doc,now)||!canReadDoc(s,c,actorFor(s,toId),doc,now))fail('Both parties must already have document access.');}
     const r={id:uid(),committeeId:c.id,role,fromId,toId,termStart,termEnd,reviewDate,dutyIds:duties.map(x=>x.id),documentIds,reason:text(d.reason,'proposed handover reason',1000),authorityNote:text(d.authorityNote,'proposed authority reference',500),status:'proposed',version:1,createdBy:a.id,createdAt:at,history:[]};
-    ops.handovers.push(r);notice(g,c,{kind:'info',sourceId:r.id,title:'Proposed office handover awaiting acceptance',ownerId:toId},a,at);return r.id;
+    ops.handovers.push(r);notice(g,c,{kind:'handover',sourceId:r.id,title:'Proposed office handover awaiting acceptance',ownerId:toId},a,at);return r.id;
   }
   if(type.startsWith('office.')){
     const r=scopedRow(ops,'handovers',d.id,c);requireVersion(r,d);
@@ -174,7 +175,9 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
       r.status='executed-fictional';r.executedBy=a.id;r.executedAt=at;r.motionId=motion.id;
       s.accessControl.audit.push({id:uid(),actorId:a.id,type:'office.handover-fictional',targetId:r.id,at,reason:'Fictional reviewed transition; no new account or grant created.'});
     }
-    stamp(r,a,at,type);return r.id;
+    stamp(r,a,at,type);
+    notice(g,c,{kind:'handover',sourceId:r.id,title:'Office handover: '+r.status,ownerId:r.toId},a,at);
+    return r.id;
   }
   if(type==='budget.save'){
     const period=dateRange(d),lines=d.lines;
@@ -243,9 +246,10 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     if(type==='library.revise'){
       if(r.createdBy!==a.id)fail('Only the document owner may prepare a revision.');
       r.versions.push({version:r.version+1,body:text(d.body,'plain text working document',6000),sourceDate:day(d.sourceDate),sourceNote:text(d.sourceNote,'source note',500),actorId:a.id,at});
-      r.status='draft';r.reviewedBy=null;r.reviewedAt=null;r.reviewReason=null;
+      const previousReview=r.reviewedBy?{version:r.reviewedVersion,reviewedBy:r.reviewedBy,reviewedAt:r.reviewedAt,reason:r.reviewReason}:null;
+      r.status='draft';r.reviewedBy=null;r.reviewedAt=null;r.reviewReason=null;r.reviewedVersion=null;
       if(r.released?.active){r.released.active=false;r.released.withdrawnAt=at;r.released.withdrawnBy=a.id;}
-      r.updatedBy=a.id;r.updatedAt=at;stamp(r,a,at,type);return r.id;
+      r.updatedBy=a.id;r.updatedAt=at;stamp(r,a,at,type,{previousReview});return r.id;
     }
     if(type==='library.access'){
       if(r.classification!=='restricted'||r.createdBy!==a.id)fail('Only the restricted document owner can change its access list.');
@@ -262,7 +266,7 @@ export function applyCommitteeOperation(s,g,c,a,type,d,now,mode,{notice}){
     if(type==='library.review'){
       if(r.status!=='draft'||r.versions.some(v=>v.actorId===a.id))fail('Independent document review is required.');
       r.reviewReason=reviewReason(d);r.status='reviewed';r.reviewedBy=a.id;r.reviewedAt=at;
-      r.reviewedVersion=r.versions.at(-1).version;stamp(r,a,at,type);return r.id;
+      r.reviewedVersion=r.versions.at(-1).version;stamp(r,a,at,type,{reviewedVersion:r.reviewedVersion,reviewReason:r.reviewReason});return r.id;
     }
     if(type==='library.release'){
       if(r.status!=='reviewed'||r.reviewedVersion!==r.versions.at(-1).version||r.versions.some(v=>v.actorId===a.id))fail('Only an independently reviewed version can produce a fictional member excerpt.');
