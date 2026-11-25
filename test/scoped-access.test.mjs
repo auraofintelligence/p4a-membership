@@ -197,3 +197,14 @@ test('shared HTTP routes enforce scope, CAS, same origin, live admission and pre
   assert.equal(writes,2);
   assert.equal((await (await call('webmaster','/api/access')).json()).reservations.at(-1).status,'reserved');
 });
+
+test('chair can manage a project in its exact granted scope without becoming a global organiser',()=>{
+  let state=createShowcaseState();
+  const chair=fixtureActor(state,'chair'), deputy=fixtureActor(state,'deputy');
+  assert.throws(()=>apply(state,chair,'project.status',{projectId:'project-other',status:'review'}),denied);
+  assert.throws(()=>apply(state,deputy,'project.status',{projectId:'project-1',status:'review'}),denied);
+  state=apply(state,chair,'project.status',{projectId:'project-1',status:'review'});
+  assert.equal(state.projects[0].status,'review');
+  assert.equal(state.activity.at(-1).actorId,chair.id);
+  assert.equal(authorisedProjection(state,chair,'live',true,when).actor.role,'member');
+});
