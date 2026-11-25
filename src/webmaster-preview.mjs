@@ -1,5 +1,5 @@
 import { createDemoState } from './seed.mjs';
-import { createConstitution } from './domain.mjs';
+import { createConstitution, publicProjection, gamifyProjection } from './domain.mjs';
 import { AppError } from './errors.mjs';
 import { accessOverview, can, scopedIdentity } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
@@ -60,7 +60,16 @@ export function fixtureOverview() {
   const state = createShowcaseState();
   return {...accessOverview(state,fixtureActor(state,'webmaster')),readOnly:true,fictional:true};
 }
-export function realWebmasterPreview(state,actor,role,now = new Date()) {
+export function fixtureView(role, params) {
+  if (!previewRoles.includes(role)) throw new AppError('Choose a fictional role.',400);
+  const view = params.get('view');
+  if (!view || view === 'workspace') return fixtureProjection(role);
+  const state = createShowcaseState();
+  if (view === 'public') return publicProjection(state,'showcase');
+  if (view === 'gamify') return gamifyProjection(state,{period:params.get('period') ?? 'all',groupId:params.get('groupId') ?? '',projectId:params.get('projectId') ?? ''},'showcase');
+  throw new AppError('This preview route is not available.',403);
+}
+export function realWebmasterPreview(state,actor,role,params,now = new Date()) {
   if (!can(state,actor,'access.view','system','p4a',now)) throw new AppError('Webmaster access is required.',403);
-  return fixtureProjection(role);
+  return fixtureView(role,params);
 }
