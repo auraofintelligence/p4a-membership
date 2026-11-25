@@ -44,15 +44,15 @@ function render() {
   status(demo ? 'ISOLATED VIEW-ONLY DEMONSTRATION. All records are fictional.' : 'AUTHORISED TECHNICAL WORKSPACE. Revision '+register.revision+'. No appointments or invitations are enabled.');
   $('#role-preview').hidden = false;
   $('#preview-links').replaceChildren(...roles.map(role=>{ const a=node('a',role.replaceAll('-',' '),'button secondary'); a.href='/webmaster-role-preview.html?role='+encodeURIComponent(role)+'#home'; return a; }));
-  $('#reservation-panel').hidden = demo;
+  $('#reservation-panel').hidden = demo || !register.capabilities?.reserve;
   const roleSelect=$('#reserve-form [name=role]');
   roleSelect.replaceChildren(...Object.keys(officeScopes).map(role=>{const option=node('option',role.replaceAll('-',' '));option.value=role;return option;}));
   fillScopes();
   const view=$('#register');view.hidden=false;
   view.replaceChildren(
-    listPanel('Accounts (technical metadata)',register.accounts,row=>['Account '+row.id,'Person '+row.personId,'Status: '+row.status],row=>row.status==='active'&&!register.grants.some(g=>g.accountId===row.id&&g.role==='webmaster')?{label:'Disable account access',type:'access.disable-account'}:null),
-    listPanel('Scoped access grants',register.grants,row=>[row.role+' · '+row.scope.kind+': '+row.scope.id,row.accountId+' · '+row.status,'From '+row.startsAt+' until '+row.endsAt,'Authority reference: '+row.authorityRef,'Permissions: '+row.permissions.join(', ')],row=>row.status==='active'&&row.role!=='webmaster'?{label:'Revoke technical grant',type:'access.revoke-grant'}:null),
-    listPanel('Prospective office reservations',register.reservations,row=>[row.role+' · '+row.scope.kind+': '+row.scope.id,'Status: '+row.status,'Created by '+row.createdBy+' at '+row.createdAt],row=>row.status==='reserved'?{label:'Cancel reservation',type:'access.cancel-reservation'}:null),
+    listPanel('Accounts (technical metadata)',register.accounts,row=>['Account '+row.id,'Person '+row.personId,'Status: '+row.status],row=>register.capabilities?.revoke&&row.id!==register.currentAccountId&&row.status==='active'&&!register.grants.some(g=>g.accountId===row.id&&g.role==='webmaster')?{label:'Disable account access',type:'access.disable-account'}:null),
+    listPanel('Scoped access grants',register.grants,row=>[row.role+' · '+row.scope.kind+': '+row.scope.id,row.accountId+' · '+row.status,'From '+row.startsAt+' until '+row.endsAt,'Authority reference: '+row.authorityRef+(row.delegatedFrom?' · delegated from '+row.delegatedFrom:''),'Permissions: '+row.permissions.join(', ')],row=>register.capabilities?.revoke&&row.accountId!==register.currentAccountId&&row.status==='active'&&row.role!=='webmaster'?{label:'Revoke technical grant',type:'access.revoke-grant'}:null),
+    listPanel('Prospective office reservations',register.reservations,row=>[row.role+' · '+row.scope.kind+': '+row.scope.id,'Status: '+row.status,'Created by '+row.createdBy+' at '+row.createdAt],row=>register.capabilities?.reserve&&row.status==='reserved'?{label:'Cancel reservation',type:'access.cancel-reservation'}:null),
     listPanel('Technical audit (latest 100)',register.audit,row=>[row.type+' · '+row.targetId,'Actual actor '+row.actorId+' · '+row.at,row.reason])
   );
 }
