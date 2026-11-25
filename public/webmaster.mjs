@@ -1,6 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const roles = ['webmaster','chair','deputy','secretary','assistant-secretary','treasurer','committee','reviewer','member','applicant'];
-const officeScopes = {webmaster:['system'],chair:['group','constitution'],deputy:['group','constitution'],secretary:['group','constitution'],'assistant-secretary':['group','constitution'],treasurer:['group'],committee:['group','constitution'],reviewer:['group','constitution']};
+const officeScopes = {webmaster:['system'],chair:['group','constitution','committee'],deputy:['group','constitution','committee'],secretary:['group','constitution','committee'],'assistant-secretary':['group','constitution','committee'],treasurer:['group','committee'],committee:['group','constitution','committee'],reviewer:['group','constitution','committee']};
 let register, pending = new Map(), busy = false;
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
 const status = text => { $('#desk-status').textContent = text; };
@@ -14,7 +14,7 @@ function fillScopes() {
   const role = $('#reserve-form [name=role]').value, select = $('#reserve-form [name=scope]');
   select.replaceChildren();
   for (const kind of officeScopes[role] || []) {
-    const rows = register.scopes[kind === 'group' ? 'groups' : kind === 'constitution' ? 'constitutions' : 'system'];
+    const rows = register.scopes[kind === 'group' ? 'groups' : kind === 'constitution' ? 'constitutions' : kind === 'committee' ? 'committees' : 'system'];
     for (const row of rows) { const option = node('option',kind+': '+(row.name || row.title)); option.value = JSON.stringify({kind,id:row.id}); select.append(option); }
   }
   $('#reserve-form button').disabled = !select.options.length || busy;
