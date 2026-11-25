@@ -46,9 +46,30 @@ const ownInfluences = () => memberProfile(state.actor?.id)?.influences || [];
 const group = id => state.groups.find(g=>g.id===id);
 const project = id => state.projects.find(p=>p.id===id);
 const isOrganiser = () => state.actor?.role === 'organiser';
+const scoped = () => state.actor?.access === 'scoped';
+const scopedPermission = (action,kind,id) => Boolean(state.access?.grants?.some(g=>g.permissions.includes(action)&&(!kind||g.scope.kind===kind)&&(!id||g.scope.id===id)));
+const rolePreview = location.pathname.endsWith('/webmaster-role-preview.html') ? new URLSearchParams(location.search).get('role') || 'webmaster' : null;
+const previewActions = new Set(['constitution-clause','gamify-method','gamify-kind','gamify-reset','gamify-retry','resources','close-dialog']);
+const readOnly = () => Boolean(rolePreview || state.readOnly);
+function restrictPreview() {
+  if(!readOnly())return;
+  document.querySelectorAll('[data-action], form[data-form] button[type=submit], [data-task]').forEach(el=>{
+    if(!previewActions.has(el.dataset.action)){el.disabled=true;el.setAttribute('aria-disabled','true');}
+  });
+}
+function routeAllowed(key) {
+  if(!scoped())return true;
+  if(['home','profile','onboarding','resources','transparency','nodes'].includes(key))return true;
+  if(key==='training')return !scopedPermission('application.own','person');
+  if(key==='constitution')return scopedPermission('constitution.view','constitution');
+  if(['projects','project','priority'].includes(key))return scopedPermission('project.view','group');
+  if(['groups','people'].includes(key))return scopedPermission('group.view','group');
+  if(['hours','gamify'].includes(key))return scopedPermission('contribution.log','group')||scopedPermission('financial.log','group')||scopedPermission('financial.view','group')||scopedPermission('contribution.view','group')||state.contributions.length>0||state.financialContributions.length>0;
+  return false;
+}
 const isPilot = () => state.mode === 'pilot';
 const isLocalReview = () => state.mode === 'demo' && !state.preview;
-const hasCivicTools = () => isPilot() || isLocalReview();
+const hasCivicTools = () => isPilot() || isLocalReview() || scoped();
 const isParticipant = p => isOrganiser() || p.participantIds?.includes(state.actor?.id);
 const dateText = date => date ? new Intl.DateTimeFormat('en-AU',{day:'numeric',month:'short',year:'numeric',timeZone:'Australia/Brisbane'}).format(new Date(date.length === 10 ? `${date}T00:00:00+10:00` : date)) : 'Not set';
 const today = () => new Date().toLocaleDateString('en-CA',{timeZone:'Australia/Brisbane'});
@@ -66,6 +87,13 @@ let trainingLoad;
 let applicationReview;
 let electorateFinance;
 async function api(path, options={}) {
+  if(rolePreview){
+    if((options.method||'GET')!=='GET'||options.body)throw new Error('This fictional role view is read-only.');
+    const requested=new URL(path,location.origin), views={'/api/bootstrap':'workspace','/api/public':'public','/api/gamify':'gamify'};
+    const view=views[requested.pathname];
+    if(!view||requested.origin!==location.origin)throw new Error('This route is unavailable in the fictional role view.');
+    const params=new URLSearchParams(requested.search);params.set('role',rolePreview);params.set('view',view);path='/api/access/preview?'+params;
+  }
   const response = await fetch(path,{credentials:'same-origin',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});
   const data = await response.json();
   if(!response.ok) {const err=new Error(data.error || 'We could not complete that action.');err.status=response.status;throw err;}
@@ -74,6 +102,7 @@ async function api(path, options={}) {
 async function load(){state=await api('/api/bootstrap');for(const key of ['people','groups','projects','memberships','contributions','financialContributions','decisions','activity'])state[key] ||= [];if(!isPilot())await loadGamify(api);}
 function notify(message){clearTimeout(noticeTimer);$('#notice').textContent=message;$('#notice').hidden=false;noticeTimer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function command(type,data,{rerender=true}={}){
+  if(readOnly())throw new Error('This fictional role view is read-only.');
   const key=JSON.stringify({actorId:state.actor?.id,type,data});
   const id=pendingCommands.get(key)||crypto.randomUUID();pendingCommands.set(key,id);
   try {await api('/api/commands',{method:'POST',body:JSON.stringify({id,revision:state.revision,type,data})});await load();if(rerender)render();pendingCommands.delete(key);}
@@ -216,7 +245,7 @@ function render() {
   const civicTools = hasCivicTools();
   const trainingActor = state.actor?.id || 'local-public';
   $('.shell').classList.toggle('private-workspace', pilot);
-  const availableWorkspaceRoutes = workspaceRoutes.filter(([key]) => civicTools || (key !== 'readiness' && key !== 'training'));
+  const availableWorkspaceRoutes = workspaceRoutes.filter(([key]) => routeAllowed(key) && (civicTools || (key !== 'readiness' && key !== 'training')));
   const pilotLabels = { profile: 'Your profile', transparency: 'Restricted transparency' };
   const current = [...availableWorkspaceRoutes, ...accountabilityRoutes].find(r => r[0] === route) || ['home', 'Your workspace'];
   const auraPage = route === 'resources' && id === 'aura';
@@ -228,9 +257,9 @@ function render() {
     const active = route === key || (route === 'project' && key === 'projects');
     return `<a class="nav-link ${active ? 'active' : ''}" href="#${key}" ${route === key ? 'aria-current="page"' : ''} aria-label="${text}" title="${text}">${icon(key)}<span class="nav-full-label">${text}</span><span class="nav-short-label" aria-hidden="true">${pilot && key === 'profile' ? 'Profile' : compactLabels[key]}</span></a>`;
   };
-  const roleLabel = state.actor?.role || 'Everyone is welcome';
+  const roleLabel = scoped() ? [...new Set(state.access?.grants?.map(g=>g.role)||[])].join(', ') || 'Own records only' : state.actor?.role || 'Everyone is welcome';
   $('#sidebar').innerHTML = `<a class="brand" href="#home" aria-label="P4A workspace home"><span class="brand-mark">P4A</span><span><strong>People & possibility</strong><small>A shared civic workspace</small></span></a>
-    ${pilot ? '<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Workspace menu</button>' : ''}<nav id="workspace-links" aria-label="Workspace pages"><div class="nav-label">${pilot ? 'Private workspace' : 'Your movement'}</div>${availableWorkspaceRoutes.map(navLink).join('')}<div class="nav-label">Open & accountable</div>${accountabilityRoutes.map(navLink).join('')}</nav>
+    ${pilot ? '<button type="button" id="workspace-menu" aria-controls="workspace-links" aria-expanded="false">Workspace menu</button>' : ''}<nav id="workspace-links" aria-label="Workspace pages"><div class="nav-label">${pilot ? 'Private workspace' : 'Your movement'}</div>${availableWorkspaceRoutes.map(navLink).join('')}<div class="nav-label">Open & accountable</div>${accountabilityRoutes.filter(([key])=>routeAllowed(key)).map(navLink).join('')}${!readOnly()&&scopedPermission('access.view','system','p4a')?'<a class="nav-link" href="/webmaster.html">Webmaster desk</a>':''}</nav>
     <div class="sidebar-foot"><div class="sidebar-note"><strong>Many places. A shared possibility.</strong>Build from people and local groups, with room for the whole vision.<br><a href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Explore P4A ↗</a></div>
     <div class="identity"><span class="avatar">${e(initials(state.actor?.name || 'Public'))}</span><div>${e(state.actor?.name || 'Public visitor')}<small>${e(roleLabel)}</small></div></div></div>`;
   let accountControl = `<span class="muted"><span class="status-dot"></span>${state.actor ? 'Signed in' : 'Public view'}</span>`;
@@ -241,9 +270,9 @@ function render() {
   }
   $('#topbar').innerHTML = `<div class="breadcrumb"><span>${pilot ? 'Private workspace' : 'P4A workspace'}</span><span>/</span><strong>${e(currentLabel)}</strong></div><div class="top-actions"><a class="public-link source-link" href="https://p4a.xyz/" target="_blank" rel="noopener noreferrer">Public website ↗</a>${accountControl}</div>`;
   const banner = $('#demo-banner');
-  banner.hidden = state.mode !== 'demo' && !pilot;
+  banner.hidden = state.mode !== 'demo' && !pilot && !readOnly();
   banner.classList.toggle('pilot-banner', pilot);
-  banner.innerHTML = pilot
+  banner.innerHTML = readOnly() ? '<strong>FICTIONAL VIEW-ONLY ROLE PREVIEW</strong> Synthetic records only. No real identity is impersonated. <a href="/webmaster.html">Return to Webmaster desk</a>.' : pilot
     ? '<strong>PRIVATE WORKSPACE</strong> Access is limited to invited accounts. Your working groups, projects and drafts are saved here.'
     : '<strong>LOCAL WORKING DEMO</strong> Fictional people, groups and records. Changes stay on this computer; no emails or payments are sent.';
   const views = { onboarding: () => onboardingView(state, id, { e, heading, icon, civicTools }), gamify: () => gamifyPage(state, id, participationHelpers()), nodes: () => localNodesView({ heading, icon }), campaigns: () => campaignsView({ heading, icon, pilot: civicTools }), constitution: () => constitutionPage(id), home, projects, priority: priorities, people: () => people(id), groups, hours, transparency, resources: auraPage ? () => auraOverview({ e, heading, icon }) : connected, profile };
@@ -263,7 +292,9 @@ function render() {
     else views.finance = () => financeTab ? (electorateFinance?.electorateFinanceView({ heading }) || '<div class="panel"><p role="status">Opening detailed budgets…</p></div>') : membershipQuickView({ e, heading });
   }
   if (route === 'merch') views.merch = () => merchQuickView({ e, heading });
+  if(!routeAllowed(route)){ $('#main').innerHTML=heading('Scoped access','View unavailable','Your current access grants do not include this view.'); return; }
   $('#main').innerHTML = route === 'project' ? projectDetail(id) : (views[route] || home)();
+  restrictPreview();
   const trainingTitle = route === 'training' ? $('#main .civic-training-page h1')?.textContent : null;
   if (trainingTitle && trainingTitle !== currentLabel) document.title = `${trainingTitle} · Civic training · P4A`;
   restoreScrollPositions(document);
@@ -406,6 +437,7 @@ async function setRole(role) {
 }
 
 document.addEventListener('click',async event=>{if(event.target.closest('.skip-link')){event.preventDefault();$('#main').focus();return;}const menu=event.target.closest('#workspace-menu');if(menu){menu.setAttribute('aria-expanded',String(menu.getAttribute('aria-expanded')==='false'));return;}const button=event.target.closest('[data-action]');if(!button)return;const {action,id,subid}=button.dataset;try{
+  if(readOnly()&&!previewActions.has(action))throw new Error('This fictional role view is read-only.');
   if (action === 'copy-campaign-prompt') {
     const prompt = $('#campaign-prompt');
     try {
@@ -486,7 +518,7 @@ document.addEventListener('click',async event=>{if(event.target.closest('.skip-l
   if(actions[action]){button.disabled=true;await command(...actions[action]);notify('The record has been updated.');}
 }catch(err){notify(err.message);}finally{button.disabled=false;}});
 
-document.addEventListener('submit',async event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();const kind=form.dataset.form, id=form.dataset.id;const fd=new FormData(form);const data=Object.fromEntries(fd);const submit=form.querySelector('[type=submit]');const error=form.querySelector('.form-error');if(error)error.textContent='';if(submit)submit.disabled=true;
+document.addEventListener('submit',async event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();if(readOnly()){notify('This fictional role view is read-only.');return;}const kind=form.dataset.form, id=form.dataset.id;const fd=new FormData(form);const data=Object.fromEntries(fd);const submit=form.querySelector('[type=submit]');const error=form.querySelector('.form-error');if(error)error.textContent='';if(submit)submit.disabled=true;
   try{if(await handleGamifySubmit(form,state,gamifyHelpers()))return;let type,payload=data;
     if(kind==='handover'){download('verse-box-take-home-note.md',`# My Verse Box take-home note\n\nPrepared ${today()}. Chosen and reviewed by the participant.\n\n## My question\n${data.task}\n\n## What I chose to keep\n${data.result}\n\n## Source to revisit\n${data.source||'None recorded'}\n\n## My next step\n${data.next||'My choice'}\n`,'text/markdown');closeDialog();notify('Your note was downloaded. It was not saved to the CRM.');return;}
     if(kind==='constitution-create')type='constitution.create';
@@ -528,7 +560,7 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
     else notify(kind==='hours'?'Contribution submitted for independent review.':'Saved. Your workspace is up to date.');
   }catch(err){if(error)error.textContent=err.message;else notify(err.message);}finally{if(submit)submit.disabled=false;}
 });
-document.addEventListener('change',async event=>{try{if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
+document.addEventListener('change',async event=>{try{if(await handleGamifyChange(event.target,api,render))return;if(event.target.id==='constitution-select'){location.hash=`constitution/${event.target.value}`;return;}if(event.target.id==='demo-role')await setRole(event.target.value);if(event.target.matches('[data-task]')){if(readOnly()){render();return;}const input=event.target;input.disabled=true;await command('task.toggle',{projectId:input.dataset.project,taskId:input.dataset.task});}if(['theme-filter','status-filter'].includes(event.target.id))filterProjects();}catch(err){notify(err.message);render();}});
 function filterProjects(){const query=($('#project-search')?.value||'').toLowerCase(),theme=$('#theme-filter')?.value,status=$('#status-filter')?.value;const matches=state.projects.filter(p=>(!theme||p.theme===theme)&&(!status||p.status===status)&&`${p.title} ${p.summary} ${group(p.groupId)?.name}`.toLowerCase().includes(query));$('#project-results').innerHTML=matches.map(projectCard).join('')||'<div class="empty">No projects match. Try another word or pathway.</div>';}
 document.addEventListener('input', event => {
   if (!event.target.matches('[data-campaign-field]')) return;
