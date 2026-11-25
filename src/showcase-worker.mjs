@@ -1,7 +1,7 @@
 import { accessTokenFromRequest, verifyAccessToken } from './auth.mjs';
 import { AppError } from './errors.mjs';
 import { json, securityHeaders } from './http.mjs';
-import { fixtureOverview, fixtureProjection, previewRoles } from './webmaster-preview.mjs';
+import { fixtureOverview, fixtureProjection, fixtureView } from './webmaster-preview.mjs';
 import { createShowcaseState } from './webmaster-preview.mjs';
 import { publicProjection, gamifyProjection } from './domain.mjs';
 
@@ -29,7 +29,7 @@ export default {
     if (!['GET','HEAD'].includes(request.method)) return json({error:'This is a view-only demonstration.'},403,headers);
     try {
       if (path === '/api/access' && request.method === 'GET') return json(fixtureOverview(),200,headers);
-      if (path === '/api/access/preview' && request.method === 'GET') return json(fixtureProjection(url.searchParams.get('role') || 'webmaster'),200,headers);
+      if (path === '/api/access/preview' && request.method === 'GET') return json(fixtureView(url.searchParams.get('role') || 'webmaster',url.searchParams),200,headers);
       if (path === '/api/bootstrap' && request.method === 'GET') return json(fixtureProjection('webmaster'),200,headers);
       if (path === '/api/public' && request.method === 'GET') return json(publicProjection(createShowcaseState(),'showcase'),200,headers);
       if (path === '/api/gamify' && request.method === 'GET') return json(gamifyProjection(createShowcaseState(),{period:url.searchParams.get('period') ?? 'all',groupId:url.searchParams.get('groupId') ?? '',projectId:url.searchParams.get('projectId') ?? ''},'showcase'),200,headers);
