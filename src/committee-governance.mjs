@@ -1,5 +1,5 @@
 import { AppError } from './errors.mjs';
-import { accessRegistry, can } from './scoped-access.mjs';
+import { accessRegistry, can, effectiveAccess } from './scoped-access.mjs';
 
 const fail=(message='This committee action is outside your authorised scope.',status=403)=>{throw new AppError(message,status)};
 const invalid=message=>fail(message,400);
@@ -47,7 +47,7 @@ function eligibleActors(state,c,action,now){
     const person=byId(state.people,a.personId);
     const actor={id:person.id,name:person.name,access:'scoped',accountId:a.id,role:'member'};
     if(!perm(state,actor,action,c,now))return [];
-    return [{id:person.id,name:person.name,roles:[...new Set(access.grants.filter(g=>g.accountId===a.id&&g.scope.kind==='committee'&&g.scope.id===c.id&&g.permissions.includes(action)&&g.status==='active'&&Date.parse(g.startsAt)<=now.getTime()&&now.getTime()<Date.parse(g.endsAt)).map(g=>g.role))]}];
+    return [{id:person.id,name:person.name,roles:[...new Set(effectiveAccess(state,actor,now).filter(g=>g.scope.kind==='committee'&&g.scope.id===c.id&&g.permissions.includes(action)).map(g=>g.role))]}];
   });
 }
 const officePeople=(s,c,now)=>eligibleActors(s,c,'committee.task.own',now);
@@ -99,11 +99,21 @@ export function committeeProjection(state,actor,committeeId,now=new Date(),mode=
   const base={revision:state.revision,committee:{id:c.id,name:c.name,kind:c.kind,status:c.status,groupId:working?c.groupId:null},working,
     permissions:{},meetings:[],actions:[],notices:[],releasedMinutes:members||working?released:[],officePeople:[],projects:[],constitutions:[],
     fictional:mode==='showcase'||rehearsalMode(mode),formalDecisionsEnabled:false};
-  if(!working)return base;
+  if(!working){
+    if(c.status==='proposed'&&c.createdBy===actor.id&&directory.proposalGroups.some(g=>g.id===c.groupId))base.proposedOffices=c.offices.map(({role,status})=>({role,status}));
+    return base;
+  }
   for(const action of ['committee.meeting.manage','committee.attendance','committee.motion.write','committee.minutes.write','committee.minutes.review','committee.task.assign','committee.task.own','committee.notice.read','committee.notice.write'])base.permissions[action]=perm(state,actor,action,c,now);
   base.committee={...base.committee,offices:structuredClone(c.offices),createdBy:c.createdBy,createdAt:c.createdAt};
   base.officePeople=officePeople(state,c,now);
-  base.meetings=g.meetings.filter(m=>m.committeeId===c.id).map(m=>({...structuredClone(m),quorum:quorum(state,c,m,now)}));
+  base.meetings=g.meetings.filter(m=>m.committeeId===c.id).map(m=>{
+    const view=structuredClone(m);
+    for(const item of view.agenda)for(const motion of item.motions){
+      if(motion.projectId){const p=byId(state.projects,motion.projectId);if(!p||!can(state,actor,'project.view','group',p.groupId,now))motion.projectId=null;}
+      if(motion.constitutionId&&!can(state,actor,'constitution.view','constitution',motion.constitutionId,now)){motion.constitutionId=null;motion.constitutionVersion=null;}
+    }
+    return {...view,quorum:rehearsalMode(mode)||mode==='showcase'?quorum(state,c,m,now):{status:'not-established',present:0,required:null}};
+  });
   base.actions=g.actions.filter(a=>a.committeeId===c.id&&visibleAction(state,a,actor,c,now)).map(a=>({...structuredClone(a),done:taskDone(state,a)}));
   base.notices=g.notices.filter(n=>n.committeeId===c.id&&noticeVisible(state,n,actor,c,now)).map(n=>noticeView(state,g,n,actor));
   base.projects=state.projects.filter(p=>p.groupId===c.groupId&&can(state,actor,'project.view','group',p.groupId,now)).map(({id,title})=>({id,title}));
@@ -288,13 +298,17 @@ export function executeCommitteeCommand(state,actor,command,now=new Date(),{mode
     if(!officePeople(next,c,now).some(p=>p.id===data.ownerId))fail('Choose a currently authorised office task owner.');
     const motion=data.motionId&&m?targetMotion(m,data.motionId):null;
     if(data.motionId&&!motion)invalid('Choose a motion from this meeting.');
-    if(motion?.ballot?.status==='tallied'&&motion.ballot.outcome!=='carried')conflict('A lost rehearsal motion cannot create a linked follow-up.');
+    if(motion&&rehearsalMode(mode)&&(motion.ballot?.status!=='tallied'||motion.ballot.outcome!=='carried'))conflict('Only a carried fictional rehearsal motion can create a decision-linked follow-up.');
     const p=data.projectId?scopeProject(next,actor,c,data.projectId,now):null;
     if(motion?.projectId&&p?.id!==motion.projectId)invalid('The action must follow the motion project.');
-    if(p&&!p.participantIds.includes(data.ownerId))fail('The duty owner must already participate in the linked project.');
+    if(p){
+      const ownerAccount=accessRegistry(next).accounts.find(row=>row.personId===data.ownerId&&row.status==='active');
+      const ownerActor={id:data.ownerId,accountId:ownerAccount?.id,access:'scoped',role:'member'};
+      if(!p.participantIds.includes(data.ownerId)||!can(next,ownerActor,'project.view','group',p.groupId,now))fail('The duty owner must already participate in the authorised linked project.');
+    }
     const title=txt(data.title,'duty title',200),dueDate=data.dueDate?day(data.dueDate):null;
     targetId=crypto.randomUUID();
-    const a={id:targetId,committeeId:c.id,meetingId:m?.id||null,motionId:motion?.id||null,projectId:p?.id||null,ownerId:data.ownerId,title,details:txt(data.details??'','details',1000,false),dueDate,createdBy:actor.id,createdAt:at,acknowledgedAt:null,history:[]};
+    const a={id:targetId,committeeId:c.id,meetingId:m?.id||null,motionId:motion?.id||null,projectId:p?.id||null,ownerId:data.ownerId,title,details:txt(data.details??'','details',1000,false),dueDate,createdBy:actor.id,createdAt:at,acknowledgedAt:null,history:[],basis:rehearsalMode(mode)&&motion?'fictional-rehearsal-decision':'working-follow-up'};
     if(p)p.tasks.push({id:a.id,title,done:false,assigneeId:a.ownerId});else a.done=false;
     g.actions.push(a);notice(g,c,{kind:'task',sourceId:a.id,title,ownerId:a.ownerId},actor,at);
   }else if(type==='duty.acknowledge'||type==='duty.complete'){
