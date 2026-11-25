@@ -117,7 +117,7 @@ function notices(d,ro){
     (!ro&&!n.retracted&&!n.reviewed?form('notice.review','','Record review',{noticeId:n.id,version:n.version}):'')+'</div></article>').join('')||'<p>No internal notices.</p>')+
     (permitted(d,'committee.notice.write',ro)?card('Post an internal notice',form('notice.post',field('Notice','title','','text',true,240),'Save in-app notice')+'<p>Visible within this committee only. No email, invitation or external message is sent.</p>'):'');
 }
-function released(d){return card('Released minutes',d.releasedMinutes.map(m=>'<article><h3>'+esc(m.title)+'</h3><p>'+esc(m.date)+' · Fictional member excerpt · version '+m.version+'</p><p>'+esc(m.text)+'</p></article>').join('')||'<p>No member excerpts are released. Formal release is not enabled.</p>')+card('Released document excerpts',(d.operations?.released||[]).map(x=>'<article><h3>'+esc(x.title)+'</h3><p>Fictional member excerpt · version '+x.version+'</p><p>'+esc(x.text)+'</p></article>').join('')||'<p>No document excerpts released.</p>');}
+function released(d){return card('Released minutes',d.releasedMinutes.map(m=>'<article><h3>'+esc(m.title)+'</h3><p>'+esc(m.date)+' · Fictional member excerpt · version '+m.version+'</p><p>'+esc(m.text)+'</p></article>').join('')||'<p>No member excerpts are released. Formal release is not enabled.</p>')+card('Released document excerpts',(d.operations?.released||[]).map(x=>'<article><h3>'+esc(x.title)+'</h3><p>Fictional member excerpt · version '+x.version+'</p><p>'+esc(x.text)+'</p></article>').join('')||'<p>No document excerpts released.</p>')+card('Released editions',(d.communications?.released||[]).map(x=>'<article><h3>'+esc(x.title)+'</h3><p>'+esc(x.month)+' · Fictional edition</p><p>'+esc(x.text)+'</p></article>').join('')||'<p>No editions released.</p>');}
 
 const aud=n=>new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(n/100);
 const centsField=(title,name,value='')=>'<label class="field">'+esc(title)+' (whole AUD cents)<input type="number" name="'+esc(name)+'" min="0" max="1000000000" step="1" required value="'+esc(value)+'"></label>';
@@ -210,6 +210,33 @@ function directory(d,ro){
     (entries||'<p>No committees in your current authorised view.</p>')+
     (!ro&&d.proposalGroups.length?card('Propose a committee',form('committee.propose',field('Proposed name','name')+select('Scope','kind',['local','state','territory','national'].map(v=>option(v,label(v))))+select('Connected working group','groupId',d.proposalGroups.map(g=>option(g.id,g.name))),'Save proposal')+'<p>This creates a draft with vacant offices. It does not establish a committee or grant anyone new access.</p>'):'');
 }
+
+function editionsDesk(d,ro,actor){
+ const edit=permitted(d,'committee.edition.edit',ro),review=permitted(d,'committee.edition.review',ro),contribute=permitted(d,'committee.edition.contribute',ro);
+ const rows=d.communications.editions.map(e=>{
+  const mine=e.contributions.find(x=>x.actorId===actor.id);
+  const submitted=e.contributions.filter(x=>x.status==='submitted');
+  const own=mine?'<p>My contribution: '+esc(mine.title)+' · '+status(mine.status)+'</p><p>'+esc(mine.text)+'</p>':'';
+  const contribution=e.status==='draft'&&contribute?(!mine||mine.status==='draft'?form('edition.contribute',field('Title','title',mine?.title||'')+area('Member-safe draft text','text',mine?.text||'',3000,true),'Save my contribution',{id:e.id,version:e.version}):'')+(mine?.status==='draft'?form('edition.submit-contribution','','Submit my contribution',{id:e.id,version:e.version}):''):'';
+  const assemble=edit&&e.status==='draft'&&submitted.length?form('edition.assemble',field('Edition title','title',e.draft?.title||e.title)+area('Editor introduction','intro',e.draft?.intro||'',1500,true)+'<fieldset><legend>Submitted articles</legend>'+submitted.map(x=>'<label class="check-field"><input type="checkbox" name="contributionIds" value="'+esc(x.id)+'"'+(e.draft?.articles?.some(a=>a.id===x.id)?' checked':'')+'> '+esc(x.title)+' · '+esc(name(d,x.actorId))+'</label>').join('')+'</fieldset>','Save assembled draft',{id:e.id,version:e.version}):'';
+  const draft=e.draft?'<details><summary>Assembled edition</summary><h4>'+esc(e.draft.title)+'</h4><p>'+esc(e.draft.intro)+'</p>'+e.draft.articles.map(x=>'<h4>'+esc(x.title)+'</h4><p>'+esc(x.text)+'</p>').join('')+'</details>':'';
+  return '<article class="panel"><h3>'+esc(e.month)+' · '+esc(e.title)+'</h3><p>'+status(e.status)+' · revision '+e.version+'</p>'+own+contribution+submitted.filter(x=>x.actorId!==actor.id).map(x=>'<details><summary>'+esc(x.title)+' · submitted by '+esc(name(d,x.actorId))+'</summary><p>'+esc(x.text)+'</p></details>').join('')+draft+assemble+
+    (edit&&e.status==='draft'&&e.draft?form('edition.submit','','Submit assembled edition for independent review',{id:e.id,version:e.version}):'')+
+    (review&&e.status==='review'?form('edition.review',select('Review outcome','outcome',[option('approve','Review and approve working edition'),option('return','Return for edits')])+independentReview(),'Record independent review',{id:e.id,version:e.version}):'')+
+    (e.reviewReason?'<p>Review: '+esc(e.reviewReason)+'</p>':'')+'</article>';
+ }).join('');
+ return card('Internal editions','<p>Office contributions remain private until submitted. Independent review precedes any release. No email or live member distribution is enabled.</p>'+rows+(edit?form('edition.create',field('Edition month','month','','month')+field('Working title','title'),'Create working edition'):''));
+}
+function partnershipsDesk(d,ro,actor){
+ const write=permitted(d,'committee.partnership.propose',ro),review=permitted(d,'committee.partnership.review',ro);
+ const rows=d.communications.partnerships.map(p=>'<article class="panel"><h3>'+esc(p.partner)+'</h3><p>'+status(p.effectiveStatus||p.status)+' · revision '+p.version+'</p><p><strong>Proposed scope:</strong> '+esc(p.work)+'</p><p><strong>Retained responsibilities:</strong> '+esc(p.retained)+'</p><p>Proposed cost '+esc(aud(p.costCents))+' · review date '+esc(p.reviewDate)+'</p>'+
+ (p.projectId&&d.projects.some(x=>x.id===p.projectId)?'<p><a href="#project/'+esc(p.projectId)+'">Existing project</a></p>':'')+
+ (p.reviewReason?'<p>Independent review: '+esc(p.reviewReason)+'</p>':'')+
+ (review&&p.status==='proposed'&&p.createdBy!==actor.id?form('partnership.review',select('Outcome','outcome',[option('review','Review proposal'),option('decline','Decline proposal')])+independentReview(),'Record review',{id:p.id,version:p.version}):'')+'</article>').join('');
+ return card('Partnership and retained authority','<p>Keep organisations distinct. These records describe proposed cooperation, not partner consent, funding, delegated authority or an agreement.</p>'+rows)+
+ (write?card('Prepare cooperation proposal',form('partnership.propose',field('Proposed partner','partner')+area('Proposed work','work','',1500,true)+area('Responsibilities retained by P4A','retained','',1500,true)+centsField('Proposed cost','costCents')+field('Review date','reviewDate','','date')+select('Existing project','projectId',[option('','None'),...d.projects.map(p=>option(p.id,p.title))],false)+checkField('This is an internal proposal, not consent from the other party','acknowledged'),'Save internal proposal')):'');
+}
+
 function detail(d,tab,item,ro,actor,document){
   const c=d.committee;
   let content;
@@ -221,9 +248,11 @@ function detail(d,tab,item,ro,actor,document){
   else if(tab==='offices')content=offices(d,ro,actor);
   else if(tab==='finance')content=financeDesk(d,ro,actor);
   else if(tab==='library')content=libraryDesk(d,ro,actor,document);
+  else if(tab==='editions')content=editionsDesk(d,ro,actor);
+  else if(tab==='partnerships')content=partnershipsDesk(d,ro,actor);
   else if(tab==='released')content=released(d);
   else content=home(d,ro);
-  const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['offices','Office transitions'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],...(d.operations?.finance?[['finance','Treasurer desk']]:[]),...(d.permissions['committee.library.view']?[['library','Document library']]:[]),['released','Released minutes']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
+  const nav=d.working?'<nav class="button-row" aria-label="Committee desks">'+[['overview','Overview'],['offices','Office transitions'],['meetings','Meeting register'],['duties','Officer duties'],['notices','Internal inbox'],...(d.operations?.finance?[['finance','Treasurer desk']]:[]),...(d.permissions['committee.library.view']?[['library','Document library']]:[]),...((d.permissions['committee.edition.contribute']||d.permissions['committee.edition.edit']||d.permissions['committee.edition.review'])?[['editions','Internal editions']]:[]),...((d.permissions['committee.partnership.propose']||d.permissions['committee.partnership.review'])?[['partnerships','Partnership proposals']]:[]),['released','Released records']].map(([k,t])=>link(c.id,k,t)).join('')+'</nav>':'';
   return '<a href="#committee">My Committee directory</a>'+heading(c.name,'Working proposals only. No adopted rules, formal vote or external communications are enabled.')+nav+content;
 }
 export function privateCommitteeCalendar(rows){
@@ -250,13 +279,14 @@ export function privateCommitteeCalendar(rows){
 const pending=new Map();
 function payload(formEl){
   const fd=new FormData(formEl),d=Object.fromEntries(fd);
+  if(formEl.dataset.committeeForm==='edition.assemble')d.contributionIds=fd.getAll('contributionIds');
   if(formEl.dataset.committeeForm==='office.plan'){d.dutyIds=fd.getAll('dutyIds');d.documentIds=fd.getAll('documentIds');}
   if(formEl.dataset.committeeForm==='meeting.attendance')for(const k of ['present','apologies','recused'])d[k]=fd.getAll(k);
   if(formEl.dataset.committeeForm==='meeting.plan'){
     d.jobs=Object.keys(d).filter(k=>k.startsWith('owner.')).map(k=>{const key=k.slice(6);return {key,ownerId:d[k],offsetDays:d['offset.'+key]===''?null:Number(d['offset.'+key])};});
     for(const k of Object.keys(d))if(k.startsWith('owner.')||k.startsWith('offset.'))delete d[k];
   }
-  for(const key of ['reviewLimitCents','amountCents','openingCents','statementClosingCents'])if(key in d)d[key]=d[key]===''?null:Number(d[key]);
+  for(const key of ['reviewLimitCents','amountCents','openingCents','statementClosingCents','costCents'])if(key in d)d[key]=d[key]===''?null:Number(d[key]);
   for(const key of ['noConflict','acknowledged','settled'])if(formEl.elements.namedItem(key))d[key]=fd.has(key);
   if('linesText'in d){
     d.lines=d.linesText.split(/\r?\n/).filter(line=>line.trim()).map(line=>{const at=line.lastIndexOf('|');return at<0?{label:line.trim(),amountCents:null}:{label:line.slice(0,at).trim(),amountCents:/^\d+$/.test(line.slice(at+1).trim())?Number(line.slice(at+1).trim()):null};});
