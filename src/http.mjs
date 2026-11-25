@@ -1,7 +1,7 @@
 import { AppError, executeCommand, normaliseState, publicProjection, gamifyProjection } from './domain.mjs';
 import { authorisedDomainActor, accessOverview, changeAccess } from './scoped-access.mjs';
 import { authorisedProjection } from './scoped-projection.mjs';
-import { realWebmasterPreview } from './webmaster-preview.mjs';
+import { realWebmasterPreview, fixtureOverview, fixtureView } from './webmaster-preview.mjs';
 import { committeeProjection, committeeDocument, executeCommitteeCommand, guardCommitteeTask } from './committee-governance.mjs';
 
 export const securityHeaders = {
@@ -50,8 +50,17 @@ export async function api(request, { store, getActor, mode, workspace, demoSessi
     if (url.pathname === '/api/bootstrap' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace));
     if (!actor) return json({ error: 'Sign in before opening private workspace records.' }, 401);
     if (url.pathname === '/api/export' && request.method === 'GET') return json(authorisedProjection(state, actor, mode, workspace), 200, { 'Content-Disposition': 'attachment; filename="p4a-workspace-export.json"' });
+    // Existing verified private pilot organiser can inspect fictional examples
+    // without migrating their account. This is not real Webmaster authority.
+    const legacyOwnerPreview = mode === 'pilot' && actor.id === 'pilot-organiser' && actor.role === 'organiser' && !actor.access;
+    if (url.pathname === '/api/access/showcase') {
+      if (request.method !== 'GET') return json({error:'Fictional role views are read-only.'},403);
+      if (!legacyOwnerPreview) return json({error:'This entry is for the existing private pilot organiser only.'},403);
+      return json({...fixtureOverview(),ownerPreview:true});
+    }
     if (url.pathname === '/api/access/preview') {
       if (request.method !== 'GET') return json({error:'The fictional role preview is read-only.'},403);
+      if (legacyOwnerPreview) return json(fixtureView(url.searchParams.get('role') || 'webmaster',url.searchParams));
       return json(realWebmasterPreview(state,actor,url.searchParams.get('role') || 'webmaster',url.searchParams));
     }
     if (url.pathname === '/api/access' && request.method === 'GET') return json(accessOverview(state, actor));
